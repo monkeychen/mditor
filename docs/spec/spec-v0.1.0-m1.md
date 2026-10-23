@@ -112,7 +112,7 @@ export interface ElectronAPI {
 
 | Task 编号 | 内容与交付物 | 覆盖 AC | 依赖 | 状态 |
 |---|---|---|---|---|
-| **T1** | 初始化工程骨架：配置 Electron + Vite + React + Tailwind + TypeScript，搭建 Vitest 与 Playwright 测试基线 | AC1.1 | - | 待开始 |
+| **T1** | 初始化工程骨架：配置 Electron + Vite + React + Tailwind + TypeScript，搭建 Vitest 与 Playwright 测试基线 | AC1.1 | - | 已完成 (npm test & build & lint 全通) |
 | **T2** | 实现 Electron 主进程窗口配置（hiddenInset、交通灯避让）与安全 Preload IPC 本地文件读写服务（含单测） | AC1.1, AC3.1, AC3.2 | T1 | 待开始 |
 | **T3** | 集成 CodeMirror 6 编辑器组件，定制 macOS SF Pro 极简主题、行间距与状态栏（字数/光标位置） | AC1.1, AC2.6 | T1 | 待开始 |
 | **T4** | 开发 CodeMirror 6 Live Preview 实时渲染插件（标题、加粗/斜体、引用、分割线、任务列表点击勾选）并完成单测覆盖 | AC2.1, AC2.2, AC2.3, AC2.6 | T3 | 待开始 |
