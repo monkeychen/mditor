@@ -4,6 +4,7 @@ import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { macosEditorTheme } from './theme';
+import { livePreviewPlugin } from './livePreview';
 
 export interface EditorProps {
   initialDoc?: string;
@@ -44,6 +45,7 @@ export const Editor = ({
         keymap.of([...defaultKeymap, ...historyKeymap]),
         markdown(),
         macosEditorTheme,
+        livePreviewPlugin,
         EditorView.lineWrapping,
         updateListener,
         ...extensions,
