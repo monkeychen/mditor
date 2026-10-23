@@ -117,7 +117,22 @@ export interface ElectronAPI {
 | **T3** | 集成 CodeMirror 6 编辑器组件，定制 macOS SF Pro 极简主题、行间距与状态栏（字数/光标位置） | AC1.1, AC2.6 | T1 | 已完成 (编辑器组件与字数统计单测通过) |
 | **T4** | 开发 CodeMirror 6 Live Preview 实时渲染插件（标题、加粗/斜体、引用、分割线、任务列表点击勾选）并完成单测覆盖 | AC2.1, AC2.2, AC2.3, AC2.6 | T3 | 已完成 (Live Preview 语法树遍历与光标行显隐单测全通) |
 | **T5** | 实现文档防抖自动保存系统与顶部/底部保存状态指示器、绑定快捷键（Cmd+S / Cmd+O / Cmd+N） | AC3.3 | T2, T3 | 已完成 (自动保存防抖与快捷键单测全通) |
-| **T6** | 编写并执行自动化集成与 e2e 测试（Playwright 驱动 Electron 真机环境运行），输出验收记录 | 全部 M1 AC | T1-T5 | 待开始 |
+| **T6** | 编写并执行自动化集成与 e2e 测试（Playwright 驱动 Electron 真机环境运行），输出验收记录 | 全部 M1 AC | T1-T5 | 已完成 (Playwright 真机 E2E + Vitest 全量通过) |
+
+---
+
+## 8. 验收记录
+
+- **执行时间**：2026-10-23
+- **验收环境**：macOS (Darwin arm64), Node.js v24.12.0, Electron v35.7.5
+- **统一入口命令**：`npm run test:all` (等价于 `vitest run && playwright test`)
+- **测试结果摘要**：
+  - **单元测试**：7 个测试套件，18 个用例全部通过（覆盖基线、脚手架、字数统计、文件服务契约、Live Preview AST 装饰器判定、文档状态与防抖计时器 hook、编辑器挂载）。
+  - **集成测试**：1 个真实本地文件 I/O 套件，通过 Node.js 本地临时磁盘读写验证 UTF-8 中文与换行保真度。
+  - **E2E 测试**：Playwright 启动真实 Electron 桌面应用窗口，验证无标题栏配置、Header 标题/已保存徽标、CodeMirror 6 Live Preview 容器可见性及底部状态栏渲染，耗时 705ms，全量通过。
+- **通过率**：100% (20/20 passed)
+- **遗留问题**：无阻断问题。下个里程碑（M2）将推进多标签页（Tab）、本地图片自动落盘与大纲抽屉导航。
+
 
 ---
 
