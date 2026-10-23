@@ -1,0 +1,307 @@
+<!-- doc: prototype | product: v0.1.0 | milestone: m1 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor - macOS Live Preview Prototype (M1)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg-canvas: #FAF8F5;
+      --text-main: #1D1D1F;
+      --text-muted: #86868B;
+      --mac-border: rgba(0, 0, 0, 0.08);
+      --accent: #E58E26;
+      --accent-soft: rgba(229, 142, 38, 0.12);
+    }
+
+    body {
+      background: #ECECF0;
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* macOS 质感阴影与毛玻璃 */
+    .macos-window {
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .traffic-light {
+      transition: all 0.2s ease;
+    }
+    .traffic-light:hover svg {
+      opacity: 1 !important;
+    }
+
+    /* 编辑器排版样式 */
+    .editor-line {
+      min-height: 1.8rem;
+      line-height: 1.8;
+      position: relative;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.15s ease;
+    }
+    .editor-line:hover {
+      background-color: rgba(0, 0, 0, 0.015);
+    }
+    .editor-line.is-active {
+      background-color: rgba(229, 142, 38, 0.04);
+    }
+
+    .syntax-token {
+      color: #9E9EA7;
+      font-family: "JetBrains Mono", Menlo, monospace;
+      font-size: 0.9em;
+      transition: opacity 0.15s ease;
+      user-select: none;
+    }
+
+    /* 状态切换平滑淡入 */
+    .fade-enter {
+      animation: fadeIn 0.2s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-2px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
+
+  <!-- 顶部控制说明条 -->
+  <div class="w-full max-w-4xl mb-4 flex items-center justify-between text-xs text-stone-500 px-2">
+    <div class="flex items-center gap-3">
+      <span class="font-semibold text-stone-800 bg-white/80 px-2.5 py-1 rounded shadow-sm border border-stone-200/60">
+        M1 交互原型演示
+      </span>
+      <span>💡 点击下方任意段落，体验光标进入「语法展开」、移开「无缝排版」的 Live Preview 交互</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleSaveState()" class="px-2.5 py-1 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 rounded shadow-xs transition">
+        切换保存状态演示
+      </button>
+    </div>
+  </div>
+
+  <!-- macOS 模拟独立窗口容器 -->
+  <div class="macos-window w-full max-w-4xl h-[780px] bg-[#FAF8F5] rounded-xl flex flex-col overflow-hidden relative border border-black/10 select-none">
+
+    <!-- 顶部原生无边框标题栏 (高度 44px，含交通灯避让) -->
+    <header class="h-11 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-black/5 flex items-center justify-between px-4 z-20">
+      <!-- 左侧：macOS 交通灯控件 -->
+      <div class="flex items-center space-x-2 w-28 group">
+        <div class="traffic-light w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] flex items-center justify-center cursor-pointer">
+          <svg class="w-2 h-2 opacity-0 text-[#4D0000]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </div>
+        <div class="traffic-light w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] flex items-center justify-center cursor-pointer">
+          <svg class="w-2 h-2 opacity-0 text-[#995700]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </div>
+        <div class="traffic-light w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] flex items-center justify-center cursor-pointer">
+          <svg class="w-2 h-2 opacity-0 text-[#006500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        </div>
+      </div>
+
+      <!-- 中间：当前文件名与实时状态指示 -->
+      <div class="flex items-center space-x-2 text-sm text-[#1D1D1F] font-medium tracking-tight">
+        <svg class="w-4 h-4 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        <span id="doc-title">macOS-Philosophy.md</span>
+        <span id="save-badge" class="flex items-center text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 ml-1 font-normal">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>已自动保存
+        </span>
+      </div>
+
+      <!-- 右侧：快捷工具入口与视图控制 -->
+      <div class="w-28 flex justify-end items-center space-x-2 text-stone-500">
+        <button title="切换大纲 (Cmd+Shift+O)" class="p-1.5 hover:bg-black/5 rounded-md text-stone-600 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h16" /></svg>
+        </button>
+        <button title="聚焦模式" class="p-1.5 hover:bg-black/5 rounded-md text-stone-600 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 中间：编辑器主体容器 -->
+    <main class="flex-1 overflow-y-auto px-8 md:px-16 py-10 selection:bg-amber-200/60 selection:text-black">
+      <div class="max-w-[720px] mx-auto space-y-3 font-normal text-[16px] text-[#1D1D1F]">
+
+        <!-- 行 1: H1 标题 -->
+        <div id="line-1" class="editor-line cursor-text" onclick="activateLine(1)">
+          <div class="rendered">
+            <h1 class="text-3xl font-bold tracking-tight text-[#1D1D1F] border-b border-black/5 pb-2">
+              设计第一性原理与 macOS 手感
+            </h1>
+          </div>
+          <div class="raw hidden font-mono text-xl text-[#1D1D1F] border-b border-black/5 pb-2">
+            <span class="syntax-token font-bold text-amber-600"># </span>设计第一性原理与 macOS 手感<span class="inline-block w-0.5 h-6 bg-amber-500 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+        </div>
+
+        <!-- 行 2: 引言段落（含加粗、行内代码） -->
+        <div id="line-2" class="editor-line cursor-text" onclick="activateLine(2)">
+          <div class="rendered text-stone-700 leading-relaxed">
+            用户体验是所有产品的最高准则。<strong class="font-semibold text-stone-900">后端可以很复杂，但用户触碰到的每一层必须丝滑。</strong> 在 <code class="px-1.5 py-0.5 bg-black/5 rounded text-sm font-mono text-amber-800">mditor</code> 中，我们拒绝一切形式的交互迟滞。
+          </div>
+          <div class="raw hidden font-mono text-[15px] text-stone-800">
+            用户体验是所有产品的最高准则。<span class="syntax-token">**</span><span class="font-semibold">后端可以很复杂，但用户触碰到的每一层必须丝滑。</span><span class="syntax-token">**</span> 在 <span class="syntax-token">`</span><span class="text-amber-800">mditor</span><span class="syntax-token">`</span> 中，我们拒绝一切形式的交互迟滞。<span class="inline-block w-0.5 h-4 bg-amber-500 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+        </div>
+
+        <!-- 行 3: H2 标题 -->
+        <div id="line-3" class="editor-line cursor-text pt-4" onclick="activateLine(3)">
+          <div class="rendered">
+            <h2 class="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
+              核心交互特性
+            </h2>
+          </div>
+          <div class="raw hidden font-mono text-lg text-[#1D1D1F]">
+            <span class="syntax-token font-bold text-amber-600">## </span>核心交互特性<span class="inline-block w-0.5 h-5 bg-amber-500 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+        </div>
+
+        <!-- 行 4: 引用块 -->
+        <div id="line-4" class="editor-line cursor-text" onclick="activateLine(4)">
+          <div class="rendered">
+            <blockquote class="border-l-3 border-amber-500/70 pl-4 py-1 my-1 text-stone-600 italic bg-amber-50/40 rounded-r">
+              系统承担复杂性：能自动化的不手动，能推断的不让用户填，能一步完成的不拆成三步。
+            </blockquote>
+          </div>
+          <div class="raw hidden font-mono text-[15px] text-stone-700">
+            <span class="syntax-token text-amber-600">&gt; </span>系统承担复杂性：能自动化的不手动，能推断的不让用户填，能一步完成的不拆成三步。<span class="inline-block w-0.5 h-4 bg-amber-500 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+        </div>
+
+        <!-- 行 5: 交互式任务列表 -->
+        <div id="line-5" class="editor-line cursor-text" onclick="activateLine(5)">
+          <div class="rendered space-y-2 py-1">
+            <div class="flex items-center space-x-2.5">
+              <input type="checkbox" checked onchange="toggleTask(this, 1)" class="w-4 h-4 rounded text-amber-600 focus:ring-0 border-stone-300 cursor-pointer">
+              <span class="line-through text-stone-400">基于 CodeMirror 6 纯文本架构，坚决不破坏 Markdown 源语法</span>
+            </div>
+            <div class="flex items-center space-x-2.5">
+              <input type="checkbox" checked onchange="toggleTask(this, 2)" class="w-4 h-4 rounded text-amber-600 focus:ring-0 border-stone-300 cursor-pointer">
+              <span class="line-through text-stone-400">光标所在行展开原生 Markdown，离开无缝排版</span>
+            </div>
+            <div class="flex items-center space-x-2.5">
+              <input type="checkbox" onchange="toggleTask(this, 3)" class="w-4 h-4 rounded text-amber-600 focus:ring-0 border-stone-300 cursor-pointer">
+              <span class="text-stone-800">本地文件自动防抖存盘与原生安全沙箱</span>
+            </div>
+          </div>
+          <div class="raw hidden font-mono text-[15px] text-stone-800 space-y-1">
+            <div><span class="syntax-token">- [x] </span>基于 CodeMirror 6 纯文本架构，坚决不破坏 Markdown 源语法</div>
+            <div><span class="syntax-token">- [x] </span>光标所在行展开原生 Markdown，离开无缝排版</div>
+            <div><span class="syntax-token">- [ ] </span>本地文件自动防抖存盘与原生安全沙箱<span class="inline-block w-0.5 h-4 bg-amber-500 animate-pulse ml-0.5 align-middle"></span></div>
+          </div>
+        </div>
+
+        <!-- 行 6: 分割线 -->
+        <div id="line-6" class="editor-line cursor-text my-4" onclick="activateLine(6)">
+          <div class="rendered py-2">
+            <hr class="border-t border-black/10">
+          </div>
+          <div class="raw hidden font-mono text-[15px] text-stone-400 py-1">
+            <span class="syntax-token font-bold text-amber-600">---</span><span class="inline-block w-0.5 h-4 bg-amber-500 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+        </div>
+
+        <!-- 行 7: 尾部普通段落 -->
+        <div id="line-7" class="editor-line cursor-text" onclick="activateLine(7)">
+          <div class="rendered text-stone-600 text-sm">
+            按快捷键 <kbd class="px-1.5 py-0.5 text-xs bg-stone-100 border border-stone-300 rounded shadow-2xs font-mono text-stone-700">⌘S</kbd> 即可即时存盘，无需担心文档意外丢失。
+          </div>
+          <div class="raw hidden font-mono text-sm text-stone-700">
+            按快捷键 <span class="syntax-token">&lt;kbd&gt;</span>⌘S<span class="syntax-token">&lt;/kbd&gt;</span> 即可即时存盘，无需担心文档意外丢失。<span class="inline-block w-0.5 h-4 bg-amber-500 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- 底部状态栏 (高度 26px) -->
+    <footer class="h-6.5 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-400 font-mono select-none">
+      <div class="flex items-center space-x-4">
+        <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Markdown 实时预览</span>
+        <span>UTF-8</span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span id="char-count">486 字符 · 7 行</span>
+        <span id="cursor-pos">Ln 2, Col 14</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    let activeLineId = null;
+    let isSaved = true;
+
+    function activateLine(lineNum) {
+      // 恢复旧行
+      if (activeLineId && activeLineId !== lineNum) {
+        const oldLine = document.getElementById(`line-${activeLineId}`);
+        if (oldLine) {
+          oldLine.classList.remove('is-active');
+          oldLine.querySelector('.rendered').classList.remove('hidden');
+          oldLine.querySelector('.raw').classList.add('hidden');
+        }
+      }
+
+      // 激活新行
+      activeLineId = lineNum;
+      const newLine = document.getElementById(`line-${lineNum}`);
+      if (newLine) {
+        newLine.classList.add('is-active');
+        newLine.querySelector('.rendered').classList.add('hidden');
+        newLine.querySelector('.raw').classList.remove('hidden');
+        newLine.querySelector('.raw').classList.add('fade-enter');
+      }
+
+      // 更新状态栏光标
+      document.getElementById('cursor-pos').innerText = `Ln ${lineNum}, Col 1`;
+    }
+
+    // 点击外部取消选中
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.editor-line') && !e.target.closest('button')) {
+        if (activeLineId) {
+          const oldLine = document.getElementById(`line-${activeLineId}`);
+          if (oldLine) {
+            oldLine.classList.remove('is-active');
+            oldLine.querySelector('.rendered').classList.remove('hidden');
+            oldLine.querySelector('.raw').classList.add('hidden');
+          }
+          activeLineId = null;
+        }
+      }
+    });
+
+    function toggleSaveState() {
+      isSaved = !isSaved;
+      const badge = document.getElementById('save-badge');
+      if (isSaved) {
+        badge.className = "flex items-center text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 ml-1 font-normal";
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>已自动保存';
+      } else {
+        badge.className = "flex items-center text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60 ml-1 font-normal";
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>存在未保存修改';
+      }
+    }
+
+    function toggleTask(checkbox, taskIndex) {
+      const label = checkbox.nextElementSibling;
+      if (checkbox.checked) {
+        label.classList.add('line-through', 'text-stone-400');
+        label.classList.remove('text-stone-800');
+      } else {
+        label.classList.remove('line-through', 'text-stone-400');
+        label.classList.add('text-stone-800');
+      }
+    }
+  </script>
+</body>
+</html>
