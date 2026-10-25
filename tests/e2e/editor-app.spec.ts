@@ -19,13 +19,13 @@ test.describe('Desktop Electron E2E Flow (M1)', () => {
     const title = await window.title();
     expect(title).toBe('mditor');
 
-    // 验证标题栏存在并显示初始文件名
-    const fileName = await window.locator('header span:has-text("Untitled.md")').isVisible();
-    expect(fileName).toBe(true);
+    // 验证标题栏存在并显示初始标签文件名
+    const tabName = await window.locator('.tab-item:has-text("macOS-Philosophy.md")').isVisible();
+    expect(tabName).toBe(true);
 
     // 验证自动保存指示符存在
-    const savedBadge = await window.locator('header span:has-text("已自动保存")').isVisible();
-    expect(savedBadge).toBe(true);
+    const savedDot = await window.locator('.tab-item span[title="已保存"]').isVisible();
+    expect(savedDot).toBe(true);
 
     // 验证 CodeMirror 6 编辑器容器存在且包含渲染内容
     const cmEditor = window.locator('.cm-editor');
