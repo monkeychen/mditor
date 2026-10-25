@@ -148,7 +148,7 @@ export interface ElectronAPI {
 | Task 编号 | 内容与交付物 | 覆盖 AC | 依赖 | 状态 |
 |---|---|---|---|---|
 | **T1** | 开发多标签页（Tabs）管理系统与快捷键支持（Cmd+T/Cmd+W/Cmd+1..9），支持未保存阻断确认弹窗 | AC1.2, AC1.3, AC1.4 | M1 | 已完成 (TabBar + useTabs + 未保存拦截单测全通) |
-| **T2** | 实现文档大纲（Outline / TOC）提取算法与左侧可折叠抽屉组件（Cmd+Shift+O），支持点击平滑定位与视口高亮 | AC5.1, AC5.2, AC5.3, AC5.4 | M1 | 待开始 |
+| **T2** | 实现文档大纲（Outline / TOC）提取算法与左侧可折叠抽屉组件（Cmd+Shift+O），支持点击平滑定位与视口高亮 | AC5.1, AC5.2, AC5.3, AC5.4 | M1 | 已完成 (大纲提取算法与抽屉交互单测全通) |
 | **T3** | 实现本地图片自动落盘主进程服务（`./assets/` 自动生成）与 Preload IPC 契约（含集成测试） | AC4.1, AC4.2 | M1 | 待开始 |
 | **T4** | 开发 CodeMirror 6 图片粘贴拦截与内嵌图片卡片实时渲染插件（ImageWidget） | AC4.1, AC4.2, AC4.3 | T3 | 待开始 |
 | **T5** | 编写并执行 M2 全量自动化测试（单元 + 集成 + Playwright E2E），输出验收记录 | 全部 M2 AC | T1-T4 | 待开始 |
