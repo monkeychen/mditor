@@ -5,9 +5,11 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { macosEditorTheme } from './theme';
 import { livePreviewPlugin } from './livePreview';
+import { imageDropAndPasteExtension } from './imageHandler';
 
 export interface EditorProps {
   initialDoc?: string;
+  docFilePath?: string | null;
   extensions?: Extension[];
   onChange?: (doc: string) => void;
   onCursorChange?: (line: number, col: number) => void;
@@ -16,6 +18,7 @@ export interface EditorProps {
 
 export const Editor = ({
   initialDoc = '',
+  docFilePath = null,
   extensions = [],
   onChange,
   onCursorChange,
@@ -23,6 +26,8 @@ export const Editor = ({
 }: EditorProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const docPathRef = useRef<string | null>(docFilePath);
+  docPathRef.current = docFilePath;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -46,6 +51,7 @@ export const Editor = ({
         markdown(),
         macosEditorTheme,
         livePreviewPlugin,
+        imageDropAndPasteExtension(() => docPathRef.current),
         EditorView.lineWrapping,
         updateListener,
         ...extensions,
