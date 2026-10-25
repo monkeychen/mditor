@@ -9,6 +9,17 @@ export interface DocumentState {
   cursorCol: number;
 }
 
+export interface TabItem {
+  id: string;
+  filePath: string | null;
+  fileName: string;
+  content: string;
+  isDirty: boolean;
+  saveStatus: 'saved' | 'saving' | 'unsaved';
+  cursorLine: number;
+  cursorCol: number;
+}
+
 export interface FileOpenResult {
   filePath: string;
   fileName: string;
