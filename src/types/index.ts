@@ -32,10 +32,19 @@ export interface FileSaveResult {
   error?: string;
 }
 
+export interface SaveImageResult {
+  success: boolean;
+  relativePath: string;
+  absolutePath: string;
+  error?: string;
+}
+
 export interface ElectronAPI {
-  openFile: () => Promise<FileOpenResult | null>;
-  saveFile: (filePath: string, content: string) => Promise<FileSaveResult>;
-  saveFileAs: (defaultName: string, content: string) => Promise<FileOpenResult | null>;
+  openFile?: () => Promise<FileOpenResult | null>;
+  saveFile?: (filePath: string, content: string) => Promise<FileSaveResult>;
+  saveFileAs?: (defaultName: string, content: string) => Promise<FileOpenResult | null>;
+  saveImageBuffer?: (docFilePath: string | null, buffer: Uint8Array, ext?: string) => Promise<SaveImageResult>;
+  copyLocalImage?: (docFilePath: string | null, sourceFilePath: string) => Promise<SaveImageResult>;
   onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => () => void;
 }
 

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,6 +97,21 @@ ipcMain.handle('file:saveAs', async (_event, { defaultName, content }: { default
     return { error: (error as Error).message };
   }
 });
+
+// 图片落盘服务 IPC
+ipcMain.handle(
+  'image:saveBuffer',
+  async (_event, { docFilePath, buffer, ext }: { docFilePath: string | null; buffer: Uint8Array; ext?: string }) => {
+    return await saveImageBufferToDisk(docFilePath, buffer, ext);
+  }
+);
+
+ipcMain.handle(
+  'image:copyLocal',
+  async (_event, { docFilePath, sourceFilePath }: { docFilePath: string | null; sourceFilePath: string }) => {
+    return await copyLocalImageToAssets(docFilePath, sourceFilePath);
+  }
+);
 
 app.whenReady().then(() => {
   createWindow();
