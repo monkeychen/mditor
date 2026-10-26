@@ -58,7 +58,6 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
   ) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const editorInstanceRef = useRef<Editor | null>(null);
-    const isDestroyedRef = useRef(false);
     const docFilePathRef = useRef<string | null>(docFilePath);
 
     useEffect(() => {
@@ -139,12 +138,18 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     }));
 
     useEffect(() => {
-      if (!containerRef.current) return;
-      isDestroyedRef.current = false;
+      const container = containerRef.current;
+      if (!container) return;
+
+      let isEffectCancelled = false;
+      let pendingEditor: Editor | null = null;
+
+      // 清理容器遗留 DOM，杜绝任何双实例并发挂载
+      container.innerHTML = '';
 
       const editor = Editor.make()
         .config((ctx) => {
-          ctx.set(rootCtx, containerRef.current!);
+          ctx.set(rootCtx, container);
           ctx.set(defaultValueCtx, initialContent);
           ctx.update(remarkStringifyOptionsCtx, (prev) => ({
             ...prev,
@@ -167,7 +172,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createImagePastePlugin(() => docFilePathRef.current),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
-            if (!isDestroyedRef.current && onChange) {
+            if (!isEffectCancelled && onChange) {
               onChange(markdown);
             }
           });
@@ -176,37 +181,59 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         .use(gfm)
         .use(listener);
 
+      pendingEditor = editor;
+
       editor.create().then((createdEditor) => {
-        if (isDestroyedRef.current) {
+        // 若在创建完成前该 effect 已被取消或卸载，立即彻底销毁
+        if (isEffectCancelled) {
           createdEditor.destroy();
-        } else {
-          editorInstanceRef.current = createdEditor;
+          return;
+        }
+
+        editorInstanceRef.current = createdEditor;
+        try {
+          const view = createdEditor.action((ctx) => ctx.get(editorViewCtx));
+          setEditorView(view);
+          // 仅在新建空文档时自动聚焦，已有文档不干扰默认光标
+          if (autoFocus && !initialContent) {
+            view.focus();
+          }
+        } catch {
+          // ignore
+        }
+      }).catch((err) => {
+        if (!isEffectCancelled) {
+          console.error('[Milkdown] Failed to create editor instance:', err);
+        }
+      });
+
+      return () => {
+        isEffectCancelled = true;
+        if (editorInstanceRef.current) {
+          editorInstanceRef.current.destroy();
+          editorInstanceRef.current = null;
+        } else if (pendingEditor) {
           try {
-            const view = createdEditor.action((ctx) => ctx.get(editorViewCtx));
-            setEditorView(view);
-            if (autoFocus) {
-              view.focus();
-            }
+            pendingEditor.destroy();
           } catch {
             // ignore
           }
         }
-      }).catch((err) => {
-        console.error('[Milkdown] Failed to create editor instance:', err);
-      });
-
-      return () => {
-        isDestroyedRef.current = true;
-        if (editorInstanceRef.current) {
-          editorInstanceRef.current.destroy();
-          editorInstanceRef.current = null;
+        if (container) {
+          container.innerHTML = '';
         }
       };
     }, []); // 仅挂载一次，内容更新通过 setMarkdown 控制
 
     const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      // 避免点中按钮、工具栏等交互控件时干扰焦点
       const target = e.target as HTMLElement;
+
+      // 若点击已发生在 ProseMirror 可编辑正文内部，完全交给 ProseMirror 原生处理，外层绝不干预！
+      if (target.closest('.ProseMirror')) {
+        return;
+      }
+
+      // 避免点中按钮、工具栏等交互控件时干扰焦点
       if (
         target.closest('button') ||
         target.closest('.table-toolbar') ||
@@ -223,9 +250,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       try {
         editor.action((ctx) => {
           const view = ctx.get(editorViewCtx);
-          if (!view.hasFocus()) {
-            view.focus();
-          }
+          view.focus();
         });
       } catch {
         // ignore
