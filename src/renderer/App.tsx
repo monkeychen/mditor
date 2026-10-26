@@ -363,11 +363,14 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-screen bg-[#FAF8F5] select-none text-[#1D1D1F] overflow-hidden relative">
       {/* 顶部标题栏 + 多标签栏一体化 Header */}
-      <header className="h-11 bg-[#FAF8F5] border-b border-black/5 flex items-center justify-between px-3 z-30 select-none">
-        {/* 左侧：避让 macOS 交通灯 (w-20) */}
-        <div className="w-20 flex items-center" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+      <header
+        className="h-11 bg-[#FAF8F5] border-b border-black/5 flex items-center px-3 z-30 select-none"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
+        {/* 左侧：避让 macOS 交通灯 (固定 72px，不随窗口拉伸偏移) */}
+        <div className="w-[72px] shrink-0 h-full flex items-center" />
 
-        {/* 中间：多标签页管理组件 (TabBar) */}
+        {/* 中间：多标签页管理组件 (TabBar 自适应撑满剩余宽度，始终左对齐紧贴交通灯右侧) */}
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}
@@ -377,7 +380,10 @@ export const App: React.FC = () => {
         />
 
         {/* 右侧：常用工具入口 */}
-        <div className="flex items-center space-x-1 text-stone-500 relative">
+        <div
+          className="shrink-0 flex items-center space-x-1 text-stone-500 relative pl-2"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
           <button
             onClick={() => setIsOutlineOpen((prev) => !prev)}
             title="切换大纲 (Cmd+Shift+O)"

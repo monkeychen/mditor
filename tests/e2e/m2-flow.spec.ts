@@ -15,9 +15,22 @@ test.describe('Desktop Electron E2E Flow (M2: Tabs, Image & Outline)', () => {
     const window = await app.firstWindow();
     await window.waitForLoadState('domcontentloaded');
 
-    // 1. 验证多标签栏存在初始 Tab
+    // 1. 验证多标签栏存在初始 Tab，且记录默认窗口尺寸下的左侧起始坐标
     const tab1 = window.locator('.tab-item:has-text("macOS-Philosophy.md")');
     await expect(tab1).toBeVisible();
+    const initialTabBox = await tab1.boundingBox();
+    expect(initialTabBox).not.toBeNull();
+    expect(initialTabBox!.x).toBeGreaterThanOrEqual(75);
+    expect(initialTabBox!.x).toBeLessThanOrEqual(110);
+
+    // 验证窗口最大化 / 拉伸至大屏宽度后，TabBar 自动扩展宽度且首个 Tab 保持在左侧原位，绝不往中间漂移
+    await window.setViewportSize({ width: 1920, height: 1080 });
+    const maximizedTabBox = await tab1.boundingBox();
+    const tabBarContainerBox = await window.locator('[data-testid="tab-bar-container"]').boundingBox();
+    expect(maximizedTabBox).not.toBeNull();
+    expect(tabBarContainerBox).not.toBeNull();
+    expect(Math.abs(maximizedTabBox!.x - initialTabBox!.x)).toBeLessThanOrEqual(2);
+    expect(tabBarContainerBox!.width).toBeGreaterThan(1200);
 
     // 2. 点击新建标签按钮，生成第 2 个标签
     const newTabBtn = window.locator('header button[title="新建标签 (Cmd+T)"]');

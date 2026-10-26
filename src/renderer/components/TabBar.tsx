@@ -18,14 +18,18 @@ export const TabBar: React.FC<TabBarProps> = ({
   onNewTab,
 }) => {
   return (
-    <div className="flex-1 flex items-center space-x-1 overflow-x-auto px-2 max-w-[640px] scrollbar-none">
+    <div
+      data-testid="tab-bar-container"
+      className="flex-1 min-w-0 flex items-center space-x-1 overflow-x-auto px-2 scrollbar-none"
+    >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         return (
           <div
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
-            className={`tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none ${
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            className={`tab-item shrink-0 group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none ${
               isActive
                 ? 'bg-white/85 border border-black/5 shadow-2xs text-stone-800'
                 : 'text-stone-500 hover:bg-black/5 hover:text-stone-700'
@@ -44,7 +48,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               />
             )}
 
-            <span className="truncate max-w-[130px]" title={tab.filePath || tab.fileName}>
+            <span className="truncate max-w-[200px]" title={tab.filePath || tab.fileName}>
               {tab.fileName}
             </span>
 
@@ -67,7 +71,8 @@ export const TabBar: React.FC<TabBarProps> = ({
       <button
         onClick={onNewTab}
         title="新建标签 (Cmd+T)"
-        className="p-1 hover:bg-black/5 text-stone-400 hover:text-stone-700 rounded-md transition ml-1"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        className="shrink-0 p-1 hover:bg-black/5 text-stone-400 hover:text-stone-700 rounded-md transition ml-1"
       >
         <Plus className="w-3.5 h-3.5" />
       </button>
