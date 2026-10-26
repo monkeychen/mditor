@@ -23,6 +23,7 @@ import { TableToolbar } from './table/TableToolbar';
 import { createCodeBlockWidgetPlugin } from './code/codeBlockWidgetPlugin';
 import { createCodeBlockKeymapPlugin } from './code/codeBlockKeymap';
 import { createImageWidgetPlugin } from './image/imageWidgetPlugin';
+import { createImagePastePlugin } from './image/imagePastePlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -159,6 +160,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createCodeBlockWidgetPlugin(),
             createCodeBlockKeymapPlugin(),
             createImageWidgetPlugin(() => docFilePathRef.current),
+            createImagePastePlugin(() => docFilePathRef.current),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {

@@ -49,6 +49,7 @@ export class ImageView implements NodeView {
 
     // 外层容器
     const wrapper = document.createElement('div');
+    wrapper.contentEditable = 'false';
     wrapper.className =
       'image-widget-wrapper relative group my-4 flex flex-col items-center select-none w-fit max-w-full mx-auto';
 
@@ -58,6 +59,7 @@ export class ImageView implements NodeView {
 
     // 悬浮微露出 Markdown 源码药丸浮层
     const pill = document.createElement('div');
+    pill.contentEditable = 'false';
     pill.className =
       'image-source-pill absolute -top-3.5 bg-stone-900/90 text-white text-[11px] font-mono px-3 py-0.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-150 flex items-center gap-2 z-10 cursor-pointer';
     pill.textContent = `![${alt}](${rawSrc})`;
@@ -92,6 +94,7 @@ export class ImageView implements NodeView {
 
     // 加载失败错误占位卡片 (初始隐藏)
     const errorCard = document.createElement('div');
+    errorCard.contentEditable = 'false';
     errorCard.className =
       'image-error-card hidden bg-stone-50 border border-dashed border-stone-300 rounded-xl p-5 flex-col items-center justify-center text-center space-y-1.5 max-w-md w-full';
     errorCard.innerHTML = `
@@ -130,5 +133,17 @@ export class ImageView implements NodeView {
     this.errorCard.classList.remove('flex');
 
     return true;
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+
+  stopEvent(event: Event): boolean {
+    const target = event.target as HTMLElement | null;
+    if (target && target.closest('.image-source-pill')) {
+      return true;
+    }
+    return false;
   }
 }

@@ -38,6 +38,7 @@ export class CodeBlockView implements NodeView {
 
     // 右上角浮动 Header
     const header = document.createElement('div');
+    header.contentEditable = 'false';
     header.className =
       'cm-code-block-header absolute top-2 right-2 flex items-center gap-2 z-10 select-none';
 
@@ -90,14 +91,40 @@ export class CodeBlockView implements NodeView {
       e.preventDefault();
       e.stopPropagation();
       const codeText = this.node.textContent;
-      navigator.clipboard.writeText(codeText).then(() => {
+
+      const setCopied = () => {
         copyBtn.innerHTML = '<span>✅</span><span>已复制 ✓</span>';
         setTimeout(() => {
           copyBtn.innerHTML = '<span>📋</span><span>复制代码</span>';
         }, 2000);
-      }).catch((err) => {
-        console.error('[CodeBlockView] Copy failed:', err);
-      });
+      };
+
+      const fallbackCopy = () => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = codeText;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch {
+          // ignore
+        }
+        setCopied();
+      };
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard
+          .writeText(codeText)
+          .then(setCopied)
+          .catch(() => {
+            fallbackCopy();
+          });
+      } else {
+        fallbackCopy();
+      }
     });
 
     header.appendChild(langSelect);
@@ -122,5 +149,23 @@ export class CodeBlockView implements NodeView {
     if (newNode.type !== this.node.type) return false;
     this.node = newNode;
     return true;
+  }
+
+  ignoreMutation(mutation: any): boolean {
+    // 任何发生在 header 或非 code 区域的 DOM 变更，均由组件自身管理，禁止 ProseMirror 重置
+    return !this.contentDOM || !this.contentDOM.contains(mutation.target);
+  }
+
+  stopEvent(event: Event): boolean {
+    const target = event.target as HTMLElement | null;
+    if (
+      target &&
+      (target.closest('.cm-code-block-header') ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON')
+    ) {
+      return true;
+    }
+    return false;
   }
 }

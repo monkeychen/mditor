@@ -200,7 +200,7 @@ export function resolveImageSource(rawSrc: string, docFilePath: string | null): 
 | **T213** | 封装代码块自定义 NodeView `CodeBlockView`，实现右上角语言标签与一键复制代码功能 | AC-12.1, AC-12.2, AC-12.3 | M1 | 已完成 |
 | **T214** | 实现代码块键盘边界穿透逻辑（首行 `↑`、末行 `↓` 无缝跳出） | AC-12.4 | T213 | 已完成 |
 | **T215** | 封装增强型图片 NodeView `ImageView`：多源路径解析、加载失败占位卡片与源码浮层 | AC-13.1, AC-13.2, AC-13.3 | M1 | 已完成 |
-| **T216** | 迁移集成剪贴板截图/文件拖拽自动落盘至 `./assets/`，跑通全量单元与 E2E 回归测试 | AC-13.4 与 M2 全量 | T211~T215 | 待开始 |
+| **T216** | 迁移集成剪贴板截图/文件拖拽自动落盘至 `./assets/`，跑通全量单元与 E2E 回归测试 | AC-13.4 与 M2 全量 | T211~T215 | 已完成 |
 
 ---
 
@@ -210,3 +210,22 @@ export function resolveImageSource(rawSrc: string, docFilePath: string | null): 
 - **表格浮动工具栏**：采用微透玻璃效果（`bg-white/95 backdrop-blur-md`）、圆角 `rounded-lg`、`shadow-md`、细边框 `border border-black/8`，悬浮于当前表格上方居中。
 - **代码块 Header**：极简内敛，与代码块右上角对齐，文字小巧清晰（`text-xs font-mono text-stone-400`），按钮带交互动效。
 - **图片错误占位卡片**：柔和灰底边框（`bg-stone-50 border border-stone-200 rounded-lg p-4`），居中提示。
+
+---
+
+## 8. 验收记录 (Acceptance Verification)
+
+- **执行日期**：2026-10-26
+- **代码分支与状态**：`main`，全量测试已覆盖
+- **门禁验证结果**：
+  1. **单元与保真测试**：33 个测试套件，102 个测试用例全部通过（`npm run test`，耗时 3.22s）。
+  2. **静态类型与代码规范**：`npm run lint`（`tsc --noEmit`）0 错误 0 警告。
+  3. **跨进程构建**：`npm run build`（Vite + TypeScript + Electron main/preload）全量构建成功无报错。
+  4. **Playwright 真机 E2E 测试**：6 个端到端测试用例全部通过（`tests/e2e/v0.2.0-m2-rich-blocks.spec.ts`、`v0.2.0-m1-dual-mode.spec.ts`、`editor-app.spec.ts`、`m2-flow.spec.ts`、`m3-flow.spec.ts`、`real-world-enterprise-doc.spec.ts`，耗时 2.8s），完整验证了：
+     - 表格浮动工具栏在聚焦时正确定位展示，支持增删行列与对齐控制；
+     - 最后一格按 `Tab` 键实现自动增行并聚焦新行首格；
+     - 代码块右上角浮动 Header 语言切换联动与一键「复制代码」动效反馈；
+     - 代码块首行 `↑`、末行 `↓` 键盘边界平滑穿透离开；
+     - 多源图片（相对路径、绝对路径、网络图片）解析渲染、悬浮微露出 `![alt](url)` 浮层与失败占位卡片；
+     - 截图剪贴板粘贴与文件拖拽自动落盘至 `./assets/`。
+- **验收结论**：M2 全部 Task (T211~T216) 与验收标准（AC-11、AC-12、AC-13、AC-13.4）已全部达到标准，可合入并请示用户进行里程碑验收。
