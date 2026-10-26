@@ -45,6 +45,8 @@ export interface ElectronAPI {
   saveFileAs?: (defaultName: string, content: string) => Promise<FileOpenResult | null>;
   saveImageBuffer?: (docFilePath: string | null, buffer: Uint8Array, ext?: string) => Promise<SaveImageResult>;
   copyLocalImage?: (docFilePath: string | null, sourceFilePath: string) => Promise<SaveImageResult>;
+  exportHtml?: (defaultName: string, htmlContent: string) => Promise<{ success: boolean; filePath?: string }>;
+  exportPdf?: (defaultName: string, htmlContent: string) => Promise<{ success: boolean; filePath?: string }>;
   onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => () => void;
 }
 

@@ -1,0 +1,19 @@
+import { generateStandaloneHtml } from '../utils/htmlExporter';
+
+export async function exportToHtml(fileName: string, markdown: string): Promise<boolean> {
+  const html = generateStandaloneHtml(fileName, markdown);
+  if (window.electronAPI?.exportHtml) {
+    const res = await window.electronAPI.exportHtml(fileName, html);
+    return res.success;
+  }
+  return false;
+}
+
+export async function exportToPdf(fileName: string, markdown: string): Promise<boolean> {
+  const html = generateStandaloneHtml(fileName, markdown);
+  if (window.electronAPI?.exportPdf) {
+    const res = await window.electronAPI.exportPdf(fileName, html);
+    return res.success;
+  }
+  return false;
+}

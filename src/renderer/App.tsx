@@ -1,12 +1,16 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTabs } from './hooks/useTabs';
 import Editor from './editor/Editor';
 import TabBar from './components/TabBar';
 import OutlineDrawer from './components/OutlineDrawer';
 import UnsavedConfirmModal from './components/UnsavedConfirmModal';
-import { extractOutline, OutlineItem } from './utils/outline';
+import SearchPanel from './components/SearchPanel';
+import { extractOutline } from './utils/outline';
+import { findMatches, replaceSingle, replaceAll } from './utils/search';
+import { copyWechatHtmlToClipboard } from './utils/wechatFormatter';
+import { exportToHtml, exportToPdf } from './services/exportService';
 import { openDocument, saveDocument } from './services/fileService';
-import { FolderOpen, Save, AlignLeft } from 'lucide-react';
+import { FolderOpen, Save, AlignLeft, Search, Share2, Check, FileCode, FileText } from 'lucide-react';
 
 const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
 
@@ -17,16 +21,28 @@ const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
 > 系统承担复杂性：能自动化的不手动，能推断的不让用户填，能一步完成的不拆成三步。
 
 - [x] 基于 CodeMirror 6 纯文本架构，坚决不破坏 Markdown 源语法
-- [x] 多标签页（Tab）与快捷键导航
+- [x] 多标签页（Tab）与快捷键导航 (⌘T, ⌘W, ⌘1..9)
 - [x] 本地图片直接粘贴自动存入 ./assets/
+- [x] 悬浮式查找与替换 (⌘F, ⌘H)
+- [x] 微信公众号/知乎 Inline CSS 一键富文本复制
 
 ## 本地图片自动落盘与渲染
 
 ![macOS 原生沉浸式无边框窗口布局](./assets/macos-window.png)
 
-### 剪贴板自动落盘管道
+## 代码块高级渲染与一键复制
 
-按下 <kbd>⌘V</kbd> 粘贴截图时，系统自动在当前文档同级创建 \`./assets/\` 目录并将图片落盘，无需手动保存文件再拖拽。
+\`\`\`typescript
+interface EditorConfig {
+  livePreview: boolean;
+  autoSave: boolean;
+  theme: 'macos-light' | 'macos-dark';
+}
+
+export function initMditor(config: EditorConfig) {
+  console.log("mditor started smoothly.");
+}
+\`\`\`
 
 ---
 
@@ -59,23 +75,91 @@ export const App: React.FC = () => {
   const [isOutlineOpen, setIsOutlineOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
 
+  // 搜索替换状态
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // 导出菜单与 Toast 状态
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage(msg);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  }, []);
+
   // 提取大纲
   const outline = useMemo(() => {
     return extractOutline(activeTab.content);
   }, [activeTab.content]);
 
-  // 大纲切换快捷键 (Cmd+Shift+O)
+  // 搜索匹配计算
+  const matches = useMemo(() => {
+    return findMatches(activeTab.content, searchQuery);
+  }, [activeTab.content, searchQuery]);
+
+  useEffect(() => {
+    if (matches.length > 0 && currentMatchIndex >= matches.length) {
+      setCurrentMatchIndex(0);
+    }
+  }, [matches, currentMatchIndex]);
+
+  // 快捷键监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
       if (isMeta && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault();
         setIsOutlineOpen((prev) => !prev);
+      } else if (isMeta && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      } else if (isMeta && (e.key === 'h' || e.key === 'H')) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        setIsReplaceOpen(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // 搜索上一个 / 下一个
+  const handleNextMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    setCurrentMatchIndex((prev) => (prev + 1) % matches.length);
+  }, [matches]);
+
+  const handlePrevMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    setCurrentMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
+  }, [matches]);
+
+  // 替换单个
+  const handleReplaceSingle = useCallback(() => {
+    if (matches.length === 0) return;
+    const currentMatch = matches[currentMatchIndex] || matches[0];
+    const newContent = replaceSingle(activeTab.content, currentMatch, replaceText);
+    updateTabContent(activeTab.id, newContent);
+    showToast('已替换 1 处匹配文本');
+  }, [activeTab, matches, currentMatchIndex, replaceText, updateTabContent, showToast]);
+
+  // 全部替换
+  const handleReplaceAll = useCallback(() => {
+    if (!searchQuery) return;
+    const res = replaceAll(activeTab.content, searchQuery, replaceText);
+    if (res.count > 0) {
+      updateTabContent(activeTab.id, res.content);
+      showToast(`已完成 ${res.count} 处全部替换`);
+    }
+  }, [activeTab, searchQuery, replaceText, updateTabContent, showToast]);
 
   // 保存当前 Tab
   const handleSaveActiveTab = useCallback(async () => {
@@ -83,8 +167,9 @@ export const App: React.FC = () => {
     if (res.success && res.filePath) {
       const fileName = res.filePath.split('/').pop() || activeTab.fileName;
       updateTabFile(activeTab.id, res.filePath, fileName);
+      showToast('文档已成功存盘');
     }
-  }, [activeTab, updateTabFile]);
+  }, [activeTab, updateTabFile, showToast]);
 
   // 打开本地文件并新建 Tab
   const handleOpenLocalFile = useCallback(async () => {
@@ -94,34 +179,32 @@ export const App: React.FC = () => {
     }
   }, [createNewTab]);
 
-  // 快捷键监听 (Cmd+S / Cmd+O)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMeta = e.metaKey || e.ctrlKey;
-      if (isMeta && e.key === 's') {
-        e.preventDefault();
-        handleSaveActiveTab();
-      } else if (isMeta && e.key === 'o') {
-        e.preventDefault();
-        handleOpenLocalFile();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSaveActiveTab, handleOpenLocalFile]);
-
-  // 点击大纲项
-  const handleSelectHeading = useCallback((item: OutlineItem) => {
-    setActiveHeadingId(item.id);
-  }, []);
-
-  // 弹窗保存并关闭
-  const handleConfirmSaveAndClose = useCallback(async () => {
-    if (closePendingTab) {
-      await saveDocument(closePendingTab.filePath, closePendingTab.content, closePendingTab.fileName);
-      confirmDiscardAndClose();
+  // 复制微信公众号富文本
+  const handleCopyWechat = useCallback(async () => {
+    setIsExportMenuOpen(false);
+    const success = await copyWechatHtmlToClipboard(activeTab.content);
+    if (success) {
+      showToast('已复制为公众号/知乎排版 (直接 Cmd+V 粘贴)');
     }
-  }, [closePendingTab, confirmDiscardAndClose]);
+  }, [activeTab.content, showToast]);
+
+  // 导出为 HTML
+  const handleExportHtml = useCallback(async () => {
+    setIsExportMenuOpen(false);
+    const success = await exportToHtml(activeTab.fileName, activeTab.content);
+    if (success) {
+      showToast('已成功导出为独立 HTML 文件');
+    }
+  }, [activeTab, showToast]);
+
+  // 导出为 PDF
+  const handleExportPdf = useCallback(async () => {
+    setIsExportMenuOpen(false);
+    const success = await exportToPdf(activeTab.fileName, activeTab.content);
+    if (success) {
+      showToast('已成功导出为 PDF 文档');
+    }
+  }, [activeTab, showToast]);
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#FAF8F5] select-none text-[#1D1D1F] overflow-hidden relative">
@@ -140,7 +223,7 @@ export const App: React.FC = () => {
         />
 
         {/* 右侧：常用工具入口 */}
-        <div className="flex items-center space-x-1 text-stone-500">
+        <div className="flex items-center space-x-1 text-stone-500 relative">
           <button
             onClick={() => setIsOutlineOpen((prev) => !prev)}
             title="切换大纲 (Cmd+Shift+O)"
@@ -149,6 +232,15 @@ export const App: React.FC = () => {
             }`}
           >
             <AlignLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsSearchOpen((prev) => !prev)}
+            title="查找与替换 (Cmd+F)"
+            className={`p-1.5 rounded-md transition ${
+              isSearchOpen ? 'bg-amber-100 text-amber-800' : 'hover:bg-black/5 text-stone-600'
+            }`}
+          >
+            <Search className="w-4 h-4" />
           </button>
           <button
             onClick={handleOpenLocalFile}
@@ -164,6 +256,48 @@ export const App: React.FC = () => {
           >
             <Save className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => setIsExportMenuOpen((prev) => !prev)}
+            title="导出 / 分享"
+            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition ml-0.5"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+
+          {/* 导出下拉菜单 */}
+          {isExportMenuOpen && (
+            <div className="absolute top-9 right-0 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-black/10 shadow-xl py-1.5 z-50 text-xs text-stone-700 select-none animate-in fade-in duration-100">
+              <div
+                onClick={handleCopyWechat}
+                className="px-3 py-2 hover:bg-amber-50 hover:text-amber-900 cursor-pointer flex items-center justify-between transition"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-emerald-600 font-bold font-mono">Wx</span>
+                  <span>复制为公众号/知乎排版</span>
+                </span>
+                <span className="text-[10px] text-stone-400 font-mono">⌘⇧C</span>
+              </div>
+              <div className="h-px bg-black/5 my-1" />
+              <div
+                onClick={handleExportHtml}
+                className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
+              >
+                <span className="flex items-center gap-2">
+                  <FileCode className="w-3.5 h-3.5 text-amber-600" />
+                  <span>导出为独立 HTML</span>
+                </span>
+              </div>
+              <div
+                onClick={handleExportPdf}
+                className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
+              >
+                <span className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-red-500" />
+                  <span>导出为 PDF 文档</span>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -173,7 +307,7 @@ export const App: React.FC = () => {
           isOpen={isOutlineOpen}
           outline={outline}
           activeHeadingId={activeHeadingId}
-          onSelectHeading={handleSelectHeading}
+          onSelectHeading={(item) => setActiveHeadingId(item.id)}
         />
 
         <main className="flex-1 overflow-hidden relative">
@@ -182,6 +316,24 @@ export const App: React.FC = () => {
             initialDoc={activeTab.content}
             docFilePath={activeTab.filePath}
             onChange={(newContent) => updateTabContent(activeTab.id, newContent)}
+          />
+
+          {/* 悬浮查找替换面板 */}
+          <SearchPanel
+            isOpen={isSearchOpen}
+            isReplaceOpen={isReplaceOpen}
+            query={searchQuery}
+            replaceText={replaceText}
+            matches={matches}
+            currentIndex={currentMatchIndex}
+            onQueryChange={setSearchQuery}
+            onReplaceTextChange={setReplaceText}
+            onNext={handleNextMatch}
+            onPrev={handlePrevMatch}
+            onToggleReplace={() => setIsReplaceOpen((prev) => !prev)}
+            onReplaceSingle={handleReplaceSingle}
+            onReplaceAll={handleReplaceAll}
+            onClose={() => setIsSearchOpen(false)}
           />
         </main>
       </div>
@@ -206,8 +358,21 @@ export const App: React.FC = () => {
         tab={closePendingTab}
         onCancel={cancelClose}
         onDiscard={confirmDiscardAndClose}
-        onSave={handleConfirmSaveAndClose}
+        onSave={async () => {
+          if (closePendingTab) {
+            await saveDocument(closePendingTab.filePath, closePendingTab.content, closePendingTab.fileName);
+            confirmDiscardAndClose();
+          }
+        }}
       />
+
+      {/* Toast 提示浮层 */}
+      {toastMessage && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-stone-900/95 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <Check className="w-3.5 h-3.5 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };

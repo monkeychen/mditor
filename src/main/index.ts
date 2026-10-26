@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
+import { exportHtmlFile, exportPdfFile } from './exportService';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,6 +113,15 @@ ipcMain.handle(
     return await copyLocalImageToAssets(docFilePath, sourceFilePath);
   }
 );
+
+// 导出文件 IPC
+ipcMain.handle('export:html', async (_event, { defaultName, htmlContent }: { defaultName: string; htmlContent: string }) => {
+  return await exportHtmlFile(mainWindow, defaultName, htmlContent);
+});
+
+ipcMain.handle('export:pdf', async (_event, { defaultName, htmlContent }: { defaultName: string; htmlContent: string }) => {
+  return await exportPdfFile(mainWindow, defaultName, htmlContent);
+});
 
 app.whenReady().then(() => {
   createWindow();
