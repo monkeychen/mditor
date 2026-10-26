@@ -1,4 +1,5 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import type { EditorView } from '@milkdown/prose/view';
 import {
   Editor,
   rootCtx,
@@ -16,6 +17,8 @@ import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { createDelimiterPlugin } from './delimiterPlugin';
 import { createAutoPairPlugin } from './autoPairPlugin';
 import { createFormatKeymapPlugin } from './formatKeymapPlugin';
+import { createTableToolbarPlugin, TableToolbarState } from './table/tableToolbarPlugin';
+import { TableToolbar } from './table/TableToolbar';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -38,6 +41,13 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const containerRef = useRef<HTMLDivElement | null>(null);
     const editorInstanceRef = useRef<Editor | null>(null);
     const isDestroyedRef = useRef(false);
+
+    const [tableToolbarState, setTableToolbarState] = useState<TableToolbarState>({
+      visible: false,
+      tablePos: -1,
+      rect: { top: 0, left: 0, width: 0 },
+    });
+    const [editorView, setEditorView] = useState<EditorView | null>(null);
 
     useImperativeHandle(ref, () => ({
       getMarkdown: () => {
@@ -125,6 +135,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createDelimiterPlugin(),
             createAutoPairPlugin(),
             createFormatKeymapPlugin(),
+            createTableToolbarPlugin(setTableToolbarState),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {
@@ -141,6 +152,12 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           createdEditor.destroy();
         } else {
           editorInstanceRef.current = createdEditor;
+          try {
+            const view = createdEditor.action((ctx) => ctx.get(editorViewCtx));
+            setEditorView(view);
+          } catch {
+            // ignore
+          }
         }
       }).catch((err) => {
         console.error('[Milkdown] Failed to create editor instance:', err);
@@ -156,10 +173,17 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     }, []); // 仅挂载一次，内容更新通过 setMarkdown 控制
 
     return (
-      <div
-        className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto px-8 md:px-20 lg:px-32 py-10 text-stone-800 ${className}`}
-        ref={containerRef}
-      />
+      <div className="relative w-full h-full overflow-hidden">
+        <TableToolbar
+          toolbarState={tableToolbarState}
+          editorView={editorView}
+          containerRect={containerRef.current?.getBoundingClientRect()}
+        />
+        <div
+          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto px-8 md:px-20 lg:px-32 py-10 text-stone-800 ${className}`}
+          ref={containerRef}
+        />
+      </div>
     );
   }
 );
