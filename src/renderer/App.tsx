@@ -19,6 +19,7 @@ import {
   openFolderDialog,
   scanDirectoryTree,
   saveDocument,
+  saveDocumentAs,
 } from './services/fileService';
 import type { FileTreeNode } from '../types';
 import {
@@ -182,21 +183,88 @@ export const App: React.FC = () => {
     }
   }, [matches, currentMatchIndex]);
 
-  // 快捷键监听 (对齐 Typora 全局快捷键)
+  // 保存当前 Tab (⌘S)
+  const handleSaveActiveTab = useCallback(async () => {
+    let contentToSave = activeTab.content;
+    if (currentMode === 'wysiwyg' && milkdownRef.current) {
+      const latestMd = milkdownRef.current.getMarkdown();
+      if (latestMd) {
+        contentToSave = latestMd;
+        if (latestMd !== activeTab.content) {
+          updateTabContent(activeTab.id, latestMd);
+        }
+      }
+    }
+    const res = await saveDocument(activeTab.filePath, contentToSave, activeTab.fileName);
+    if (res.success && res.filePath) {
+      const fileName = res.filePath.split('/').pop() || activeTab.fileName;
+      updateTabFile(activeTab.id, res.filePath, fileName);
+      showToast('文档已成功存盘');
+    }
+  }, [activeTab, currentMode, updateTabContent, updateTabFile, showToast]);
+
+  // 另存为当前 Tab (⇧⌘S)
+  const handleSaveAsActiveTab = useCallback(async () => {
+    let contentToSave = activeTab.content;
+    if (currentMode === 'wysiwyg' && milkdownRef.current) {
+      const latestMd = milkdownRef.current.getMarkdown();
+      if (latestMd) {
+        contentToSave = latestMd;
+      }
+    }
+    const res = await saveDocumentAs(activeTab.fileName, contentToSave);
+    if (res && res.filePath) {
+      const fileName = res.filePath.split('/').pop() || activeTab.fileName;
+      updateTabFile(activeTab.id, res.filePath, fileName);
+      showToast('文档已另存为新文件');
+    }
+  }, [activeTab, currentMode, updateTabFile, showToast]);
+
+  // 打开本地文件并新建 Tab (⌘O)
+  const handleOpenLocalFile = useCallback(async () => {
+    const res = await openDocument();
+    if (res) {
+      createNewTab(res.fileName, res.content, res.filePath);
+    }
+  }, [createNewTab]);
+
+  // 复制微信公众号富文本 (⇧⌘C)
+  const handleCopyWechat = useCallback(async () => {
+    setIsExportMenuOpen(false);
+    const success = await copyWechatHtmlToClipboard(activeTab.content);
+    if (success) {
+      showToast('已复制为公众号/知乎排版 (直接 Cmd+V 粘贴)');
+    }
+  }, [activeTab.content, showToast]);
+
+  // 快捷键监听 (全面对齐 Typora / macOS 常用快捷键)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
-      if (isMeta && e.key === '/') {
+      const keyLower = e.key.toLowerCase();
+
+      if (isMeta && !e.shiftKey && !e.altKey && keyLower === 's') {
+        e.preventDefault();
+        handleSaveActiveTab();
+      } else if (isMeta && e.shiftKey && !e.altKey && keyLower === 's') {
+        e.preventDefault();
+        handleSaveAsActiveTab();
+      } else if (isMeta && !e.shiftKey && !e.altKey && keyLower === 'o') {
+        e.preventDefault();
+        handleOpenLocalFile();
+      } else if (isMeta && !e.shiftKey && !e.altKey && keyLower === 'n') {
+        e.preventDefault();
+        createNewTab();
+      } else if (isMeta && e.shiftKey && !e.altKey && keyLower === 'c') {
+        e.preventDefault();
+        handleCopyWechat();
+      } else if (isMeta && e.key === '/') {
         e.preventDefault();
         handleToggleMode();
-      } else if (
-        isMeta &&
-        e.shiftKey &&
-        (e.key === 'o' || e.key === 'O' || e.key === 'l' || e.key === 'L')
-      ) {
+      } else if (isMeta && e.shiftKey && !e.altKey && (keyLower === 'o' || keyLower === 'l')) {
         e.preventDefault();
         setIsOutlineOpen((prev) => !prev);
-      } else if (isMeta && e.altKey && (e.key === 't' || e.key === 'T' || e.code === 'KeyT')) {
+      } else if (isMeta && e.altKey && (keyLower === 't' || e.code === 'KeyT')) {
         e.preventDefault();
         setIsInsertTableOpen(true);
       } else if (e.key === 'F8') {
@@ -205,10 +273,13 @@ export const App: React.FC = () => {
       } else if (e.key === 'F9') {
         e.preventDefault();
         setTypewriterMode((prev) => !prev);
-      } else if (isMeta && (e.key === 'f' || e.key === 'F')) {
+      } else if (isMeta && !e.altKey && keyLower === 'f') {
         e.preventDefault();
         setIsSearchOpen(true);
-      } else if (isMeta && (e.key === 'h' || e.key === 'H')) {
+      } else if (
+        isMeta &&
+        (keyLower === 'h' || (e.altKey && (keyLower === 'f' || e.code === 'KeyF')))
+      ) {
         e.preventDefault();
         setIsSearchOpen(true);
         setIsReplaceOpen(true);
@@ -216,7 +287,14 @@ export const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleToggleMode]);
+  }, [
+    handleSaveActiveTab,
+    handleSaveAsActiveTab,
+    handleOpenLocalFile,
+    createNewTab,
+    handleCopyWechat,
+    handleToggleMode,
+  ]);
 
   // 搜索上一个 / 下一个
   const handleNextMatch = useCallback(() => {
@@ -253,24 +331,6 @@ export const App: React.FC = () => {
       showToast(`已完成 ${res.count} 处全部替换`);
     }
   }, [activeTab, searchQuery, replaceText, currentMode, updateTabContent, showToast]);
-
-  // 保存当前 Tab
-  const handleSaveActiveTab = useCallback(async () => {
-    const res = await saveDocument(activeTab.filePath, activeTab.content, activeTab.fileName);
-    if (res.success && res.filePath) {
-      const fileName = res.filePath.split('/').pop() || activeTab.fileName;
-      updateTabFile(activeTab.id, res.filePath, fileName);
-      showToast('文档已成功存盘');
-    }
-  }, [activeTab, updateTabFile, showToast]);
-
-  // 打开本地文件并新建 Tab
-  const handleOpenLocalFile = useCallback(async () => {
-    const res = await openDocument();
-    if (res) {
-      createNewTab(res.fileName, res.content, res.filePath);
-    }
-  }, [createNewTab]);
 
   // 打开本地文件夹至侧边栏文件树
   const handleOpenFolder = useCallback(async () => {
@@ -332,15 +392,6 @@ export const App: React.FC = () => {
     },
     [currentMode, activeTab, updateTabContent, showToast]
   );
-
-  // 复制微信公众号富文本
-  const handleCopyWechat = useCallback(async () => {
-    setIsExportMenuOpen(false);
-    const success = await copyWechatHtmlToClipboard(activeTab.content);
-    if (success) {
-      showToast('已复制为公众号/知乎排版 (直接 Cmd+V 粘贴)');
-    }
-  }, [activeTab.content, showToast]);
 
   // 导出为 HTML
   const handleExportHtml = useCallback(async () => {

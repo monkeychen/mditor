@@ -24,6 +24,10 @@
 }
 
 .milkdown-wysiwyg-container .ProseMirror {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
   outline: none !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   font-size: 16px;
@@ -33,6 +37,15 @@
   cursor: text;
   min-height: 100%;
   flex: 1;
+}
+
+/* 关键修复：覆盖 Tailwind Preflight 的 img { display: block }，防止 ProseMirror widget 后方的光标定位符强制断行跳到下一行 */
+.milkdown-wysiwyg-container .ProseMirror img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* 空文档首行占位符 (Placeholder) */

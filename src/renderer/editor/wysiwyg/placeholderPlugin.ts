@@ -8,10 +8,10 @@ export function createPlaceholderPlugin(
     props: {
       decorations(state) {
         const { doc } = state;
-        // 若文档仅有一个子节点，且为文本块且内容长度为 0（完全空文档）
+        // 若文档仅有一个子节点，且为空段落（尚未转换为标题/列表/代码块等），渲染首行输入引导
         if (
           doc.childCount === 1 &&
-          doc.firstChild?.isTextblock &&
+          doc.firstChild?.type.name === 'paragraph' &&
           doc.firstChild.content.size === 0
         ) {
           return DecorationSet.create(doc, [

@@ -37,3 +37,15 @@
   1. 异步创建的编辑器实例在 `useEffect` 中必须使用**每次 Effect 独立的局部闭包变量** `let isEffectCancelled = false;`，并在挂载前与卸载时执行 `container.innerHTML = ''`。
   2. 外层容器点击聚焦兜底必须首先判断 `if (target.closest('.ProseMirror')) return;`，绝不干预编辑器内部原生焦点。
   3. E2E 测试必须包含 `expect(window.locator('.ProseMirror')).toHaveCount(1)` 唯一实例断言。
+
+---
+
+## 案例 4：Tailwind Preflight 的 `img { display: block }` 导致 ProseMirror 标题输入 `# ` 后光标跳到下一行
+
+- **现象**：在空行输入 `#` 再输入空格转换为一级标题时，看到的 `# ` 在第一行，而闪烁的输入光标自己跳到了下一行（`<h1>` 高度从单行 `41.6px` 变成双行 `83.5px`）。
+- **根因分析**：
+  1. 当用户输入 `# ` 触发标题转换时，`delimiterPlugin` 会在 `<h1>` 开头插入一个 `contenteditable="false"` 的定界符 Widget（`<span class="milkdown-heading-marker"># </span>`）。
+  2. ProseMirror 为了让浏览器光标能停靠在 `contenteditable="false"` 节点旁，会自动在其后方插入一个 `<img class="ProseMirror-separator" alt="">`。
+  3. Tailwind CSS 的 Preflight 全局重置默认给所有 `img` 设置了 `display: block;`！这导致 `<img class="ProseMirror-separator">` 变成了块级元素，直接在 `# ` 后面强行换行，把后面的 `<br class="ProseMirror-trailingBreak">` 和输入光标推到了第二行。
+- **避坑原则与铁律**：
+  在引入 Tailwind CSS 的 ProseMirror / Milkdown 项目中，必须显式声明 `.ProseMirror img.ProseMirror-separator { display: inline !important; border: none !important; margin: 0 !important; width: 0 !important; height: 0 !important; }`，并在 E2E 测试中校验输入 `# ` 后的 `h1` 高度为单行高度（`< 52px`）。

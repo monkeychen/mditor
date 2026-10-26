@@ -49,7 +49,7 @@ test.describe('First-line Editing & Single Instance DOM Stability', () => {
     const h1Count = await window.locator('.ProseMirror h1').count();
     expect(h1Count).toBe(1);
 
-    // 6. 验证在新建空 Tab 下在第一行连续编辑的稳定性
+    // 6. 验证在新建空 Tab 下输入 "#" 再输入空格转为 H1 标题时，光标绝不跳到下一行
     const newTabBtn = window.locator('header button[title="新建标签 (Cmd+T)"]');
     await newTabBtn.click();
 
@@ -62,19 +62,49 @@ test.describe('First-line Editing & Single Instance DOM Stability', () => {
     expect(emptyCounts.milkdowns).toBe(1);
     expect(emptyCounts.prosemirrors).toBe(1);
 
-    // 在新空 Tab 首行打字
-    await window.keyboard.type('从第一行开始流畅书写');
-    const firstParagraph = window.locator('.ProseMirror p').first();
-    await expect(firstParagraph).toContainText('从第一行开始流畅书写');
+    // 输入 "#" 再输入空格
+    await window.keyboard.type('# ');
 
-    // 回车并写第二行
+    const afterHashSpace = await window.evaluate(() => {
+      const h1 = document.querySelector('.ProseMirror h1');
+      const sep = document.querySelector('.ProseMirror img.ProseMirror-separator');
+      const sel = document.getSelection();
+      const h1Rect = h1 ? h1.getBoundingClientRect() : null;
+      const sepDisplay = sep ? globalThis.getComputedStyle(sep).display : 'inline';
+      return {
+        inH1: h1 ? h1.contains(sel?.anchorNode || null) : false,
+        h1Height: h1Rect?.height || 0,
+        sepDisplay,
+      };
+    });
+
+    // 断言光标在 H1 内部、ProseMirror-separator 为 inline、且 H1 高度为单行 (< 52px，绝不因断行膨胀为 83px 双行)
+    expect(afterHashSpace.inH1).toBe(true);
+    expect(afterHashSpace.sepDisplay).toBe('inline');
+    expect(afterHashSpace.h1Height).toBeGreaterThan(30);
+    expect(afterHashSpace.h1Height).toBeLessThan(52);
+
+    // 继续输入标题文字
+    await window.keyboard.type('一级标题内容');
+    await expect(window.locator('.ProseMirror h1')).toContainText('一级标题内容');
+
+    // 回车并写第二行正文
     await window.keyboard.press('Enter');
     await window.keyboard.type('这是紧接着的第二行');
 
-    const paragraphs = window.locator('.ProseMirror p');
-    await expect(paragraphs).toHaveCount(2);
-    await expect(paragraphs.nth(0)).toContainText('从第一行开始流畅书写');
-    await expect(paragraphs.nth(1)).toContainText('这是紧接着的第二行');
+    await expect(window.locator('.ProseMirror p').first()).toContainText('这是紧接着的第二行');
+
+    // 7. 验证 Cmd+S 保存快捷键生效
+    await app.evaluate(async ({ dialog }) => {
+      dialog.showSaveDialog = async () => ({
+        canceled: false,
+        filePath: '/tmp/mditor-shortcut-save-test.md',
+      });
+    });
+    await window.keyboard.press('Meta+s');
+    const toast = window.locator('#app-toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('文档已成功存盘');
 
     await app.close();
   });
