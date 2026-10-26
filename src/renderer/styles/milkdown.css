@@ -194,6 +194,61 @@
   padding-bottom: 45vh;
 }
 
+/* GFM 表格排版 (对标 Typora GitHub 风格清晰网格线、表头底色、斑马纹与紧凑内边距) */
+.milkdown-wysiwyg-container .ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 1.25rem 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  border: 1px solid #D1D5DB;
+  background-color: #FFFFFF;
+}
+
+.milkdown-wysiwyg-container .ProseMirror thead {
+  background-color: #F3F4F6;
+}
+
+.milkdown-wysiwyg-container .ProseMirror tr {
+  border-top: 1px solid #D1D5DB;
+  background-color: #FFFFFF;
+}
+
+.milkdown-wysiwyg-container .ProseMirror tbody tr:nth-child(2n) {
+  background-color: #F9FAFB;
+}
+
+.milkdown-wysiwyg-container .ProseMirror tbody tr:hover {
+  background-color: #F1F5F9;
+}
+
+.milkdown-wysiwyg-container .ProseMirror th,
+.milkdown-wysiwyg-container .ProseMirror td {
+  border: 1px solid #D1D5DB;
+  padding: 0.55rem 0.85rem;
+  min-width: 4rem;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.milkdown-wysiwyg-container .ProseMirror th {
+  font-weight: 600;
+  color: #111827;
+  background-color: #F3F4F6;
+  border-bottom: 2px solid #9CA3AF;
+  text-align: left;
+}
+
+.milkdown-wysiwyg-container .ProseMirror td {
+  color: #1F2937;
+}
+
+.milkdown-wysiwyg-container .ProseMirror th p,
+.milkdown-wysiwyg-container .ProseMirror td p {
+  margin: 0 !important;
+}
+
 /* 分割线 */
 .milkdown-wysiwyg-container .ProseMirror hr {
   border: none;

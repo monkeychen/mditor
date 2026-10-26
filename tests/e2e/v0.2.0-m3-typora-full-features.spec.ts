@@ -88,9 +88,31 @@ test.describe('Typora Full Experience Alignment E2E (v0.2.0 M3)', () => {
       await confirmTableBtn.click();
       await expect(tableModal).toBeHidden();
 
-      // 验证 ProseMirror 中已成功插入 4 行 3 列的表格
+      // 验证 ProseMirror 中已成功插入 4 行 3 列的表格，且网格边框、表头底色、单元格内边距真实可见
       const insertedTableRows = window.locator('.ProseMirror table tr');
       await expect(insertedTableRows).toHaveCount(4);
+
+      const tableVisualStyles = await window.locator('.ProseMirror table').first().evaluate((tableEl) => {
+        const th = tableEl.querySelector('th');
+        const td = tableEl.querySelector('td');
+        const thStyle = th ? globalThis.getComputedStyle(th) : null;
+        const tdStyle = td ? globalThis.getComputedStyle(td) : null;
+        return {
+          thBorderTop: thStyle?.borderTopWidth,
+          thBorderBottom: thStyle?.borderBottomWidth,
+          thBg: thStyle?.backgroundColor,
+          tdBorderLeft: tdStyle?.borderLeftWidth,
+          tdBorderBottom: tdStyle?.borderBottomWidth,
+          tdPaddingLeft: parseFloat(tdStyle?.paddingLeft || '0'),
+        };
+      });
+
+      expect(tableVisualStyles.thBorderTop).toBe('1px');
+      expect(tableVisualStyles.thBorderBottom).toBe('2px');
+      expect(tableVisualStyles.thBg).not.toBe('rgba(0, 0, 0, 0)');
+      expect(tableVisualStyles.tdBorderLeft).toBe('1px');
+      expect(tableVisualStyles.tdBorderBottom).toBe('1px');
+      expect(tableVisualStyles.tdPaddingLeft).toBeGreaterThan(8);
 
       // 4. Mock 主进程 dialog.showOpenDialog 打开 tempDir 下的 alpha-guide.md，验证自动扫描目录与文件树切换
       await app.evaluate(async ({ dialog }, filePath) => {
