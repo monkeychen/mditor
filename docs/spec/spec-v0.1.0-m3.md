@@ -129,7 +129,7 @@ export interface ElectronAPI {
 |---|---|---|---|---|
 | **T1** | 开发悬浮式查找与替换系统（SearchPanel 组件、Cmd+F/Cmd+H 快捷键、全篇高亮与跳转）并覆盖单测 | AC6.1, AC6.2, AC6.3 | M2 | 已完成 (Search 引擎与 SearchPanel 单测全通) |
 | **T2** | 增强围栏代码块卡片（FencedCode 语言标签、代码美化与一键复制代码按钮）并覆盖单测 | AC2.5 | M1, M2 | 已完成 (语言解析、一键复制与 CodeHeaderWidget 全通) |
-| **T3** | 实现微信公众号/知乎一键排版引擎（Inline Style 转换与 ClipboardItem 写入）并覆盖单测 | AC7.3 | M2 | 待开始 |
+| **T3** | 实现微信公众号/知乎一键排版引擎（Inline Style 转换与 ClipboardItem 写入）并覆盖单测 | AC7.3 | M2 | 已完成 (DOM 内联样式注入与剪贴板富文本单测全通) |
 | **T4** | 实现单文件自包含 HTML 与 PDF 导出服务（主进程 printToPDF 与导出保存对话框）并覆盖集成测试 | AC7.1, AC7.2 | M1, M3-T3 | 待开始 |
 | **T5** | 编写并执行 M3 全量自动化测试（单元 + 集成 + Playwright E2E），输出验收记录并准备 v0.1.0 交付 | 全部 M3 AC | T1-T4 | 待开始 |
 
