@@ -49,3 +49,13 @@
   3. Tailwind CSS 的 Preflight 全局重置默认给所有 `img` 设置了 `display: block;`！这导致 `<img class="ProseMirror-separator">` 变成了块级元素，直接在 `# ` 后面强行换行，把后面的 `<br class="ProseMirror-trailingBreak">` 和输入光标推到了第二行。
 - **避坑原则与铁律**：
   在引入 Tailwind CSS 的 ProseMirror / Milkdown 项目中，必须显式声明 `.ProseMirror img.ProseMirror-separator { display: inline !important; border: none !important; margin: 0 !important; width: 0 !important; height: 0 !important; }`，并在 E2E 测试中校验输入 `# ` 后的 `h1` 高度为单行高度（`< 52px`）。
+
+---
+
+## 案例 5：electron-builder 多平台并发构建默认留存 Draft Release 陷阱
+
+- **现象**：打 Tag 触发 GitHub Actions 编译发布，macOS、Windows、Ubuntu 三个 Runner 全部成功构建并上传了安装包，但普通访客在 GitHub Releases 页面依然看不到新版本（只能看到旧版本）。
+- **根因分析**：
+  `electron-builder --publish always` 在多平台 Matrix 并发运行策略下，为了防止多个 Runner 在不同时段上传时发生竞争冲突，默认行为是创建/追加到 **Draft Release（草稿）**。如果工作流没有在所有构建 Job 结束后显式调用 GitHub API 发布草稿，该 Release 会一直停留在草稿状态，对外不可见。
+- **避坑原则与铁律**：
+  在 GitHub Actions 的 `release.yml` 中，必须声明依赖 `needs: release` 的汇聚 Job `finalize-release`，在全部 Runner 上传完成后执行 `gh release edit "$TAG_NAME" --draft=false` 自动发布，实现全流程 0 人工干预。
