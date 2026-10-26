@@ -1,0 +1,342 @@
+<!-- doc: prototype | product: v0.1.0 | milestone: m3 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor - Search, Code & Export Prototype (M3)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-canvas: #FAF8F5;
+      --text-main: #1D1D1F;
+      --text-muted: #86868B;
+      --accent: #E58E26;
+    }
+
+    body {
+      background: #ECECF0;
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .macos-window {
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-panel-shadow {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+
+    .editor-line {
+      min-height: 1.8rem;
+      line-height: 1.8;
+      position: relative;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.15s ease;
+    }
+
+    .search-highlight {
+      background-color: #FEF08A;
+      color: #854D0E;
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+    .search-highlight-current {
+      background-color: #F59E0B;
+      color: #FFFFFF;
+      border-radius: 2px;
+      padding: 0 2px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
+
+  <!-- 原型顶部控制栏 -->
+  <div class="w-full max-w-5xl mb-4 flex items-center justify-between text-xs text-stone-500 px-2">
+    <div class="flex items-center gap-3">
+      <span class="font-semibold text-stone-800 bg-white/80 px-2.5 py-1 rounded shadow-sm border border-stone-200/60">
+        M3 原型交互体验
+      </span>
+      <span>💡 支持：⌘F 唤起悬浮查找替换、代码块一键复制、一键复制公众号排版与 PDF 导出</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleSearch()" class="px-2.5 py-1 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 rounded shadow-xs transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8" stroke-width="2"></circle><line x1="21" y1="21" x2="16.65" y2="16.65" stroke-width="2"></line></svg>
+        唤起查找 (⌘F)
+      </button>
+      <button onclick="toggleExportMenu()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded shadow-xs transition flex items-center gap-1.5 font-medium">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+        导出 / 分享
+      </button>
+    </div>
+  </div>
+
+  <!-- macOS 模拟窗口 -->
+  <div class="macos-window w-full max-w-5xl h-[820px] bg-[#FAF8F5] rounded-xl flex flex-col overflow-hidden relative border border-black/10 select-none">
+
+    <!-- 顶部一体化 Header -->
+    <header class="h-11 bg-[#FAF8F5] border-b border-black/5 flex items-center justify-between px-3 z-30 select-none">
+      <div class="flex items-center space-x-2 w-20 pl-1">
+        <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div>
+        <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div>
+        <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div>
+      </div>
+
+      <!-- 多标签栏 -->
+      <div class="flex-1 flex items-center space-x-1 overflow-x-auto px-2 max-w-[640px]">
+        <div class="flex items-center space-x-2 px-3 py-1 bg-white/80 border border-black/5 rounded-lg shadow-2xs text-xs font-medium text-stone-800">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>macOS-Philosophy.md</span>
+        </div>
+      </div>
+
+      <!-- 右侧操作栏 -->
+      <div class="flex items-center space-x-1 text-stone-500 relative">
+        <button onclick="toggleSearch()" title="查找 (⌘F)" class="p-1.5 hover:bg-black/5 rounded-md text-stone-600 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8" stroke-width="2"></circle><line x1="21" y1="21" x2="16.65" y2="16.65" stroke-width="2"></line></svg>
+        </button>
+        <button onclick="toggleExportMenu()" title="导出分享" class="p-1.5 hover:bg-black/5 rounded-md text-stone-600 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+        </button>
+
+        <!-- 导出下拉菜单 (Export Dropdown) -->
+        <div id="export-dropdown" class="hidden absolute top-9 right-0 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-black/10 shadow-xl py-1.5 z-50 text-xs text-stone-700 select-none">
+          <div onclick="copyWechatRichText()" class="px-3 py-2 hover:bg-amber-50 hover:text-amber-900 cursor-pointer flex items-center justify-between transition">
+            <span class="flex items-center gap-2">
+              <span class="text-emerald-600 font-bold">Wx</span>
+              <span>复制为公众号/知乎排版</span>
+            </span>
+            <span class="text-[10px] text-stone-400">⌘⇧C</span>
+          </div>
+          <div class="h-px bg-black/5 my-1"></div>
+          <div onclick="exportHtmlFile()" class="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition">
+            <span class="flex items-center gap-2">
+              <span class="text-orange-500 font-bold">&lt;&gt;</span>
+              <span>导出为独立 HTML</span>
+            </span>
+          </div>
+          <div onclick="exportPdfFile()" class="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition">
+            <span class="flex items-center gap-2">
+              <span class="text-red-500 font-bold">PDF</span>
+              <span>导出为 PDF 文档</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 中间编辑区容器 -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+      <!-- 编辑器滚动主体 -->
+      <main class="flex-1 overflow-y-auto px-8 md:px-16 py-8">
+        <div class="max-w-[720px] mx-auto space-y-4 font-normal text-[16px] text-[#1D1D1F]">
+
+          <h1 class="text-3xl font-bold tracking-tight text-[#1D1D1F] border-b border-black/5 pb-2">
+            设计第一性原理与 macOS 手感
+          </h1>
+
+          <p class="text-stone-700 leading-relaxed">
+            用户体验是所有产品的最高准则。<strong class="font-semibold text-stone-900">后端可以很复杂，但用户触碰到的每一层必须丝滑。</strong> 在 <code class="px-1.5 py-0.5 bg-black/5 rounded text-sm font-mono text-amber-800">mditor</code> 中，我们拒绝一切形式的交互迟滞。
+          </p>
+
+          <h2 class="text-2xl font-semibold tracking-tight text-[#1D1D1F] pt-2">
+            高级代码块高亮与复制 (AC2.5)
+          </h2>
+
+          <!-- 代码块卡片演示 -->
+          <div class="my-4 rounded-xl border border-black/10 overflow-hidden shadow-2xs bg-[#1E1E20] text-stone-200">
+            <!-- 代码块 Header -->
+            <div class="h-8.5 px-3 bg-[#28282B] border-b border-white/5 flex items-center justify-between text-xs font-mono text-stone-400 select-none">
+              <span class="font-semibold text-stone-300">TypeScript</span>
+              <button onclick="copyCodeBlock(this)" class="flex items-center gap-1.5 px-2 py-0.5 hover:bg-white/10 rounded text-[11px] text-stone-300 hover:text-white transition">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-width="2"></rect><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"></path></svg>
+                <span class="btn-text">复制代码</span>
+              </button>
+            </div>
+            <!-- 代码内容 -->
+            <pre class="p-4 overflow-x-auto text-sm font-mono leading-relaxed"><code class="text-stone-200"><span class="text-purple-400">interface</span> <span class="text-amber-300">EditorConfig</span> {
+  <span class="text-sky-300">livePreview</span>: <span class="text-emerald-400">boolean</span>;
+  <span class="text-sky-300">autoSave</span>: <span class="text-emerald-400">boolean</span>;
+  <span class="text-sky-300">theme</span>: <span class="text-emerald-300">'macos-light'</span> | <span class="text-emerald-300">'macos-dark'</span>;
+}
+
+<span class="text-purple-400">export function</span> <span class="text-blue-400">initMditor</span>(config: EditorConfig) {
+  console.log(<span class="text-emerald-300">"mditor started smoothly."</span>);
+}</code></pre>
+          </div>
+
+          <h2 class="text-2xl font-semibold tracking-tight text-[#1D1D1F] pt-2">
+            公众号排版一键复制 (AC7.3)
+          </h2>
+
+          <blockquote class="border-l-3 border-amber-500/70 pl-4 py-1.5 text-stone-600 italic bg-amber-50/40 rounded-r text-sm">
+            微信公众号后台编辑器对内联样式要求极严，我们自动将标题、正文、加粗、引用块全量转为适配公众号的 Inline CSS，一键粘入格式无损。
+          </blockquote>
+
+        </div>
+      </main>
+
+      <!-- 悬浮查找替换胶囊 (Floating Search Panel, 模拟 AC6.1 ~ AC6.3) -->
+      <div id="search-panel" class="absolute top-3 right-5 z-40 bg-white/95 backdrop-blur-md rounded-xl border border-black/10 search-panel-shadow p-2.5 w-[320px] select-none">
+        <!-- 查找行 -->
+        <div class="flex items-center space-x-1.5">
+          <div class="relative flex-1 flex items-center">
+            <input
+              id="search-input"
+              type="text"
+              value="体验"
+              oninput="handleSearchInput(this.value)"
+              placeholder="在当前文档中查找..."
+              class="w-full text-xs pl-2 pr-12 py-1.5 bg-stone-100/80 border border-stone-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500 text-stone-800"
+            />
+            <span class="absolute right-2 text-[11px] font-mono text-stone-400">1 / 2</span>
+          </div>
+
+          <!-- 上下导航 -->
+          <button title="上一个 (Shift+Enter)" class="p-1.5 hover:bg-black/5 rounded-md text-stone-500 hover:text-stone-800">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><polyline points="18 15 12 9 6 15" stroke-width="2"></polyline></svg>
+          </button>
+          <button title="下一个 (Enter)" class="p-1.5 hover:bg-black/5 rounded-md text-stone-500 hover:text-stone-800">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><polyline points="6 9 12 15 18 9" stroke-width="2"></polyline></svg>
+          </button>
+
+          <!-- 替换切换按钮 -->
+          <button onclick="toggleReplaceMode()" title="切换替换模式 (⌘H)" class="p-1.5 hover:bg-black/5 rounded-md text-stone-500 hover:text-stone-800">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+          </button>
+
+          <!-- 关闭 -->
+          <button onclick="toggleSearch()" title="关闭 (Esc)" class="p-1.5 hover:bg-black/5 rounded-md text-stone-400 hover:text-stone-700">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18" stroke-width="2"></line><line x1="6" y1="6" x2="18" y2="18" stroke-width="2"></line></svg>
+          </button>
+        </div>
+
+        <!-- 替换行 (可折叠) -->
+        <div id="replace-row" class="hidden mt-2 pt-2 border-t border-black/5 flex items-center space-x-1.5">
+          <input
+            id="replace-input"
+            type="text"
+            placeholder="替换为..."
+            class="flex-1 text-xs px-2 py-1.5 bg-stone-100/80 border border-stone-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500 text-stone-800"
+          />
+          <button onclick="replaceSingle()" class="px-2 py-1 text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md font-medium transition">
+            替换
+          </button>
+          <button onclick="replaceAll()" class="px-2 py-1 text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-md font-medium transition">
+            全部
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 底部状态栏 -->
+    <footer class="h-6.5 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-400 font-mono select-none z-20">
+      <div class="flex items-center space-x-4">
+        <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>M3 查找替换与多格式导出</span>
+        <span>UTF-8</span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span>648 字符 · 3 章节</span>
+        <span>Ln 1, Col 1</span>
+      </div>
+    </footer>
+
+    <!-- Toast 弹窗提示 -->
+    <div id="toast" class="hidden absolute bottom-10 left-1/2 -translate-x-1/2 bg-stone-900/90 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50">
+      <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><polyline points="20 6 9 17 4 12" stroke-width="3"></polyline></svg>
+      <span id="toast-text">已复制为公众号排版</span>
+    </div>
+
+  </div>
+
+  <script>
+    let isSearchOpen = true;
+    let isReplaceOpen = false;
+
+    function toggleSearch() {
+      isSearchOpen = !isSearchOpen;
+      const panel = document.getElementById('search-panel');
+      if (isSearchOpen) {
+        panel.classList.remove('hidden');
+        document.getElementById('search-input')?.focus();
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+
+    function toggleReplaceMode() {
+      isReplaceOpen = !isReplaceOpen;
+      const row = document.getElementById('replace-row');
+      if (isReplaceOpen) {
+        row.classList.remove('hidden');
+      } else {
+        row.classList.add('hidden');
+      }
+    }
+
+    function toggleExportMenu() {
+      const menu = document.getElementById('export-dropdown');
+      menu.classList.toggle('hidden');
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').innerText = text;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2000);
+    }
+
+    function copyWechatRichText() {
+      toggleExportMenu();
+      showToast('已复制为公众号/知乎内联富文本 (可直接 Cmd+V 粘贴)');
+    }
+
+    function exportHtmlFile() {
+      toggleExportMenu();
+      showToast('已生成独立自包含 HTML 文件');
+    }
+
+    function exportPdfFile() {
+      toggleExportMenu();
+      showToast('调用打印管线生成 PDF 文件');
+    }
+
+    function copyCodeBlock(btn) {
+      const textSpan = btn.querySelector('.btn-text');
+      textSpan.innerText = '已复制 ✓';
+      btn.classList.add('text-emerald-400');
+      setTimeout(() => {
+        textSpan.innerText = '复制代码';
+        btn.classList.remove('text-emerald-400');
+      }, 1500);
+    }
+
+    function handleSearchInput(val) {
+      // 演示输入变化
+    }
+
+    function replaceSingle() {
+      showToast('已替换 1 处匹配文本');
+    }
+
+    function replaceAll() {
+      showToast('已完成全部替换');
+    }
+
+    // 点击外部关闭弹窗
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#export-dropdown') && !e.target.closest('button[title="导出分享"]')) {
+        document.getElementById('export-dropdown')?.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
