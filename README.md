@@ -97,11 +97,22 @@ npm install
 npm run dev
 ```
 
-### 构建与打包
+### 构建与各平台安装包打包
 
 ```bash
-# 执行 TypeScript 类型校验与静态构建
+# 1. 执行 TypeScript 类型校验与静态构建
 npm run build
+
+# 2. 打包 macOS 原生安装包 (.dmg 与 .zip，自动支持 Apple Silicon arm64 与 Intel x64)
+npm run package:mac
+
+# 3. 打包 Windows 安装包 (.exe，包含 NSIS 安装引导程序与便携免安装版)
+npm run package:win
+
+# 4. 打包 Linux 原生安装包 (.AppImage 与 .deb)
+npm run package:linux
+
+# 所有安装包与分发产物统一输出至 release-build/ 目录
 ```
 
 ### 运行全量自动化测试（TDD 门禁）
