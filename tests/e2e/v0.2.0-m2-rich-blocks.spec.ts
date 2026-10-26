@@ -42,6 +42,11 @@ test.describe('Rich Block Widgets E2E (v0.2.0 M2: Table, CodeBlock, Image)', () 
     const imagePill = imageWrapper.locator('.image-source-pill').first();
     await expect(imagePill).toBeAttached();
 
+    // 默认文档中的图片为未落盘相对路径，断言触发错误占位卡片 (消除假阳性断言)
+    const errorCard = imageWrapper.locator('.image-error-card').first();
+    await expect(errorCard).toBeVisible();
+    await expect(errorCard).toContainText('图片无法加载');
+
     // 3. 双模式切换验证：按模式切换按钮进入源码模式
     const modeBtn = window.locator('[data-testid="mode-toggle-btn"]');
     await modeBtn.click();

@@ -1,27 +1,55 @@
 import type { Node } from '@milkdown/prose/model';
 import type { EditorView, NodeView } from '@milkdown/prose/view';
 
+function joinAndNormalize(baseDir: string, relativePath: string): string {
+  const normalizedBase = baseDir.replace(/\\/g, '/');
+  const normalizedRel = relativePath.replace(/\\/g, '/');
+  const parts = (normalizedBase + '/' + normalizedRel).split('/');
+  const resolved: string[] = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      resolved.pop();
+    } else {
+      resolved.push(part);
+    }
+  }
+  const isAbs = normalizedBase.startsWith('/');
+  return (isAbs ? '/' : '') + resolved.join('/');
+}
+
 export function resolveImageSource(rawSrc: string, docFilePath: string | null): string {
   if (!rawSrc) return '';
   if (
     rawSrc.startsWith('http://') ||
     rawSrc.startsWith('https://') ||
-    rawSrc.startsWith('data:') ||
-    rawSrc.startsWith('file://')
+    rawSrc.startsWith('data:')
   ) {
     return rawSrc;
   }
-  // 本地绝对路径
-  if (rawSrc.startsWith('/')) {
-    return `file://${rawSrc}`;
+  if (rawSrc.startsWith('local-file://')) {
+    return rawSrc;
   }
-  // 本地相对路径 (基于文档所在目录)
-  if (docFilePath) {
-    const lastSlash = docFilePath.lastIndexOf('/');
-    const docDir = lastSlash > 0 ? docFilePath.substring(0, lastSlash) : '';
-    const cleanRelative = rawSrc.startsWith('./') ? rawSrc.slice(2) : rawSrc;
-    return `file://${docDir}/${cleanRelative}`;
+
+  let absPath = rawSrc;
+  if (rawSrc.startsWith('file://')) {
+    absPath = rawSrc.replace(/^file:\/\//, '');
+  } else if (!rawSrc.startsWith('/') && !/^[a-zA-Z]:[/\\]/.test(rawSrc)) {
+    // 相对路径 (基于文档所在目录)
+    if (docFilePath) {
+      const normalizedDoc = docFilePath.replace(/\\/g, '/');
+      const lastSlash = normalizedDoc.lastIndexOf('/');
+      const docDir = lastSlash > 0 ? normalizedDoc.substring(0, lastSlash) : '';
+      absPath = joinAndNormalize(docDir, rawSrc);
+    }
   }
+
+  const normalized = absPath.replace(/\\/g, '/');
+  if (normalized.startsWith('/') || /^[a-zA-Z]:/.test(normalized)) {
+    const urlPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
+    return `local-file://localhost${encodeURI(urlPath)}`;
+  }
+
   return rawSrc;
 }
 
@@ -104,7 +132,13 @@ export class ImageView implements NodeView {
     `;
     this.errorCard = errorCard;
 
-    // 监听加载失败事件
+    // 监听加载成功与加载失败事件
+    img.addEventListener('load', () => {
+      img.style.display = '';
+      errorCard.classList.add('hidden');
+      errorCard.classList.remove('flex');
+    });
+
     img.addEventListener('error', () => {
       img.style.display = 'none';
       errorCard.classList.remove('hidden');

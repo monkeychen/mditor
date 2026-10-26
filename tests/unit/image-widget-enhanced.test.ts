@@ -5,19 +5,29 @@ import { gfm } from '@milkdown/preset-gfm';
 import { resolveImageSource, createImageWidgetPlugin } from '../../src/renderer/editor/wysiwyg/image/imageWidgetPlugin';
 
 describe('Image Widget & Multi-Source Path Resolution (T215 / AC-13.1 ~ AC-13.3)', () => {
-  it('correctly resolves relative, absolute, and web image URLs', () => {
-    // 1. 网络图片
+  it('correctly resolves relative, absolute, Chinese path, and web image URLs to local-file protocol', () => {
+    // 1. 网络图片与 data:
     expect(resolveImageSource('https://cdn.example.com/avatar.png', null)).toBe('https://cdn.example.com/avatar.png');
     expect(resolveImageSource('http://cdn.example.com/avatar.png', '/Users/test/doc.md')).toBe('http://cdn.example.com/avatar.png');
+    expect(resolveImageSource('data:image/png;base64,xxxx', null)).toBe('data:image/png;base64,xxxx');
 
-    // 2. 本地绝对路径
-    expect(resolveImageSource('/Users/test/pic.png', null)).toBe('file:///Users/test/pic.png');
-    expect(resolveImageSource('file:///Users/test/pic.png', null)).toBe('file:///Users/test/pic.png');
+    // 2. 本地绝对路径与已有 local-file 协议
+    expect(resolveImageSource('/Users/test/pic.png', null)).toBe('local-file://localhost/Users/test/pic.png');
+    expect(resolveImageSource('file:///Users/test/pic.png', null)).toBe('local-file://localhost/Users/test/pic.png');
+    expect(resolveImageSource('local-file:///Users/test/pic.png', null)).toBe('local-file:///Users/test/pic.png');
 
-    // 3. 本地相对路径 (基于 docFilePath)
-    const docPath = '/Users/chenzhian/workspace/project/README.md';
-    expect(resolveImageSource('./assets/logo.png', docPath)).toBe('file:///Users/chenzhian/workspace/project/assets/logo.png');
-    expect(resolveImageSource('assets/logo.png', docPath)).toBe('file:///Users/chenzhian/workspace/project/assets/logo.png');
+    // 3. 本地相对路径 (基于 docFilePath) 与中文路径
+    const docPath = '/Users/chenzhian/cmcc/002-自主研发/001-工作计划/2026/016-数据共享平台v2/03-汇报.md';
+    const resolved = resolveImageSource('./assets/blueprint/01-目标产品形态-v2.png', docPath);
+    expect(resolved).toBe(
+      `local-file://localhost${encodeURI('/Users/chenzhian/cmcc/002-自主研发/001-工作计划/2026/016-数据共享平台v2/assets/blueprint/01-目标产品形态-v2.png')}`
+    );
+
+    // 4. 上级目录相对路径 (../)
+    const resolvedParent = resolveImageSource('../common/logo.png', docPath);
+    expect(resolvedParent).toBe(
+      `local-file://localhost${encodeURI('/Users/chenzhian/cmcc/002-自主研发/001-工作计划/2026/common/logo.png')}`
+    );
   });
 
   it('renders custom ImageView and handles image error with placeholder card', async () => {
@@ -52,10 +62,10 @@ describe('Image Widget & Multi-Source Path Resolution (T215 / AC-13.1 ~ AC-13.3)
     expect(pill).not.toBeNull();
     expect(pill?.textContent).toContain('![示例图](./assets/non-existent.png)');
 
-    // 验证初始 img 节点存在且 src 解析为 file:// 绝对路径
+    // 验证初始 img 节点存在且 src 解析为 local-file:// 安全特权协议路径
     const img = wrapper?.querySelector('img') as HTMLImageElement;
     expect(img).not.toBeNull();
-    expect(img.src).toBe('file:///Users/chenzhian/workspace/ai/mditor/docs/assets/non-existent.png');
+    expect(img.src).toBe('local-file://localhost/Users/chenzhian/workspace/ai/mditor/docs/assets/non-existent.png');
 
     // 模拟图片加载失败触发 error 事件
     img.dispatchEvent(new Event('error'));

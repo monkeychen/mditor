@@ -1,9 +1,24 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
 import path from 'path';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 import { exportHtmlFile, exportPdfFile } from './exportService';
+
+// 注册安全特权协议（必须在 app.whenReady 之前执行）
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local-file',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+      bypassCSP: true,
+    },
+  },
+]);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,6 +144,25 @@ ipcMain.handle('export:pdf', async (_event, { defaultName, htmlContent }: { defa
 });
 
 app.whenReady().then(() => {
+  // 注册 local-file 协议处理器，安全流式加载本地文件与图片资源
+  protocol.handle('local-file', (request) => {
+    try {
+      const url = new URL(request.url);
+      let filePath = decodeURIComponent(url.pathname);
+      // 容错：若 hostname 存在且非 localhost，拼回根路径
+      if (url.hostname && url.hostname !== 'localhost') {
+        filePath = `/${url.hostname}${filePath}`;
+      }
+      if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(filePath)) {
+        filePath = filePath.slice(1);
+      }
+      return net.fetch(pathToFileURL(filePath).toString());
+    } catch (error) {
+      console.error('[Protocol] Failed to handle local-file request:', error);
+      return new Response(`Failed to load local file: ${(error as Error).message}`, { status: 404 });
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {
