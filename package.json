@@ -26,7 +26,10 @@
     "wysiwyg",
     "macos"
   ],
-  "author": "chenzhian",
+  "author": {
+    "name": "chenzhian",
+    "email": "monkeychen@users.noreply.github.com"
+  },
   "license": "MIT",
   "dependencies": {
     "@codemirror/commands": "^6.8.0",

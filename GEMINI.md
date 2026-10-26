@@ -67,3 +67,11 @@ mditor/
 - **语言**：代码、注释、Commit 信息一律使用英文；文档、PRD、沟通使用中文。
 - **代码提交**：一个 Task 一个 Commit，格式如 `feat(editor): implement live heading decoration`。
 - **密钥约束**：任何敏感 token/密钥严禁提交入库。
+
+---
+
+## 6. 版本发布与构建门禁（Release & CI/CD）
+
+- **云端构建第一原则**：所有跨平台二进制发布包（macOS DMG/ZIP、Windows NSIS/Portable、Linux AppImage/DEB）必须由版本 Tag 触发 GitHub Actions 云端 CI 多平台 Runner 自动构建并挂载至 GitHub Release。
+- **时序铁律**：所有构建配置（`electron-builder.json`）与工作流脚本（`.github/workflows/release.yml`）必须先合入 `main` 并验证通过，最后一步才打 Release Tag。严禁时序倒置。
+- **应急兜底约束**：**严禁日常使用本地打包人工上传**。除非云端 CI 经过多轮尝试排查依然无法打出正确的包，并明确在 Release Note / Issue 中注明具体环境阻断原因，才允许使用本地编译上传作为应急兜底手段。
