@@ -226,7 +226,7 @@ export interface SourceEditorProps {
 |---|---|---|---|---|
 | **T201** | 安装与集成 Milkdown 核心包（`@milkdown/core`, `@milkdown/preset-commonmark`, `@milkdown/preset-gfm` 等），封装 `MilkdownEditor.tsx` | AC-8.1, AC-17.1 | 无 | 已完成 |
 | **T202** | 实现排版零跳动引擎与局部定界符露出 ProseMirror 插件（标题字号恒定、粗斜体无抖动露出） | AC-8.2, AC-8.3 | T201 | 已完成 |
-| **T203** | 配置完善 InputRules 与键盘快捷操作（即时符号触发、回车延续列表、Tab 缩进、符号自动配对包裹） | AC-9.1, AC-9.2, AC-9.3, AC-9.4 | T201 | 待开始 |
+| **T203** | 配置完善 InputRules 与键盘快捷操作（即时符号触发、回车延续列表、Tab 缩进、符号自动配对包裹） | AC-9.1, AC-9.2, AC-9.3, AC-9.4 | T201 | 已完成 |
 | **T204** | 封装纯源码模式组件 `SourceEditor.tsx` 并实现 `⌘/` 快捷键与状态栏双模式切换状态机与光标映射 | AC-10.1, AC-10.2, AC-10.3, AC-10.4 | T201 | 待开始 |
 | **T205** | 建立 `tests/fidelity/corpus/` 语料库（30+ 文件）与 remark 序列化微调，实现逐字节保真门禁测试 | AC-14.1, AC-14.2, AC-14.3 | T201 | 待开始 |
 | **T206** | 适配 `App.tsx`、`TabBar.tsx` 与文件读写自动保存流程，全量跑通 M1 自动化单元/集成测试与 E2E 回归测试 | 全部 M1 AC 与 F17 部分 | T201~T205 | 待开始 |

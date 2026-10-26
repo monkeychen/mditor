@@ -13,6 +13,8 @@ import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { createDelimiterPlugin } from './delimiterPlugin';
+import { createAutoPairPlugin } from './autoPairPlugin';
+import { createFormatKeymapPlugin } from './formatKeymapPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -110,7 +112,12 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         .config((ctx) => {
           ctx.set(rootCtx, containerRef.current!);
           ctx.set(defaultValueCtx, initialContent);
-          ctx.update(prosePluginsCtx, (prev) => [...prev, createDelimiterPlugin()]);
+          ctx.update(prosePluginsCtx, (prev) => [
+            ...prev,
+            createDelimiterPlugin(),
+            createAutoPairPlugin(),
+            createFormatKeymapPlugin(),
+          ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {
               onChange(markdown);
