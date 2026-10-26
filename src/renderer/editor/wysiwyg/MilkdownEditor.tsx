@@ -20,6 +20,7 @@ import { createFormatKeymapPlugin } from './formatKeymapPlugin';
 import { createTableToolbarPlugin, TableToolbarState } from './table/tableToolbarPlugin';
 import { createTableNavKeymapPlugin } from './table/tableNavKeymap';
 import { TableToolbar } from './table/TableToolbar';
+import { createCodeBlockWidgetPlugin } from './code/codeBlockWidgetPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -138,6 +139,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createFormatKeymapPlugin(),
             createTableToolbarPlugin(setTableToolbarState),
             createTableNavKeymapPlugin(),
+            createCodeBlockWidgetPlugin(),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {
