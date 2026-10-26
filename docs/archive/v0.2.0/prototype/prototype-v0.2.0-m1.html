@@ -1,0 +1,287 @@
+<!-- doc: prototype | product: v0.2.0 | milestone: m1 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.2.0-m1 高保真交互原型: Typora 级双模式与真所见即所得</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono-code {
+      font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    /* 隐藏原生滚动条 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 3px;
+    }
+    /* 闪烁光标效果 */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .custom-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      vertical-align: text-bottom;
+      background-color: #2563EB;
+      animation: blink 1s step-start infinite;
+    }
+    /* 模式切换过渡 */
+    .mode-container {
+      transition: opacity 150ms ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- 顶部 macOS 风格标题栏与标签页 -->
+  <header class="h-11 bg-[#FAF8F5]/80 backdrop-blur border-b border-stone-200/80 flex items-center px-3 select-none flex-shrink-0 z-20">
+    <!-- macOS 交通灯避让区 (70px) -->
+    <div class="flex items-center space-x-2 pl-2 pr-6">
+      <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/50"></div>
+      <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/50"></div>
+      <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/50"></div>
+    </div>
+
+    <!-- 标签页栏 -->
+    <div class="flex items-center space-x-1 flex-1 overflow-x-auto no-scrollbar py-1">
+      <div class="flex items-center space-x-2 px-3 py-1 bg-white shadow-sm border border-stone-200/90 rounded-md text-xs font-medium text-stone-800 cursor-pointer">
+        <span>macOS-Philosophy.md</span>
+        <button class="hover:bg-stone-100 rounded p-0.5 text-stone-400 hover:text-stone-600">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="flex items-center space-x-2 px-3 py-1 hover:bg-stone-200/50 rounded-md text-xs text-stone-500 cursor-pointer">
+        <span>Typora-Benchmark.md</span>
+      </div>
+      <button class="p-1 hover:bg-stone-200/60 rounded text-stone-400 hover:text-stone-700">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+      </button>
+    </div>
+
+    <!-- 右侧动作按钮 -->
+    <div class="flex items-center space-x-2 text-stone-500 text-xs">
+      <div class="px-2 py-0.5 bg-stone-200/50 rounded text-stone-600 font-mono text-[11px]">⌘S 自动保存</div>
+    </div>
+  </header>
+
+  <!-- 原型交互指引浮条 -->
+  <div class="bg-blue-50 border-b border-blue-100 px-4 py-1.5 flex items-center justify-between text-xs text-blue-700 flex-shrink-0">
+    <div class="flex items-center space-x-2">
+      <span class="inline-block px-1.5 py-0.2 bg-blue-600 text-white rounded text-[10px] font-bold">M1 原型</span>
+      <span>当前模式：<strong id="mode-text-banner">🎨 实时渲染模式 (WYSIWYG)</strong> — 按快捷键 <kbd class="px-1.5 py-0.5 bg-white border border-blue-200 rounded font-mono shadow-sm">⌘ /</kbd> 可立即切换！</span>
+    </div>
+    <div class="flex items-center space-x-3">
+      <span class="text-blue-500">点击下方标题体验光标进出「零跳动」效果 ⬇️</span>
+    </div>
+  </div>
+
+  <!-- 主编辑区容器 -->
+  <main class="flex-1 relative overflow-hidden flex flex-col">
+
+    <!-- 1. 实时渲染模式视图 (WYSIWYG / Live Mode) -->
+    <div id="view-wysiwyg" class="mode-container absolute inset-0 overflow-y-auto px-8 md:px-24 lg:px-44 py-10 opacity-100 z-10">
+      
+      <!-- H1 标题（光标模拟交互） -->
+      <div id="demo-h1" class="group relative mb-6 cursor-text transition-colors rounded p-1 -ml-1 hover:bg-stone-100/40" onclick="toggleHeadingFocus()">
+        <!-- 仅光标进入时出现的淡色前缀，使用负边距绝对定位，正文字号绝对不动 -->
+        <span id="h1-marker" class="absolute -left-8 text-stone-300 font-mono text-2xl select-none font-normal transition-opacity duration-150 opacity-100"># </span>
+        <h1 class="text-3xl font-bold tracking-tight text-stone-900 leading-tight inline">
+          设计第一性原理与 Typora 级交互手感
+        </h1>
+        <span id="h1-cursor" class="custom-cursor ml-0.5"></span>
+      </div>
+
+      <!-- 导言段落 -->
+      <p class="text-base leading-relaxed text-stone-700 mb-6">
+        用户体验是所有产品的最高准则。<strong class="font-semibold text-stone-900">后端可以很复杂，但用户触碰到的每一层必须丝滑。</strong> 在 mditor v0.2.0 中，我们坚决废除光标进入整行退化缩小的糟糕设计，带来纯正的所见即所得。
+      </p>
+
+      <!-- H2 二级标题 -->
+      <h2 class="text-2xl font-semibold text-stone-900 tracking-tight mt-8 mb-4 border-b border-stone-200/60 pb-2">
+        核心交互设计与排版体验
+      </h2>
+
+      <!-- 容器化引用块 -->
+      <div class="my-6 pl-4 border-l-4 border-blue-500 bg-[#F4F1EA]/60 rounded-r-lg p-3 text-stone-700 italic">
+        <p class="text-[15px] leading-relaxed">
+          系统承担复杂性：能自动化的不手动，能推断的不让用户填，能一步完成的不拆成三步。光标在引用块内部打字时，容器结构保持完整。
+        </p>
+      </div>
+
+      <!-- 智能富列表展示 -->
+      <div class="my-6 space-y-2 text-stone-800 text-[15px]">
+        <div class="flex items-start space-x-2.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-stone-700 mt-2.5 flex-shrink-0"></span>
+          <span><strong>真所见即所得</strong>：标题、加粗与斜体在打字时排版尺寸完全恒定，字号零跳动</span>
+        </div>
+        <div class="flex items-start space-x-2.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-stone-700 mt-2.5 flex-shrink-0"></span>
+          <span><strong>Markdown 语法即时触发</strong>：键入 <code class="px-1.5 py-0.5 bg-stone-200/70 rounded text-xs font-mono">## </code> 自动变标题，键入 <code class="px-1.5 py-0.5 bg-stone-200/70 rounded text-xs font-mono">- </code> 自动变列表</span>
+        </div>
+        <div class="flex items-start space-x-2.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-stone-700 mt-2.5 flex-shrink-0"></span>
+          <span><strong>双模式互通</strong>：随时按 <kbd class="px-1 py-0.5 bg-stone-200 border border-stone-300 rounded text-xs font-mono">⌘/</kbd> 切换为纯源码模式，精准掌控每一个字节</span>
+        </div>
+      </div>
+
+      <!-- 任务列表交互展示 -->
+      <div class="my-6 space-y-2">
+        <label class="flex items-center space-x-2.5 cursor-pointer group">
+          <input type="checkbox" checked class="w-4 h-4 rounded text-blue-600 focus:ring-0 border-stone-300">
+          <span class="text-stone-800 text-[15px] line-through text-stone-400">接入 Milkdown (ProseMirror + remark) 块模型内核</span>
+        </label>
+        <label class="flex items-center space-x-2.5 cursor-pointer group">
+          <input type="checkbox" checked class="w-4 h-4 rounded text-blue-600 focus:ring-0 border-stone-300">
+          <span class="text-stone-800 text-[15px] line-through text-stone-400">实现标题与粗体输入零跳变（Jitter-Free）</span>
+        </label>
+        <label class="flex items-center space-x-2.5 cursor-pointer group">
+          <input type="checkbox" class="w-4 h-4 rounded text-blue-600 focus:ring-0 border-stone-300">
+          <span class="text-stone-800 text-[15px]">M2: 交互式 GFM 表格与全功能图片卡片</span>
+        </label>
+      </div>
+
+      <!-- 行内加粗与定界符露出模拟演示 -->
+      <div class="my-6 p-4 bg-white border border-stone-200 rounded-lg shadow-sm">
+        <div class="text-xs text-stone-400 uppercase font-mono mb-2">局部定界符露出示例 (光标选区在加粗词内)</div>
+        <div class="text-base text-stone-800">
+          Typora 哲学的精髓在于：当光标移入时，
+          <span class="bg-blue-50/60 rounded px-1 text-stone-900 font-semibold border-b border-blue-400">
+            <span class="text-stone-300 select-none font-normal">**</span>极致优雅的打字手感<span class="text-stone-300 select-none font-normal">**</span>
+          </span>
+          依然保持加粗尺寸，而绝不会突然变成小号代码！
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2. 源代码模式视图 (Source Code Mode / CodeMirror 6 拟真) -->
+    <div id="view-source" class="mode-container absolute inset-0 overflow-y-auto px-6 py-6 font-mono-code text-[14px] leading-relaxed bg-[#FAF8F5] text-stone-800 opacity-0 pointer-events-none z-0">
+      <div class="flex">
+        <!-- 源码行号 -->
+        <div class="w-12 select-none text-stone-400 text-right pr-4 space-y-0.5 text-xs">
+          <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div>
+        </div>
+        <!-- 源码内容 -->
+        <div class="flex-1 space-y-0.5 text-stone-800">
+          <div class="text-blue-700 font-bold"># 设计第一性原理与 Typora 级交互手感</div>
+          <div>&nbsp;</div>
+          <div>用户体验是所有产品的最高准则。<span class="text-amber-700 font-semibold">**后端可以很复杂，但用户触碰到的每一层必须丝滑。**</span> 在 mditor v0.2.0 中，我们坚决废除光标进入整行退化缩小的糟糕设计，带来纯正的所见即所得。</div>
+          <div>&nbsp;</div>
+          <div class="text-blue-600 font-semibold">## 核心交互设计与排版体验</div>
+          <div>&nbsp;</div>
+          <div class="text-stone-500">&gt; 系统承担复杂性：能自动化的不手动，能推断的不让用户填，能一步完成的不拆成三步。光标在引用块内部打字时，容器结构保持完整。</div>
+          <div>&nbsp;</div>
+          <div>- <span class="text-amber-700 font-semibold">**真所见即所得**</span>：标题、加粗与斜体在打字时排版尺寸完全恒定，字号零跳动</div>
+          <div>- <span class="text-amber-700 font-semibold">**Markdown 语法即时触发**</span>：键入 `## ` 自动变标题，键入 `- ` 自动变列表</div>
+          <div>- <span class="text-amber-700 font-semibold">**双模式互通**</span>：随时按 ⌘/ 切换为纯源码模式，精准掌控每一个字节</div>
+          <div>&nbsp;</div>
+          <div>- [x] 接入 Milkdown (ProseMirror + remark) 块模型内核</div>
+          <div>- [x] 实现标题与粗体输入零跳变（Jitter-Free）</div>
+          <div>- [ ] M2: 交互式 GFM 表格与全功能图片卡片</div>
+          <div>&nbsp;</div>
+          <div class="text-stone-400">---</div>
+          <div>&nbsp;</div>
+          <div>按快捷键 &lt;kbd&gt;⌘S&lt;/kbd&gt; 即可即时存盘，无需担心文档意外丢失。</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 底部 macOS 沉浸状态栏 -->
+  <footer class="h-7 bg-[#FAF8F5] border-t border-stone-200/80 px-3 flex items-center justify-between text-xs text-stone-500 select-none flex-shrink-0 z-20">
+    <!-- 左侧状态信息 -->
+    <div class="flex items-center space-x-3 text-[11px]">
+      <span class="flex items-center space-x-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span class="text-stone-600">已保存至本地</span>
+      </span>
+      <span class="text-stone-300">|</span>
+      <span>438 词 · 682 字符</span>
+      <span class="text-stone-300">|</span>
+      <span>UTF-8 · LF</span>
+    </div>
+
+    <!-- 右侧：模式快速切换按钮 (点击即切换) -->
+    <div class="flex items-center space-x-2">
+      <button id="mode-btn" onclick="toggleEditorMode()" class="flex items-center space-x-1.5 px-2 py-0.5 rounded hover:bg-stone-200/70 transition-colors text-stone-700 font-medium text-[11px] border border-stone-200">
+        <span id="mode-icon">🎨</span>
+        <span id="mode-label">实时渲染模式 (⌘/)</span>
+      </button>
+    </div>
+  </footer>
+
+  <script>
+    let currentMode = 'wysiwyg'; // 'wysiwyg' | 'source'
+    let isHeadingFocused = true;
+
+    function toggleEditorMode() {
+      const wysiwygView = document.getElementById('view-wysiwyg');
+      const sourceView = document.getElementById('view-source');
+      const modeLabel = document.getElementById('mode-label');
+      const modeIcon = document.getElementById('mode-icon');
+      const modeBanner = document.getElementById('mode-text-banner');
+
+      if (currentMode === 'wysiwyg') {
+        currentMode = 'source';
+        wysiwygView.classList.remove('opacity-100', 'z-10');
+        wysiwygView.classList.add('opacity-0', 'pointer-events-none', 'z-0');
+
+        sourceView.classList.remove('opacity-0', 'pointer-events-none', 'z-0');
+        sourceView.classList.add('opacity-100', 'z-10');
+
+        modeLabel.innerText = '源代码模式 (⌘/)';
+        modeIcon.innerText = '📝';
+        modeBanner.innerText = '📝 源代码模式 (Source Code Mode)';
+      } else {
+        currentMode = 'wysiwyg';
+        sourceView.classList.remove('opacity-100', 'z-10');
+        sourceView.classList.add('opacity-0', 'pointer-events-none', 'z-0');
+
+        wysiwygView.classList.remove('opacity-0', 'pointer-events-none', 'z-0');
+        wysiwygView.classList.add('opacity-100', 'z-10');
+
+        modeLabel.innerText = '实时渲染模式 (⌘/)';
+        modeIcon.innerText = '🎨';
+        modeBanner.innerText = '🎨 实时渲染模式 (WYSIWYG)';
+      }
+    }
+
+    function toggleHeadingFocus() {
+      const marker = document.getElementById('h1-marker');
+      const cursor = document.getElementById('h1-cursor');
+      isHeadingFocused = !isHeadingFocused;
+
+      if (isHeadingFocused) {
+        marker.classList.remove('opacity-0');
+        marker.classList.add('opacity-100');
+        cursor.style.display = 'inline-block';
+      } else {
+        marker.classList.remove('opacity-100');
+        marker.classList.add('opacity-0');
+        cursor.style.display = 'none';
+      }
+    }
+
+    // 监听全局快捷键 ⌘/ 或 Ctrl+/
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        toggleEditorMode();
+      }
+    });
+  </script>
+</body>
+</html>

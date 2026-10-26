@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>mditor v0.2.0-M2 原型：表格、代码块与多源图片</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono {
+      font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    }
+    /* 表格样式 */
+    .prose-table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1.5rem 0;
+    }
+    .prose-table th, .prose-table td {
+      border: 1px solid #E5E7EB;
+      padding: 8px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .prose-table th {
+      background-color: #F9FAFB;
+      font-weight: 600;
+      color: #374151;
+    }
+    .prose-table td:focus {
+      outline: 2px solid #2563EB;
+      outline-offset: -2px;
+      background-color: #EFF6FF;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 min-h-screen flex flex-col justify-between">
+  <!-- 顶部 macOS 窗口与标签栏 -->
+  <header class="h-11 bg-[#FAF8F5] border-b border-black/5 flex items-center justify-between px-4 select-none">
+    <div class="flex items-center space-x-2">
+      <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-black/10"></div>
+      <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-black/10"></div>
+      <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-black/10"></div>
+      <span class="ml-4 text-xs font-medium text-stone-500">M2 原型演示 · 块级富交互组件</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-mono">v0.2.0-M2 Prototype</span>
+    </div>
+  </header>
+
+  <!-- 主演示容器 -->
+  <main class="max-w-4xl mx-auto w-full px-8 py-10 flex-1 space-y-12">
+    <!-- 说明看板 -->
+    <div class="bg-blue-50/80 border border-blue-200/60 rounded-xl p-4 text-xs text-blue-900 leading-relaxed shadow-sm">
+      <div class="font-bold mb-1 flex items-center gap-1.5 text-blue-800">
+        <span>💡 M2 交互体验指引（全面对标 Typora）</span>
+      </div>
+      <p>1. <strong>表格 (TableWidget)</strong>：点击下方任意单元格即可激活并唤出顶部的胶囊工具栏；在表格最后一行最后一格按 <kbd class="px-1.5 py-0.5 bg-white border border-blue-200 rounded shadow-xs font-mono">Tab</kbd> 会自动在末尾追加新行！</p>
+      <p>2. <strong>代码块 (CodeBlockWidget)</strong>：右上角带有语言标识与一键「复制代码」动效反馈按钮。</p>
+      <p>3. <strong>多源图片 (ImageWidget)</strong>：支持相对/网络图片，鼠标悬停时轻微显露源码浮层，路径缺失时提供精致占位卡片。</p>
+    </div>
+
+    <!-- 1. 表格演示区域 -->
+    <section class="space-y-3 relative">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+          <span>📊 交互式表格 (TableWidget)</span>
+          <span class="text-xs font-normal text-stone-400 font-mono">AC-11.1 ~ AC-11.4</span>
+        </h2>
+        <span class="text-xs text-stone-400">点击单元格体验工具栏与 Tab 键自动增行</span>
+      </div>
+
+      <!-- 表格悬浮工具栏 (点击表格显示) -->
+      <div id="table-toolbar" class="hidden transition-all duration-150 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-stone-200/80 rounded-lg shadow-lg px-2 py-1 text-xs text-stone-700 w-fit z-20">
+        <button onclick="addRowAfter()" class="px-2 py-1 hover:bg-stone-100 rounded flex items-center gap-1 transition" title="在下方插入一行">
+          <span>+ 下方增行</span>
+        </button>
+        <button onclick="addColAfter()" class="px-2 py-1 hover:bg-stone-100 rounded flex items-center gap-1 transition" title="在右侧插入一列">
+          <span>+ 右侧增列</span>
+        </button>
+        <div class="h-3.5 w-px bg-stone-200 my-auto"></div>
+        <button onclick="setAlign('left')" class="p-1 hover:bg-stone-100 rounded text-stone-600" title="左对齐">⫷</button>
+        <button onclick="setAlign('center')" class="p-1 hover:bg-stone-100 rounded text-stone-600" title="居中对齐">≡</button>
+        <button onclick="setAlign('right')" class="p-1 hover:bg-stone-100 rounded text-stone-600" title="右对齐">⫸</button>
+        <div class="h-3.5 w-px bg-stone-200 my-auto"></div>
+        <button onclick="deleteCurrentRow()" class="px-2 py-1 hover:bg-red-50 text-red-600 rounded transition" title="删除当前行">删行</button>
+        <button onclick="deleteCurrentCol()" class="px-2 py-1 hover:bg-red-50 text-red-600 rounded transition" title="删除当前列">删列</button>
+        <button onclick="deleteEntireTable()" class="px-2 py-1 hover:bg-red-100 text-red-700 font-medium rounded transition" title="删除整个表格">整表删除</button>
+      </div>
+
+      <!-- 示例表格 -->
+      <div class="overflow-x-auto bg-white rounded-xl border border-stone-200/80 p-4 shadow-xs">
+        <table id="demo-table" class="prose-table">
+          <thead>
+            <tr>
+              <th contenteditable="true" style="text-align: left;">方案编号</th>
+              <th contenteditable="true" style="text-align: left;">建设方向</th>
+              <th contenteditable="true" style="text-align: center;">响应时延</th>
+              <th contenteditable="true" style="text-align: right;">当前状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td contenteditable="true" style="text-align: left;">L01</td>
+              <td contenteditable="true" style="text-align: left;">省级流程引擎统一接入</td>
+              <td contenteditable="true" style="text-align: center;">&le; 500ms</td>
+              <td contenteditable="true" style="text-align: right;">已完成</td>
+            </tr>
+            <tr>
+              <td contenteditable="true" style="text-align: left;">L02</td>
+              <td contenteditable="true" style="text-align: left;">逻辑统一、物理分布数据底座</td>
+              <td contenteditable="true" style="text-align: center;">&le; 200ms</td>
+              <td contenteditable="true" style="text-align: right;">验证中</td>
+            </tr>
+            <tr>
+              <td contenteditable="true" style="text-align: left;">L03</td>
+              <td contenteditable="true" style="text-align: left;">全域统一数据服务出口</td>
+              <td contenteditable="true" style="text-align: center;">&le; 50ms</td>
+              <td contenteditable="true" style="text-align: right;">规划中</td>
+            </tr>
+          </tbody>
+        </table>
+        <div id="table-hint" class="text-[11px] text-stone-400 text-right mt-1 font-mono">
+          当前行列：3 行 4 列 · 在最后一格按 Tab 自动增行
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 代码块演示区域 -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+          <span>💻 围栏代码块增强 (CodeBlockWidget)</span>
+          <span class="text-xs font-normal text-stone-400 font-mono">AC-12.1 ~ AC-12.4</span>
+        </h2>
+        <span class="text-xs text-stone-400">支持语言切换与一键代码复制</span>
+      </div>
+
+      <div class="relative group rounded-xl overflow-hidden border border-stone-200/80 bg-[#1E1E1E] text-stone-200 shadow-md">
+        <!-- 代码块右上角浮动 Header -->
+        <div class="absolute top-2 right-2 flex items-center gap-2 z-10 select-none">
+          <select id="code-lang-select" class="bg-stone-800/80 hover:bg-stone-700/80 text-stone-300 text-xs px-2 py-1 rounded border border-stone-700/60 font-mono outline-none cursor-pointer transition">
+            <option value="typescript">TypeScript</option>
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="json">JSON</option>
+            <option value="bash">Shell / Bash</option>
+          </select>
+          <button id="code-copy-btn" onclick="copyCodeContent()" class="bg-stone-800/80 hover:bg-stone-700 text-stone-300 hover:text-white text-xs px-2.5 py-1 rounded border border-stone-700/60 font-mono flex items-center gap-1 transition">
+            <span id="copy-icon">📋</span>
+            <span id="copy-text">复制代码</span>
+          </button>
+        </div>
+
+        <!-- 代码内容 -->
+        <pre class="p-5 pt-8 text-sm font-mono overflow-x-auto leading-relaxed"><code id="code-content" class="text-emerald-400"><span class="text-purple-400">interface</span> <span class="text-yellow-300">EditorPlatformConfig</span> {
+  <span class="text-sky-300">engine</span>: <span class="text-emerald-300">'milkdown-prosemirror'</span>;
+  <span class="text-sky-300">tableToolbar</span>: <span class="text-purple-400">boolean</span>;
+  <span class="text-sky-300">copyFeedbackMs</span>: <span class="text-amber-400">2000</span>;
+}
+
+<span class="text-purple-400">export async function</span> <span class="text-blue-400">bootstrapM2BlockComponents</span>(): <span class="text-purple-400">Promise</span>&lt;<span class="text-purple-400">void</span>&gt; {
+  <span class="text-stone-400">// 系统承担复杂性：用户无需手动写表格或退出代码块</span>
+  <span class="text-sky-300">console</span>.<span class="text-blue-400">log</span>(<span class="text-emerald-300">"mditor M2 widgets active and jitter-free."</span>);
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- 3. 图片交互与失败占位演示 -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+          <span>🖼️ 多源图片增强与错误占位 (ImageWidget)</span>
+          <span class="text-xs font-normal text-stone-400 font-mono">AC-13.1 ~ AC-13.4</span>
+        </h2>
+        <span class="text-xs text-stone-400">悬浮微露出 Markdown 源码浮层</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 正常图片卡片 (带悬停微源码气泡) -->
+        <div class="relative group bg-white p-4 rounded-xl border border-stone-200/80 shadow-xs flex flex-col items-center">
+          <!-- 悬浮微露出源码药丸卡片 -->
+          <div class="absolute -top-3.5 bg-stone-900/90 text-white text-[11px] font-mono px-3 py-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center gap-2 select-none z-10 pointer-events-none">
+            <span>![架构设计图](https://images.unsplash.com/...)</span>
+            <span class="text-stone-400">点击编辑</span>
+          </div>
+
+          <div class="w-full h-44 rounded-lg overflow-hidden bg-stone-100 flex items-center justify-center border border-stone-100">
+            <img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=60" alt="高质量渲染示范" class="w-full h-full object-cover">
+          </div>
+          <span class="text-xs text-stone-400 mt-2">图 1：网络/本地图片正常排版渲染</span>
+        </div>
+
+        <!-- 图片加载失败时的占位卡片 -->
+        <div class="bg-stone-50 border border-dashed border-stone-300 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-2">
+          <div class="w-10 h-10 rounded-full bg-stone-200/70 flex items-center justify-center text-lg text-stone-500">
+            🖼️
+          </div>
+          <div class="text-xs font-medium text-stone-700">图片无法加载</div>
+          <div class="text-[11px] font-mono text-stone-400 bg-stone-200/50 px-2 py-0.5 rounded max-w-xs truncate">
+            ./assets/non-existent-blueprint.png
+          </div>
+          <button class="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline pt-1">
+            重新选择或修改图片路径
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 底部状态指示 -->
+  <footer class="h-7 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-xs text-stone-400 font-mono select-none">
+    <span>mditor Prototype v0.2.0-M2</span>
+    <span>Typora-Grade Table & Code Interactions</span>
+  </footer>
+
+  <script>
+    const table = document.getElementById('demo-table');
+    const toolbar = document.getElementById('table-toolbar');
+    let currentCell = null;
+
+    // 监听表格内单元格点击与聚焦
+    table.addEventListener('focusin', (e) => {
+      if (e.target.tagName === 'TD' || e.target.tagName === 'TH') {
+        currentCell = e.target;
+        showToolbar();
+      }
+    });
+
+    // 监听键盘按键：处理 Tab 自动增行
+    table.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' && !e.shiftKey) {
+        const rows = table.rows;
+        const lastRow = rows[rows.length - 1];
+        const lastCell = lastRow.cells[lastRow.cells.length - 1];
+        if (e.target === lastCell) {
+          e.preventDefault();
+          addRowAfter();
+        }
+      }
+    });
+
+    function showToolbar() {
+      toolbar.classList.remove('hidden');
+      updateHint();
+    }
+
+    function addRowAfter() {
+      const colCount = table.rows[0].cells.length;
+      const newRow = table.insertRow(-1);
+      for (let i = 0; i < colCount; i++) {
+        const cell = newRow.insertCell(i);
+        cell.contentEditable = "true";
+        cell.innerText = i === 0 ? `L0${table.rows.length - 1}` : "新增项";
+        const align = table.rows[0].cells[i].style.textAlign || 'left';
+        cell.style.textAlign = align;
+      }
+      const firstNewCell = newRow.cells[0];
+      firstNewCell.focus();
+      updateHint();
+    }
+
+    function addColAfter() {
+      const headerRow = table.rows[0];
+      const newTh = document.createElement('th');
+      newTh.contentEditable = "true";
+      newTh.innerText = "新列";
+      headerRow.appendChild(newTh);
+
+      for (let i = 1; i < table.rows.length; i++) {
+        const cell = table.rows[i].insertCell(-1);
+        cell.contentEditable = "true";
+        cell.innerText = "内容";
+      }
+      updateHint();
+    }
+
+    function deleteCurrentRow() {
+      if (table.rows.length <= 2) {
+        alert("表格至少需要保留一行表头和一行数据！");
+        return;
+      }
+      const rowIndex = currentCell ? currentCell.parentElement.rowIndex : table.rows.length - 1;
+      if (rowIndex > 0) {
+        table.deleteRow(rowIndex);
+        updateHint();
+      }
+    }
+
+    function deleteCurrentCol() {
+      const colCount = table.rows[0].cells.length;
+      if (colCount <= 1) {
+        alert("表格至少需要保留一列！");
+        return;
+      }
+      const colIndex = currentCell ? currentCell.cellIndex : colCount - 1;
+      for (let i = 0; i < table.rows.length; i++) {
+        table.rows[i].deleteCell(colIndex);
+      }
+      updateHint();
+    }
+
+    function setAlign(alignment) {
+      if (!currentCell) return;
+      const colIndex = currentCell.cellIndex;
+      for (let i = 0; i < table.rows.length; i++) {
+        table.rows[i].cells[colIndex].style.textAlign = alignment;
+      }
+    }
+
+    function deleteEntireTable() {
+      if (confirm("确定删除整个表格吗？")) {
+        table.parentElement.innerHTML = '<div class="py-6 text-center text-stone-400 text-xs">表格已删除（按 Cmd+Z 可撤销）</div>';
+        toolbar.classList.add('hidden');
+      }
+    }
+
+    function updateHint() {
+      const rows = table.rows.length - 1;
+      const cols = table.rows[0]?.cells.length || 0;
+      document.getElementById('table-hint').innerText = `当前行列：${rows} 行 ${cols} 列 · 在最后一格按 Tab 自动增行`;
+    }
+
+    // 代码块一键复制交互
+    function copyCodeContent() {
+      const text = document.getElementById('code-content').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btnText = document.getElementById('copy-text');
+        const btnIcon = document.getElementById('copy-icon');
+        btnText.innerText = '已复制 ✓';
+        btnIcon.innerText = '✅';
+        setTimeout(() => {
+          btnText.innerText = '复制代码';
+          btnIcon.innerText = '📋';
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
