@@ -368,7 +368,7 @@ export const App: React.FC = () => {
 
       {/* Toast 提示浮层 */}
       {toastMessage && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-stone-900/95 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div id="app-toast" className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-stone-900/95 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <Check className="w-3.5 h-3.5 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
