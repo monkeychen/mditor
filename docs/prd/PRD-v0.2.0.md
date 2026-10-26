@@ -3,7 +3,7 @@ doc: PRD
 product: v0.2.0
 milestone: -
 date: 2026-10-26
-status: reviewing
+status: approved
 ---
 
 # PRD-v0.2.0：对标 Typora 的真所见即所得内核
