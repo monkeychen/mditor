@@ -25,14 +25,20 @@ import { createCodeBlockKeymapPlugin } from './code/codeBlockKeymap';
 import { createImageWidgetPlugin } from './image/imageWidgetPlugin';
 import { createImagePastePlugin } from './image/imagePastePlugin';
 import { createPlaceholderPlugin } from './placeholderPlugin';
+import { createFocusModePlugin } from './focusModePlugin';
+import { createTypewriterPlugin } from './typewriterPlugin';
+import { createTaskListPlugin } from './taskListPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
   initialContent?: string;
   docFilePath?: string | null;
   autoFocus?: boolean;
+  focusMode?: boolean;
+  typewriterMode?: boolean;
   onChange?: (markdown: string) => void;
   onCursorChange?: (line: number, col: number) => void;
+  onActiveHeadingChange?: (headingIndex: number) => void;
   className?: string;
 }
 
@@ -42,6 +48,8 @@ export interface MilkdownEditorRef {
   focus: () => void;
   getCursorPosition: () => { line: number; col: number };
   setCursorPosition: (line: number, col: number) => void;
+  insertTable: (rows: number, cols: number) => void;
+  scrollToHeading: (headingIndex: number) => void;
 }
 
 export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>(
@@ -50,8 +58,11 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       initialContent = '',
       docFilePath = null,
       autoFocus = true,
+      focusMode = false,
+      typewriterMode = false,
       onChange,
       onCursorChange: _onCursorChange,
+      onActiveHeadingChange,
       className = '',
     },
     ref
@@ -59,10 +70,15 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const containerRef = useRef<HTMLDivElement | null>(null);
     const editorInstanceRef = useRef<Editor | null>(null);
     const docFilePathRef = useRef<string | null>(docFilePath);
+    const onChangeRef = useRef(onChange);
 
     useEffect(() => {
       docFilePathRef.current = docFilePath;
     }, [docFilePath]);
+
+    useEffect(() => {
+      onChangeRef.current = onChange;
+    }, [onChange]);
 
     const [tableToolbarState, setTableToolbarState] = useState<TableToolbarState>({
       visible: false,
@@ -135,6 +151,44 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       setCursorPosition: (_line: number, _col: number) => {
         // 后续可通过 ProseMirror doc 遍历具体位置设置选区
       },
+      insertTable: (rows: number, cols: number) => {
+        const editor = editorInstanceRef.current;
+        if (!editor) return;
+        try {
+          editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            const parser = ctx.get(parserCtx);
+            const safeRows = Math.max(2, rows);
+            const safeCols = Math.max(1, cols);
+            const headers = Array.from({ length: safeCols }, (_, i) => `表头 ${i + 1}`).join(' | ');
+            const dividers = Array.from({ length: safeCols }, () => '---').join(' | ');
+            const bodyRows = Array.from({ length: safeRows - 1 }, () =>
+              Array.from({ length: safeCols }, () => '内容').join(' | ')
+            )
+              .map((r) => `| ${r} |`)
+              .join('\n');
+            const tableMd = `| ${headers} |\n| ${dividers} |\n${bodyRows}\n`;
+            const parsedDoc = parser(tableMd);
+            if (!parsedDoc || !parsedDoc.firstChild) return;
+            const tr = view.state.tr.replaceSelectionWith(parsedDoc.firstChild);
+            view.dispatch(tr.scrollIntoView());
+            view.focus();
+          });
+        } catch (e) {
+          console.error('[Milkdown] Failed to insert table:', e);
+        }
+      },
+      scrollToHeading: (headingIndex: number) => {
+        const container = containerRef.current;
+        if (!container) return;
+        const headings = container.querySelectorAll(
+          '.ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6'
+        );
+        const target = headings[headingIndex] as HTMLElement | undefined;
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
     }));
 
     useEffect(() => {
@@ -161,6 +215,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           ctx.update(prosePluginsCtx, (prev) => [
             ...prev,
             createPlaceholderPlugin('开始书写，或输入 # 创建标题、- 创建列表、| 创建表格...'),
+            createFocusModePlugin(),
+            createTypewriterPlugin(),
+            createTaskListPlugin(),
             createDelimiterPlugin(),
             createAutoPairPlugin(),
             createFormatKeymapPlugin(),
@@ -172,8 +229,8 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createImagePastePlugin(() => docFilePathRef.current),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
-            if (!isEffectCancelled && onChange) {
-              onChange(markdown);
+            if (!isEffectCancelled && onChangeRef.current) {
+              onChangeRef.current(markdown);
             }
           });
         })
@@ -225,6 +282,29 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       };
     }, []); // 仅挂载一次，内容更新通过 setMarkdown 控制
 
+    const handleScroll = () => {
+      if (!onActiveHeadingChange || !containerRef.current) return;
+      const container = containerRef.current;
+      const headings = container.querySelectorAll(
+        '.ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6'
+      );
+      if (headings.length === 0) return;
+
+      const containerTop = container.getBoundingClientRect().top;
+      let activeIndex = 0;
+
+      for (let i = 0; i < headings.length; i++) {
+        const rect = headings[i].getBoundingClientRect();
+        if (rect.top <= containerTop + 96) {
+          activeIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      onActiveHeadingChange(activeIndex);
+    };
+
     const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
 
@@ -239,7 +319,8 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         target.closest('.table-toolbar') ||
         target.closest('.image-source-pill') ||
         target.closest('.code-copy-btn') ||
-        target.closest('.code-lang-selector')
+        target.closest('.code-lang-selector') ||
+        target.closest('.task-list-checkbox')
       ) {
         return;
       }
@@ -257,6 +338,14 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       }
     };
 
+    const modeClasses = [
+      focusMode ? 'focus-mode-enabled' : '',
+      typewriterMode ? 'typewriter-mode-enabled' : '',
+      className,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     return (
       <div className="relative w-full h-full overflow-hidden bg-white" onClick={handleContainerClick}>
         <TableToolbar
@@ -265,8 +354,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           containerRect={containerRef.current?.getBoundingClientRect()}
         />
         <div
-          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto ${className}`}
+          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto ${modeClasses}`}
           ref={containerRef}
+          onScroll={handleScroll}
         />
       </div>
     );

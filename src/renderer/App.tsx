@@ -1,17 +1,39 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTabs } from './hooks/useTabs';
-import { MilkdownEditor } from './editor/wysiwyg/MilkdownEditor';
+import { MilkdownEditor, MilkdownEditorRef } from './editor/wysiwyg/MilkdownEditor';
 import { SourceEditor } from './editor/source/SourceEditor';
 import TabBar from './components/TabBar';
 import OutlineDrawer from './components/OutlineDrawer';
 import UnsavedConfirmModal from './components/UnsavedConfirmModal';
 import SearchPanel from './components/SearchPanel';
-import { extractOutline } from './utils/outline';
+import { WordCountPopover } from './components/WordCountPopover';
+import { InsertTableModal } from './components/InsertTableModal';
+import { extractOutline, OutlineItem } from './utils/outline';
+import { calculateDocumentStats } from './utils/counter';
 import { findMatches, replaceSingle, replaceAll } from './utils/search';
 import { copyWechatHtmlToClipboard } from './utils/wechatFormatter';
 import { exportToHtml, exportToPdf } from './services/exportService';
-import { openDocument, saveDocument } from './services/fileService';
-import { FolderOpen, Save, AlignLeft, Search, Share2, Check, FileCode, FileText } from 'lucide-react';
+import {
+  openDocument,
+  openDocumentByPath,
+  openFolderDialog,
+  scanDirectoryTree,
+  saveDocument,
+} from './services/fileService';
+import type { FileTreeNode } from '../types';
+import {
+  FolderOpen,
+  Save,
+  AlignLeft,
+  Search,
+  Share2,
+  Check,
+  FileCode,
+  FileText,
+  Table,
+  Eye,
+  AlignCenter,
+} from 'lucide-react';
 
 const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
 
@@ -75,16 +97,36 @@ export const App: React.FC = () => {
     cursorCol: 1,
   });
 
+  const milkdownRef = useRef<MilkdownEditorRef | null>(null);
+
   const [isOutlineOpen, setIsOutlineOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+
+  // 文件树状态 (Typora 双视图侧边栏：文件 / 大纲)
+  const [currentFolderPath, setCurrentFolderPath] = useState<string | null>(null);
+  const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
+
+  // 专注模式 (F8) 与打字机滚动模式 (F9)
+  const [focusMode, setFocusMode] = useState(false);
+  const [typewriterMode, setTypewriterMode] = useState(false);
+
+  // 字数统计浮窗与插入表格弹窗
+  const [isWordCountOpen, setIsWordCountOpen] = useState(false);
+  const [isInsertTableOpen, setIsInsertTableOpen] = useState(false);
 
   // 编辑器模式 (即时渲染 vs 纯源码)
   const currentMode = activeTab.mode || 'wysiwyg';
 
   const handleToggleMode = useCallback(() => {
+    if (currentMode === 'wysiwyg' && milkdownRef.current) {
+      const latestMd = milkdownRef.current.getMarkdown();
+      if (latestMd && latestMd !== activeTab.content) {
+        updateTabContent(activeTab.id, latestMd);
+      }
+    }
     const nextMode = currentMode === 'wysiwyg' ? 'source' : 'wysiwyg';
     updateTabMode(activeTab.id, nextMode);
-  }, [currentMode, activeTab.id, updateTabMode]);
+  }, [currentMode, activeTab.id, activeTab.content, updateTabContent, updateTabMode]);
 
   // 搜索替换状态
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -106,10 +148,28 @@ export const App: React.FC = () => {
     }, 2500);
   }, []);
 
-  // 提取大纲
+  // 提取大纲与文档详细字数统计
   const outline = useMemo(() => {
     return extractOutline(activeTab.content);
   }, [activeTab.content]);
+
+  const docStats = useMemo(() => {
+    return calculateDocumentStats(activeTab.content);
+  }, [activeTab.content]);
+
+  // 当打开了具有本地路径的文档且当前尚未加载其父目录时，自动扫描所在目录填充侧边栏文件树
+  useEffect(() => {
+    if (!activeTab.filePath) return;
+    const lastSlash = activeTab.filePath.lastIndexOf('/');
+    if (lastSlash <= 0) return;
+    const parentDir = activeTab.filePath.substring(0, lastSlash);
+    if (!currentFolderPath || !activeTab.filePath.startsWith(currentFolderPath)) {
+      setCurrentFolderPath(parentDir);
+      scanDirectoryTree(parentDir).then((tree) => {
+        setFileTree(tree);
+      });
+    }
+  }, [activeTab.filePath, currentFolderPath]);
 
   // 搜索匹配计算
   const matches = useMemo(() => {
@@ -122,16 +182,29 @@ export const App: React.FC = () => {
     }
   }, [matches, currentMatchIndex]);
 
-  // 快捷键监听
+  // 快捷键监听 (对齐 Typora 全局快捷键)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
       if (isMeta && e.key === '/') {
         e.preventDefault();
         handleToggleMode();
-      } else if (isMeta && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
+      } else if (
+        isMeta &&
+        e.shiftKey &&
+        (e.key === 'o' || e.key === 'O' || e.key === 'l' || e.key === 'L')
+      ) {
         e.preventDefault();
         setIsOutlineOpen((prev) => !prev);
+      } else if (isMeta && e.altKey && (e.key === 't' || e.key === 'T' || e.code === 'KeyT')) {
+        e.preventDefault();
+        setIsInsertTableOpen(true);
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        setFocusMode((prev) => !prev);
+      } else if (e.key === 'F9') {
+        e.preventDefault();
+        setTypewriterMode((prev) => !prev);
       } else if (isMeta && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         setIsSearchOpen(true);
@@ -156,24 +229,30 @@ export const App: React.FC = () => {
     setCurrentMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
   }, [matches]);
 
-  // 替换单个
+  // 替换单个 (同时同步 Tab 状态与 Milkdown WYSIWYG 视图)
   const handleReplaceSingle = useCallback(() => {
     if (matches.length === 0) return;
     const currentMatch = matches[currentMatchIndex] || matches[0];
     const newContent = replaceSingle(activeTab.content, currentMatch, replaceText);
     updateTabContent(activeTab.id, newContent);
+    if (currentMode === 'wysiwyg') {
+      milkdownRef.current?.setMarkdown(newContent);
+    }
     showToast('已替换 1 处匹配文本');
-  }, [activeTab, matches, currentMatchIndex, replaceText, updateTabContent, showToast]);
+  }, [activeTab, matches, currentMatchIndex, replaceText, currentMode, updateTabContent, showToast]);
 
-  // 全部替换
+  // 全部替换 (同时同步 Tab 状态与 Milkdown WYSIWYG 视图)
   const handleReplaceAll = useCallback(() => {
     if (!searchQuery) return;
     const res = replaceAll(activeTab.content, searchQuery, replaceText);
     if (res.count > 0) {
       updateTabContent(activeTab.id, res.content);
+      if (currentMode === 'wysiwyg') {
+        milkdownRef.current?.setMarkdown(res.content);
+      }
       showToast(`已完成 ${res.count} 处全部替换`);
     }
-  }, [activeTab, searchQuery, replaceText, updateTabContent, showToast]);
+  }, [activeTab, searchQuery, replaceText, currentMode, updateTabContent, showToast]);
 
   // 保存当前 Tab
   const handleSaveActiveTab = useCallback(async () => {
@@ -192,6 +271,67 @@ export const App: React.FC = () => {
       createNewTab(res.fileName, res.content, res.filePath);
     }
   }, [createNewTab]);
+
+  // 打开本地文件夹至侧边栏文件树
+  const handleOpenFolder = useCallback(async () => {
+    const res = await openFolderDialog();
+    if (res) {
+      setCurrentFolderPath(res.folderPath);
+      setFileTree(res.tree);
+    }
+  }, []);
+
+  // 点击侧边栏文件树中的 Markdown 文件直接打开或切换
+  const handleSelectSidebarFile = useCallback(
+    async (filePath: string) => {
+      const existing = tabs.find((t) => t.filePath === filePath);
+      if (existing) {
+        switchTab(existing.id);
+        return;
+      }
+      const res = await openDocumentByPath(filePath);
+      if (res) {
+        createNewTab(res.fileName, res.content, res.filePath);
+      }
+    },
+    [tabs, switchTab, createNewTab]
+  );
+
+  // 点击侧边栏大纲项跳转至对应章节
+  const handleSelectOutlineHeading = useCallback(
+    (item: OutlineItem) => {
+      setActiveHeadingId(item.id);
+      const idx = outline.findIndex((o) => o.id === item.id);
+      if (currentMode === 'wysiwyg' && idx >= 0) {
+        milkdownRef.current?.scrollToHeading(idx);
+      } else {
+        updateTabCursor(activeTab.id, item.line, 1);
+      }
+    },
+    [outline, currentMode, activeTab.id, updateTabCursor]
+  );
+
+  // 插入指定行列数的 GFM 表格
+  const handleInsertTable = useCallback(
+    (rows: number, cols: number) => {
+      if (currentMode === 'wysiwyg' && milkdownRef.current) {
+        milkdownRef.current.insertTable(rows, cols);
+        showToast(`已插入 ${rows} 行 × ${cols} 列表格`);
+      } else {
+        const headers = Array.from({ length: cols }, (_, i) => `表头 ${i + 1}`).join(' | ');
+        const dividers = Array.from({ length: cols }, () => '---').join(' | ');
+        const bodyRows = Array.from({ length: Math.max(1, rows - 1) }, () =>
+          Array.from({ length: cols }, () => '内容').join(' | ')
+        )
+          .map((r) => `| ${r} |`)
+          .join('\n');
+        const tableMd = `\n| ${headers} |\n| ${dividers} |\n${bodyRows}\n`;
+        updateTabContent(activeTab.id, activeTab.content + tableMd);
+        showToast(`已插入 ${rows} 行 × ${cols} 列表格`);
+      }
+    },
+    [currentMode, activeTab, updateTabContent, showToast]
+  );
 
   // 复制微信公众号富文本
   const handleCopyWechat = useCallback(async () => {
@@ -241,6 +381,7 @@ export const App: React.FC = () => {
           <button
             onClick={() => setIsOutlineOpen((prev) => !prev)}
             title="切换大纲 (Cmd+Shift+O)"
+            data-testid="sidebar-toggle-btn"
             className={`p-1.5 rounded-md transition ${
               isOutlineOpen ? 'bg-black/10 text-stone-900' : 'hover:bg-black/5 text-stone-600'
             }`}
@@ -248,8 +389,17 @@ export const App: React.FC = () => {
             <AlignLeft className="w-4 h-4" />
           </button>
           <button
+            onClick={() => setIsInsertTableOpen(true)}
+            title="插入表格 (⌥⌘T)"
+            data-testid="toolbar-insert-table-btn"
+            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
+          >
+            <Table className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setIsSearchOpen((prev) => !prev)}
             title="查找与替换 (Cmd+F)"
+            data-testid="toolbar-search-btn"
             className={`p-1.5 rounded-md transition ${
               isSearchOpen ? 'bg-amber-100 text-amber-800' : 'hover:bg-black/5 text-stone-600'
             }`}
@@ -315,23 +465,36 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* 中间工作区：左侧大纲抽屉 + 右侧编辑器 */}
+      {/* 中间工作区：左侧双视图侧边栏 (文件/大纲) + 右侧连续画布编辑器 */}
       <div className="flex-1 flex overflow-hidden relative">
         <OutlineDrawer
           isOpen={isOutlineOpen}
           outline={outline}
           activeHeadingId={activeHeadingId}
-          onSelectHeading={(item) => setActiveHeadingId(item.id)}
+          onSelectHeading={handleSelectOutlineHeading}
+          fileTree={fileTree}
+          currentFolderPath={currentFolderPath}
+          activeFilePath={activeTab.filePath}
+          onSelectFile={handleSelectSidebarFile}
+          onOpenFolder={handleOpenFolder}
         />
 
         <main className="flex-1 overflow-hidden relative bg-white">
           {currentMode === 'wysiwyg' ? (
             <MilkdownEditor
+              ref={milkdownRef}
               key={`${activeTab.id}-wysiwyg`}
               initialContent={activeTab.content}
               docFilePath={activeTab.filePath}
+              focusMode={focusMode}
+              typewriterMode={typewriterMode}
               onChange={(markdown) => updateTabContent(activeTab.id, markdown)}
               onCursorChange={(line, col) => updateTabCursor(activeTab.id, line, col)}
+              onActiveHeadingChange={(idx) => {
+                if (outline[idx]) {
+                  setActiveHeadingId(outline[idx].id);
+                }
+              }}
             />
           ) : (
             <SourceEditor
@@ -363,9 +526,9 @@ export const App: React.FC = () => {
         </main>
       </div>
 
-      {/* 底部状态栏 */}
-      <footer className="h-6.5 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-500 font-mono select-none z-20">
-        <div className="flex items-center space-x-3">
+      {/* 底部 Typora 风格极简状态栏 */}
+      <footer className="h-7 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-500 font-mono select-none z-20 relative">
+        <div className="flex items-center space-x-2">
           <button
             onClick={handleToggleMode}
             title="点击切换编辑模式 (⌘/)"
@@ -384,13 +547,65 @@ export const App: React.FC = () => {
               </>
             )}
           </button>
+
+          <button
+            onClick={() => setFocusMode((prev) => !prev)}
+            title="切换专注模式 (F8)"
+            data-testid="focus-mode-toggle-btn"
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition ${
+              focusMode
+                ? 'bg-blue-500/15 text-blue-700 font-semibold'
+                : 'hover:bg-black/5 text-stone-500'
+            }`}
+          >
+            <Eye className="w-3 h-3" />
+            <span>专注模式</span>
+          </button>
+
+          <button
+            onClick={() => setTypewriterMode((prev) => !prev)}
+            title="切换打字机滚动模式 (F9)"
+            data-testid="typewriter-mode-toggle-btn"
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition ${
+              typewriterMode
+                ? 'bg-blue-500/15 text-blue-700 font-semibold'
+                : 'hover:bg-black/5 text-stone-500'
+            }`}
+          >
+            <AlignCenter className="w-3 h-3" />
+            <span>打字机</span>
+          </button>
+
           <span>UTF-8</span>
         </div>
-        <div className="flex items-center space-x-4 text-stone-400">
-          <span>{activeTab.content.length} 字符</span>
+
+        <div className="flex items-center space-x-3 text-stone-500 relative">
+          <button
+            onClick={() => setIsWordCountOpen((prev) => !prev)}
+            title="点击查看字数与阅读时间详情"
+            data-testid="word-count-trigger-btn"
+            className="px-2 py-0.5 rounded hover:bg-black/5 text-stone-600 transition flex items-center gap-2"
+          >
+            <span>{docStats.wordCount} 词</span>
+            <span className="text-stone-300">|</span>
+            <span>{activeTab.content.length} 字符</span>
+          </button>
           <span>{outline.length} 章节</span>
+
+          <WordCountPopover
+            stats={docStats}
+            isOpen={isWordCountOpen}
+            onClose={() => setIsWordCountOpen(false)}
+          />
         </div>
       </footer>
+
+      {/* 插入表格弹窗 (⌥⌘T) */}
+      <InsertTableModal
+        isOpen={isInsertTableOpen}
+        onClose={() => setIsInsertTableOpen(false)}
+        onInsert={handleInsertTable}
+      />
 
       {/* 未保存阻断确认 Modal */}
       <UnsavedConfirmModal

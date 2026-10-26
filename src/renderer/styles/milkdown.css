@@ -156,6 +156,44 @@
   display: inline;
 }
 
+/* GFM 任务列表交互式复选框 (Task List Checkbox) */
+.milkdown-wysiwyg-container .ProseMirror li.task-list-item {
+  list-style-type: none;
+  margin-left: -1.15rem;
+}
+
+.milkdown-wysiwyg-container .ProseMirror input.task-list-checkbox {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  accent-color: #2563EB;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.milkdown-wysiwyg-container .ProseMirror li.task-list-item-checked > p {
+  color: #9CA3AF;
+  text-decoration: line-through;
+}
+
+/* 专注模式 (Focus Mode - F8)：非当前活动顶层块淡化至 0.25 不透明度 */
+.milkdown-wysiwyg-container.focus-mode-enabled .ProseMirror > * {
+  opacity: 0.25;
+  transition: opacity 0.18s ease-in-out;
+}
+
+.milkdown-wysiwyg-container.focus-mode-enabled .ProseMirror > .focus-mode-active {
+  opacity: 1;
+}
+
+/* 打字机滚动模式 (Typewriter Mode - F9)：提供充足上下留白以允许首尾行垂直居中 */
+.milkdown-wysiwyg-container.typewriter-mode-enabled .milkdown {
+  padding-top: 38vh;
+  padding-bottom: 45vh;
+}
+
 /* 分割线 */
 .milkdown-wysiwyg-container .ProseMirror hr {
   border: none;

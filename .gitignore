@@ -8,8 +8,8 @@ dist/
 dist-electron/
 out/
 build/
-release/
-release-build/
+/release/
+/release-build/
 
 # macOS system files
 .DS_Store
