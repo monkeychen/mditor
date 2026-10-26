@@ -1,0 +1,125 @@
+/* Milkdown / ProseMirror macOS 沉浸式排版样式 */
+
+.milkdown-wysiwyg-container .ProseMirror {
+  outline: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #1F2937;
+  user-select: text !important;
+}
+
+/* 标题样式：尺寸恒定、精致内敛 */
+.milkdown-wysiwyg-container .ProseMirror h1 {
+  font-size: 2rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.025em;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.milkdown-wysiwyg-container .ProseMirror h2 {
+  font-size: 1.5rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.02em;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 0.35rem;
+}
+
+.milkdown-wysiwyg-container .ProseMirror h3 {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.milkdown-wysiwyg-container .ProseMirror h4 {
+  font-size: 1.1rem;
+  line-height: 1.45;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 文本段落 */
+.milkdown-wysiwyg-container .ProseMirror p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+/* 行内样式 */
+.milkdown-wysiwyg-container .ProseMirror strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.milkdown-wysiwyg-container .ProseMirror em {
+  font-style: italic;
+}
+
+.milkdown-wysiwyg-container .ProseMirror del {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.milkdown-wysiwyg-container .ProseMirror code {
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #B45309;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+}
+
+/* 容器化引用块 */
+.milkdown-wysiwyg-container .ProseMirror blockquote {
+  border-left: 4px solid #3B82F6;
+  background-color: rgba(244, 241, 234, 0.6);
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 0.75rem 1rem;
+  margin: 1.25rem 0;
+  color: #4B5563;
+  font-style: italic;
+}
+
+.milkdown-wysiwyg-container .ProseMirror blockquote p {
+  margin: 0;
+}
+
+/* 列表排版 */
+.milkdown-wysiwyg-container .ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.milkdown-wysiwyg-container .ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.milkdown-wysiwyg-container .ProseMirror li {
+  margin: 0.35rem 0;
+}
+
+.milkdown-wysiwyg-container .ProseMirror li p {
+  margin: 0;
+  display: inline;
+}
+
+/* 分割线 */
+.milkdown-wysiwyg-container .ProseMirror hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+}

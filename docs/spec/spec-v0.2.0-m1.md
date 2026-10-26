@@ -3,7 +3,7 @@ doc: spec
 product: v0.2.0
 milestone: m1
 date: 2026-10-26
-status: reviewing
+status: approved
 ---
 
 # spec-v0.2.0-m1: 新内核接入、零跳动所见即所得与双模式切换系统
@@ -224,7 +224,7 @@ export interface SourceEditorProps {
 
 | 编号 | 内容 | 覆盖 AC | 依赖 | 状态 |
 |---|---|---|---|---|
-| **T201** | 安装与集成 Milkdown 核心包（`@milkdown/core`, `@milkdown/preset-commonmark`, `@milkdown/preset-gfm` 等），封装 `MilkdownEditor.tsx` | AC-8.1, AC-17.1 | 无 | 待开始 |
+| **T201** | 安装与集成 Milkdown 核心包（`@milkdown/core`, `@milkdown/preset-commonmark`, `@milkdown/preset-gfm` 等），封装 `MilkdownEditor.tsx` | AC-8.1, AC-17.1 | 无 | 已完成 |
 | **T202** | 实现排版零跳动引擎与局部定界符露出 ProseMirror 插件（标题字号恒定、粗斜体无抖动露出） | AC-8.2, AC-8.3 | T201 | 待开始 |
 | **T203** | 配置完善 InputRules 与键盘快捷操作（即时符号触发、回车延续列表、Tab 缩进、符号自动配对包裹） | AC-9.1, AC-9.2, AC-9.3, AC-9.4 | T201 | 待开始 |
 | **T204** | 封装纯源码模式组件 `SourceEditor.tsx` 并实现 `⌘/` 快捷键与状态栏双模式切换状态机与光标映射 | AC-10.1, AC-10.2, AC-10.3, AC-10.4 | T201 | 待开始 |
