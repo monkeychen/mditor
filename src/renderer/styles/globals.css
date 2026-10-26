@@ -113,3 +113,9 @@ body {
   margin: 16px 0 !important;
   color: transparent !important;
 }
+
+/* 代码块卡片 */
+.cm-code-block-header {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: none;
+}

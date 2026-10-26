@@ -8,6 +8,7 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
+import { parseCodeBlockInfo, copyCodeToClipboard } from '../utils/codeBlock';
 
 // 任务复选框 Widget
 export class TaskWidget extends WidgetType {
@@ -62,7 +63,6 @@ export class ImageWidget extends WidgetType {
     img.alt = this.alt;
     img.className = 'max-w-full max-h-[380px] object-contain rounded';
 
-    // 容错处理：若本地文件尚未就绪或路径相对显示，展示轻量占位
     img.onerror = () => {
       img.style.display = 'none';
       const placeholder = document.createElement('div');
@@ -82,6 +82,48 @@ export class ImageWidget extends WidgetType {
     }
 
     return card;
+  }
+}
+
+// 代码块 Header Widget (AC2.5)
+export class CodeHeaderWidget extends WidgetType {
+  constructor(readonly language: string, readonly code: string) {
+    super();
+  }
+
+  eq(other: CodeHeaderWidget): boolean {
+    return other.language === this.language && other.code === this.code;
+  }
+
+  toDOM(): HTMLElement {
+    const header = document.createElement('div');
+    header.className = 'cm-code-block-header flex items-center justify-between px-3 py-1 bg-stone-800 text-stone-300 rounded-t-lg font-mono text-xs select-none mt-3';
+
+    const langLabel = document.createElement('span');
+    langLabel.className = 'font-semibold text-stone-300 text-[11px]';
+    langLabel.textContent = this.language;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'flex items-center gap-1 px-2 py-0.5 hover:bg-white/10 rounded text-[11px] text-stone-300 hover:text-white transition cursor-pointer';
+    copyBtn.textContent = '复制代码';
+
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyCodeToClipboard(this.code).then((success) => {
+        if (success) {
+          copyBtn.textContent = '已复制 ✓';
+          copyBtn.className = 'flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-emerald-400 font-medium transition cursor-default';
+          setTimeout(() => {
+            copyBtn.textContent = '复制代码';
+            copyBtn.className = 'flex items-center gap-1 px-2 py-0.5 hover:bg-white/10 rounded text-[11px] text-stone-300 hover:text-white transition cursor-pointer';
+          }, 1500);
+        }
+      });
+    });
+
+    header.appendChild(langLabel);
+    header.appendChild(copyBtn);
+    return header;
   }
 }
 
@@ -115,6 +157,18 @@ export function computeLiveDecorations(state: EditorState): DecorationSet {
             );
           }
         }
+      }
+
+      // 围栏代码块处理 FencedCode (AC2.5)
+      if (name === 'FencedCode') {
+        const rawFencedText = state.sliceDoc(from, to);
+        const codeInfo = parseCodeBlockInfo(rawFencedText);
+        widgets.push(
+          Decoration.widget({
+            widget: new CodeHeaderWidget(codeInfo.language, codeInfo.code),
+            side: -1,
+          }).range(from)
+        );
       }
 
       // 图片处理 (AC4.3)
