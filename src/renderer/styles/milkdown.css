@@ -1,34 +1,26 @@
-/* Milkdown / ProseMirror macOS 沉浸式排版与纸张工作区样式 */
+/* Milkdown / ProseMirror macOS 沉浸式排版与连续画布样式 (对标 Typora 原生无缝画布) */
 
 .milkdown-wysiwyg-container {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background-color: #FFFFFF;
   cursor: text;
-  background-color: transparent;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   box-sizing: border-box;
 }
 
-/* 沉浸式纸张工作台 (Typora 式明确编辑区视觉区分) */
+/* 连续正文工作区 (Typora 式居中沉浸排版，无浮动断裂卡片) */
 .milkdown-wysiwyg-container .milkdown {
   width: 100%;
   max-width: 840px;
-  min-height: calc(100% - 2rem);
-  background-color: #FFFFFF;
-  border-radius: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 12px 32px -4px rgba(0, 0, 0, 0.03);
-  padding: 3rem 3.5rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 3rem 2.5rem 25vh 2.5rem;
+  background-color: transparent;
   display: flex;
   flex-direction: column;
-  flex: 1;
   box-sizing: border-box;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.milkdown-wysiwyg-container .milkdown:focus-within {
-  border-color: rgba(59, 130, 246, 0.28);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 12px 32px -4px rgba(59, 130, 246, 0.05);
+  cursor: text;
 }
 
 .milkdown-wysiwyg-container .ProseMirror {
@@ -41,7 +33,6 @@
   cursor: text;
   min-height: 100%;
   flex: 1;
-  padding-bottom: 25vh; /* 底部呼吸留白，避免打字沉底 */
 }
 
 /* 空文档首行占位符 (Placeholder) */
@@ -53,7 +44,7 @@
   height: 0;
   font-style: normal;
   font-weight: 400;
-  font-size: 1rem;
+  font-size: 1.05rem;
   user-select: none;
 }
 
@@ -64,7 +55,7 @@
   font-weight: 700;
   color: #111827;
   letter-spacing: -0.025em;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   margin-bottom: 1rem;
 }
 
@@ -173,11 +164,7 @@
 }
 
 @media (max-width: 768px) {
-  .milkdown-wysiwyg-container {
-    padding: 1rem 0.5rem !important;
-  }
   .milkdown-wysiwyg-container .milkdown {
-    padding: 1.75rem 1.25rem !important;
-    border-radius: 0.75rem !important;
+    padding: 1.75rem 1.25rem 20vh 1.25rem !important;
   }
 }

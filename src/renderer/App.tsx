@@ -324,7 +324,7 @@ export const App: React.FC = () => {
           onSelectHeading={(item) => setActiveHeadingId(item.id)}
         />
 
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-hidden relative bg-white">
           {currentMode === 'wysiwyg' ? (
             <MilkdownEditor
               key={`${activeTab.id}-wysiwyg`}

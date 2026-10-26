@@ -233,14 +233,14 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     };
 
     return (
-      <div className="relative w-full h-full overflow-hidden" onClick={handleContainerClick}>
+      <div className="relative w-full h-full overflow-hidden bg-white" onClick={handleContainerClick}>
         <TableToolbar
           toolbarState={tableToolbarState}
           editorView={editorView}
           containerRect={containerRef.current?.getBoundingClientRect()}
         />
         <div
-          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto px-4 md:px-8 py-6 text-stone-800 ${className}`}
+          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto ${className}`}
           ref={containerRef}
         />
       </div>
