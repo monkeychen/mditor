@@ -10,6 +10,7 @@
     "package.json"
   ],
   "mac": {
+    "icon": "resources/icon.icns",
     "target": [
       {
         "target": "dmg",
@@ -43,6 +44,7 @@
     }
   },
   "win": {
+    "icon": "resources/icon.ico",
     "target": [
       {
         "target": "nsis",
@@ -61,6 +63,7 @@
     "createStartMenuShortcut": true
   },
   "linux": {
+    "icon": "resources/icons",
     "maintainer": "chenzhian <monkeychen@users.noreply.github.com>",
     "target": [
       {

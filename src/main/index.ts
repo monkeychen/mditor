@@ -11,6 +11,10 @@ const __dirname = path.dirname(__filename);
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
+  const iconPath = process.env.VITE_DEV_SERVER_URL
+    ? path.join(__dirname, '../../resources/icon.png')
+    : path.join(__dirname, '../dist/icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 720,
@@ -21,6 +25,7 @@ function createWindow() {
     backgroundColor: '#FAF8F5',
     vibrancy: 'under-window',
     visualEffectState: 'active',
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
