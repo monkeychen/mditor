@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTabs } from './hooks/useTabs';
-import Editor from './editor/Editor';
+import { MilkdownEditor } from './editor/wysiwyg/MilkdownEditor';
+import { SourceEditor } from './editor/source/SourceEditor';
 import TabBar from './components/TabBar';
 import OutlineDrawer from './components/OutlineDrawer';
 import UnsavedConfirmModal from './components/UnsavedConfirmModal';
@@ -58,6 +59,8 @@ export const App: React.FC = () => {
     switchTab,
     updateTabContent,
     updateTabFile,
+    updateTabMode,
+    updateTabCursor,
     requestCloseTab,
     confirmDiscardAndClose,
     cancelClose,
@@ -74,6 +77,14 @@ export const App: React.FC = () => {
 
   const [isOutlineOpen, setIsOutlineOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+
+  // 编辑器模式 (即时渲染 vs 纯源码)
+  const currentMode = activeTab.mode || 'wysiwyg';
+
+  const handleToggleMode = useCallback(() => {
+    const nextMode = currentMode === 'wysiwyg' ? 'source' : 'wysiwyg';
+    updateTabMode(activeTab.id, nextMode);
+  }, [currentMode, activeTab.id, updateTabMode]);
 
   // 搜索替换状态
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -115,7 +126,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
-      if (isMeta && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
+      if (isMeta && e.key === '/') {
+        e.preventDefault();
+        handleToggleMode();
+      } else if (isMeta && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault();
         setIsOutlineOpen((prev) => !prev);
       } else if (isMeta && (e.key === 'f' || e.key === 'F')) {
@@ -129,7 +143,7 @@ export const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [handleToggleMode]);
 
   // 搜索上一个 / 下一个
   const handleNextMatch = useCallback(() => {
@@ -311,12 +325,22 @@ export const App: React.FC = () => {
         />
 
         <main className="flex-1 overflow-hidden relative">
-          <Editor
-            key={activeTab.id}
-            initialDoc={activeTab.content}
-            docFilePath={activeTab.filePath}
-            onChange={(newContent) => updateTabContent(activeTab.id, newContent)}
-          />
+          {currentMode === 'wysiwyg' ? (
+            <MilkdownEditor
+              key={`${activeTab.id}-wysiwyg`}
+              initialContent={activeTab.content}
+              onChange={(markdown) => updateTabContent(activeTab.id, markdown)}
+              onCursorChange={(line, col) => updateTabCursor(activeTab.id, line, col)}
+            />
+          ) : (
+            <SourceEditor
+              key={`${activeTab.id}-source`}
+              content={activeTab.content}
+              cursorLine={activeTab.cursorLine}
+              onChange={(newContent) => updateTabContent(activeTab.id, newContent)}
+              onCursorChange={(line, col) => updateTabCursor(activeTab.id, line, col)}
+            />
+          )}
 
           {/* 悬浮查找替换面板 */}
           <SearchPanel
@@ -339,15 +363,29 @@ export const App: React.FC = () => {
       </div>
 
       {/* 底部状态栏 */}
-      <footer className="h-6.5 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-400 font-mono select-none z-20">
-        <div className="flex items-center space-x-4">
-          <span className="flex items-center">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
-            Markdown 实时预览
-          </span>
+      <footer className="h-6.5 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-500 font-mono select-none z-20">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleToggleMode}
+            title="点击切换编辑模式 (⌘/)"
+            data-testid="mode-toggle-btn"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-black/5 text-stone-700 transition"
+          >
+            {currentMode === 'wysiwyg' ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1" />
+                <span>🎨 实时渲染 (⌘/)</span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1" />
+                <span>📝 源码模式 (⌘/)</span>
+              </>
+            )}
+          </button>
           <span>UTF-8</span>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 text-stone-400">
           <span>{activeTab.content.length} 字符</span>
           <span>{outline.length} 章节</span>
         </div>

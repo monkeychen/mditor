@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { TabItem } from '../../types';
+import type { TabItem, EditorMode } from '../../types';
 
 export function createDefaultTab(
   fileName = 'Untitled.md',
@@ -13,6 +13,7 @@ export function createDefaultTab(
     content,
     isDirty: false,
     saveStatus: 'saved',
+    mode: 'wysiwyg',
     cursorLine: 1,
     cursorCol: 1,
   };
@@ -68,6 +69,37 @@ export function useTabs(initialTab?: TabItem) {
             content: newContent,
             isDirty: true,
             saveStatus: 'unsaved',
+          };
+        }
+        return tab;
+      })
+    );
+  }, []);
+
+  // 更新 Tab 的模式 (wysiwyg / source)
+  const updateTabMode = useCallback((tabId: string, mode: EditorMode) => {
+    setTabs((prev) =>
+      prev.map((tab) => {
+        if (tab.id === tabId) {
+          return {
+            ...tab,
+            mode,
+          };
+        }
+        return tab;
+      })
+    );
+  }, []);
+
+  // 更新 Tab 的光标位置
+  const updateTabCursor = useCallback((tabId: string, line: number, col: number) => {
+    setTabs((prev) =>
+      prev.map((tab) => {
+        if (tab.id === tabId) {
+          return {
+            ...tab,
+            cursorLine: line,
+            cursorCol: col,
           };
         }
         return tab;
@@ -185,6 +217,8 @@ export function useTabs(initialTab?: TabItem) {
     selectTabByIndex,
     updateTabContent,
     updateTabFile,
+    updateTabMode,
+    updateTabCursor,
     requestCloseTab,
     confirmDiscardAndClose,
     cancelClose,

@@ -27,13 +27,13 @@ test.describe('Desktop Electron E2E Flow (M1)', () => {
     const savedDot = await window.locator('.tab-item span[title="已保存"]').isVisible();
     expect(savedDot).toBe(true);
 
-    // 验证 CodeMirror 6 编辑器容器存在且包含渲染内容
-    const cmEditor = window.locator('.cm-editor');
-    await expect(cmEditor).toBeVisible();
+    // 验证默认以 Milkdown 所见即所得容器呈现
+    const milkdownEditor = window.locator('.milkdown-wysiwyg-container');
+    await expect(milkdownEditor).toBeVisible();
 
-    // 验证底部状态栏包含 UTF-8 和字符统计
+    // 验证底部状态栏包含模式与 UTF-8
     const footer = window.locator('footer');
-    await expect(footer).toContainText('Markdown 实时预览');
+    await expect(footer).toContainText('实时渲染');
     await expect(footer).toContainText('UTF-8');
 
     await app.close();

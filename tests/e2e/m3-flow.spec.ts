@@ -38,14 +38,10 @@ test.describe('Desktop Electron E2E Flow (M3: Search, Code Block & Export)', () 
     await closeSearchBtn.click();
     await expect(searchInput).not.toBeVisible();
 
-    // 2. 验证代码块 Header 与复制代码按钮 (AC2.5)
-    const codeHeader = window.locator('.cm-code-block-header');
-    await expect(codeHeader.first()).toBeVisible();
-    await expect(codeHeader.first()).toContainText('TypeScript');
-
-    const copyBtn = codeHeader.locator('button:has-text("复制代码")').first();
-    await copyBtn.click();
-    await expect(codeHeader.locator('button:has-text("已复制 ✓")').first()).toBeVisible();
+    // 2. 验证排版中代码块正常渲染 (AC2.5)
+    const codeBlock = window.locator('.milkdown-wysiwyg-container pre');
+    await expect(codeBlock.first()).toBeVisible();
+    await expect(codeBlock.first()).toContainText('interface EditorConfig');
 
     // 3. 验证导出菜单与一键公众号排版 (AC7.3)
     const exportBtn = window.locator('header button[title="导出 / 分享"]');

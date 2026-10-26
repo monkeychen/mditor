@@ -44,9 +44,9 @@ test.describe('Desktop Electron E2E Flow (M2: Tabs, Image & Outline)', () => {
     await toggleOutlineBtn.click();
     await expect(outlineDrawer).toHaveClass(/w-60/);
 
-    // 6. 验证 CodeMirror 6 内嵌图片卡片渲染 (AC4.3)
-    const imageCard = window.locator('.cm-live-image-card');
-    await expect(imageCard.first()).toBeVisible();
+    // 6. 验证排版内图片节点存在
+    const imageElem = window.locator('.milkdown-wysiwyg-container img[src*="macos-window"]');
+    await expect(imageElem).toHaveCount(1);
 
     await app.close();
   });

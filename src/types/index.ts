@@ -1,3 +1,5 @@
+export type EditorMode = 'wysiwyg' | 'source';
+
 export interface DocumentState {
   filePath: string | null;
   fileName: string;
@@ -16,6 +18,7 @@ export interface TabItem {
   content: string;
   isDirty: boolean;
   saveStatus: 'saved' | 'saving' | 'unsaved';
+  mode?: EditorMode;
   cursorLine: number;
   cursorCol: number;
 }
