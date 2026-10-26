@@ -196,7 +196,7 @@ export function resolveImageSource(rawSrc: string, docFilePath: string | null): 
 | 编号 | 内容 | 覆盖 AC | 依赖 | 状态 |
 |---|---|---|---|---|
 | **T211** | 研发交互式表格工具栏组件 `TableToolbar.tsx` 与 ProseMirror 浮动定位插件 | AC-11.1, AC-11.4 | M1 | 已完成 |
-| **T212** | 实现表格键盘导航增强：`Tab`/`Shift+Tab` 遍历与末行 Tab 自动增行逻辑 | AC-11.2, AC-11.3 | T211 | 待开始 |
+| **T212** | 实现表格键盘导航增强：`Tab`/`Shift+Tab` 遍历与末行 Tab 自动增行逻辑 | AC-11.2, AC-11.3 | T211 | 已完成 |
 | **T213** | 封装代码块自定义 NodeView `CodeBlockView`，实现右上角语言标签与一键复制代码功能 | AC-12.1, AC-12.2, AC-12.3 | M1 | 待开始 |
 | **T214** | 实现代码块键盘边界穿透逻辑（首行 `↑`、末行 `↓` 无缝跳出） | AC-12.4 | T213 | 待开始 |
 | **T215** | 封装增强型图片 NodeView `ImageView`：多源路径解析、加载失败占位卡片与源码浮层 | AC-13.1, AC-13.2, AC-13.3 | M1 | 待开始 |

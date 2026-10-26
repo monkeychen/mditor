@@ -18,6 +18,7 @@ import { createDelimiterPlugin } from './delimiterPlugin';
 import { createAutoPairPlugin } from './autoPairPlugin';
 import { createFormatKeymapPlugin } from './formatKeymapPlugin';
 import { createTableToolbarPlugin, TableToolbarState } from './table/tableToolbarPlugin';
+import { createTableNavKeymapPlugin } from './table/tableNavKeymap';
 import { TableToolbar } from './table/TableToolbar';
 import '../../styles/milkdown.css';
 
@@ -136,6 +137,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createAutoPairPlugin(),
             createFormatKeymapPlugin(),
             createTableToolbarPlugin(setTableToolbarState),
+            createTableNavKeymapPlugin(),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {
