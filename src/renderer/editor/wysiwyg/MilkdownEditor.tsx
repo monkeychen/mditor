@@ -22,10 +22,12 @@ import { createTableNavKeymapPlugin } from './table/tableNavKeymap';
 import { TableToolbar } from './table/TableToolbar';
 import { createCodeBlockWidgetPlugin } from './code/codeBlockWidgetPlugin';
 import { createCodeBlockKeymapPlugin } from './code/codeBlockKeymap';
+import { createImageWidgetPlugin } from './image/imageWidgetPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
   initialContent?: string;
+  docFilePath?: string | null;
   onChange?: (markdown: string) => void;
   onCursorChange?: (line: number, col: number) => void;
   className?: string;
@@ -40,10 +42,24 @@ export interface MilkdownEditorRef {
 }
 
 export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>(
-  ({ initialContent = '', onChange, onCursorChange: _onCursorChange, className = '' }, ref) => {
+  (
+    {
+      initialContent = '',
+      docFilePath = null,
+      onChange,
+      onCursorChange: _onCursorChange,
+      className = '',
+    },
+    ref
+  ) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const editorInstanceRef = useRef<Editor | null>(null);
     const isDestroyedRef = useRef(false);
+    const docFilePathRef = useRef<string | null>(docFilePath);
+
+    useEffect(() => {
+      docFilePathRef.current = docFilePath;
+    }, [docFilePath]);
 
     const [tableToolbarState, setTableToolbarState] = useState<TableToolbarState>({
       visible: false,
@@ -142,6 +158,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createTableNavKeymapPlugin(),
             createCodeBlockWidgetPlugin(),
             createCodeBlockKeymapPlugin(),
+            createImageWidgetPlugin(() => docFilePathRef.current),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {

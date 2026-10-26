@@ -329,6 +329,7 @@ export const App: React.FC = () => {
             <MilkdownEditor
               key={`${activeTab.id}-wysiwyg`}
               initialContent={activeTab.content}
+              docFilePath={activeTab.filePath}
               onChange={(markdown) => updateTabContent(activeTab.id, markdown)}
               onCursorChange={(line, col) => updateTabCursor(activeTab.id, line, col)}
             />
