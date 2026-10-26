@@ -61,6 +61,7 @@
     "createStartMenuShortcut": true
   },
   "linux": {
+    "maintainer": "chenzhian <monkeychen@users.noreply.github.com>",
     "target": [
       {
         "target": "AppImage",
