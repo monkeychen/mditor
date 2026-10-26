@@ -7,10 +7,12 @@ import {
   serializerCtx,
   parserCtx,
   editorStateCtx,
+  prosePluginsCtx,
 } from '@milkdown/core';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
+import { createDelimiterPlugin } from './delimiterPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -108,6 +110,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         .config((ctx) => {
           ctx.set(rootCtx, containerRef.current!);
           ctx.set(defaultValueCtx, initialContent);
+          ctx.update(prosePluginsCtx, (prev) => [...prev, createDelimiterPlugin()]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isDestroyedRef.current && onChange) {
               onChange(markdown);
