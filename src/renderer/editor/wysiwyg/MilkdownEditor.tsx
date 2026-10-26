@@ -8,6 +8,7 @@ import {
   parserCtx,
   editorStateCtx,
   prosePluginsCtx,
+  remarkStringifyOptionsCtx,
 } from '@milkdown/core';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
@@ -112,6 +113,13 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         .config((ctx) => {
           ctx.set(rootCtx, containerRef.current!);
           ctx.set(defaultValueCtx, initialContent);
+          ctx.update(remarkStringifyOptionsCtx, (prev) => ({
+            ...prev,
+            bullet: '-' as const,
+            rule: '-' as const,
+            emphasis: '*' as const,
+            strong: '*' as const,
+          }));
           ctx.update(prosePluginsCtx, (prev) => [
             ...prev,
             createDelimiterPlugin(),
