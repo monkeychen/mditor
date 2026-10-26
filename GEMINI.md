@@ -1,9 +1,10 @@
 # GEMINI.md - mditor 项目规范
 
 ## 1. 项目定位与目标
-- **定位**：一款兼具 macOS 极致优雅视觉与丝滑交互体验的跨平台 Markdown 编辑器。
-- **核心基调**：轻量沉浸、本地优先（Local-first）、即时所见即所得（Live Preview / WYSIWYG）、原生级打字手感。
-- **技术栈**：Electron + TypeScript + Vite + React + Tailwind CSS + CodeMirror 6。
+- **定位**：一款兼具 macOS 极致优雅视觉与丝滑交互体验的跨平台 Markdown 编辑器，**交互体验全面对标 Typora**。
+- **核心基调**：轻量沉浸、本地优先（Local-first）、真所见即所得（WYSIWYG）+ 源码模式双模式、原生级打字手感。
+- **技术栈**：Electron + TypeScript + Vite + React + Tailwind CSS + Milkdown（ProseMirror + remark，所见即所得）+ CodeMirror 6（源码模式 / 代码块）。
+- **对标红线**：功能与交互可对齐 Typora，但严禁使用 Typora 的名称、图标、内置主题 CSS 或任何代码。
 
 ---
 
@@ -23,7 +24,7 @@ mditor/
 │   ├── preload/               # 安全桥接脚本（contextBridge 暴露最小必要 API）
 │   └── renderer/              # 前端渲染进程
 │       ├── components/        # UI 组件（macOS 风格沉浸式界面）
-│       ├── editor/            # Markdown 编辑器核心扩展（基于 CodeMirror 6 装饰器）
+│       ├── editor/            # 编辑器内核（wysiwyg/ Milkdown 插件、source/ CodeMirror 6 源码模式）
 │       ├── hooks/             # 状态与响应式 hooks
 │       ├── styles/            # 全局样式与 Tailwind 主题变量
 │       └── types/             # 共享 TypeScript 类型
@@ -56,8 +57,9 @@ mditor/
 
 | 决策点 | 选定方案 | 为什么这么选 | 对用户的影响 |
 |---|---|---|---|
-| **编辑器内核** | CodeMirror 6 | 纯文本架构 + Decoration 视图层。比 DOM 富文本更稳定，不会篡改原 Markdown 字符。 | 极速跟手，即使打开十万字长文也不掉帧；完全保障本地源文件安全。 |
-| **交互风格** | Typora / Bear 式 Hybrid Live Preview | 光标所在行展示 Markdown 语法符号，光标离开自动渲染为排版。 | 兼顾纯文本的可控性与最终排版的美观，无需左右分屏预览。 |
+| **编辑器内核**（v0.2.0 变更） | 所见即所得：Milkdown（ProseMirror + remark）；源码模式：CodeMirror 6 | v0.1.0 的 CodeMirror 装饰器方案上限是 Obsidian Live Preview：表格/列表/引用需逐一手写 Widget，光标进出整行退化导致排版跳变。ProseMirror 以块节点为文档模型，表格、列表、引用天然可编辑，才能达到 Typora 体验。 | 打字时排版不跳变；表格、列表、图片直接在排版中编辑；`⌘/` 一键切到纯源码。 |
+| **源文件保真** | remark 序列化规则定制 + 「打开→保存逐字节不变」自动化回归测试门禁 | ProseMirror 保存时需重新序列化 Markdown，存在改写写法（`*`→`-`、表格对齐）的风险，必须用测试兜底。 | 用户的 Markdown 文件不会被无故改格式；无法逐字节保真的写法在文档中明示。 |
+| **交互风格** | Typora 式双模式：实时渲染（默认）+ 源码模式（`⌘/`） | 实时渲染下仅在光标所在的行内元素局部露出语法符号，排版尺寸保持不变；整篇源码需求交给源码模式。 | 写作沉浸与源码精确控制两不误，无需分屏预览。 |
 | **UI 视觉** | macOS 风格设计系统（SF Pro、微透毛玻璃、精致工具栏） | 还原 macOS 本地顶级软件的精致、内敛与高信噪比。 | 视觉无干扰，沉浸在打字和内容生产中。 |
 | **安全机制** | ContextIsolation + 禁用 nodeIntegration | 遵循现代 Electron 严格安全标准。 | 防止恶意本地或注入脚本窃取系统权限。 |
 
