@@ -1,0 +1,65 @@
+<!-- doc: prototype | product: v0.2.0 | milestone: m3 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mditor v0.2.0-m3 Prototype - Typora Unibody Sidebar & Focus Modes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 h-screen flex flex-col overflow-hidden select-none font-sans">
+  <!-- 顶部 Unibody 标题与快捷工具栏 -->
+  <header class="h-11 bg-[#FAF8F5]/95 border-b border-black/5 flex items-center justify-between px-4 pl-20">
+    <div class="flex items-center space-x-2">
+      <div class="px-3 py-1 bg-white rounded-lg text-xs font-medium shadow-2xs border border-black/5 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>03-数据共享平台方案.md</span>
+      </div>
+    </div>
+    <div class="flex items-center space-x-1 text-stone-600 text-xs">
+      <button class="px-2 py-1 hover:bg-black/5 rounded" title="加粗 (⌘B)"><b>B</b></button>
+      <button class="px-2 py-1 hover:bg-black/5 rounded" title="斜体 (⌘I)"><i>I</i></button>
+      <button class="px-2 py-1 hover:bg-black/5 rounded" title="插入表格 (⌥⌘T)">表格</button>
+      <button class="px-2 py-1 hover:bg-black/5 rounded" title="代码块">代码</button>
+    </div>
+  </header>
+
+  <!-- 主体：左侧双视图侧边栏 + 右侧连续画布 -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- 侧边栏：文件 / 大纲双视图 -->
+    <aside class="w-64 border-r border-black/5 bg-[#FAF8F5] flex flex-col">
+      <div class="h-9 border-b border-black/5 grid grid-cols-2 text-xs font-medium">
+        <button class="border-b-2 border-stone-800 text-stone-900">文件</button>
+        <button class="text-stone-400 hover:text-stone-700">大纲</button>
+      </div>
+      <div class="p-2 flex-1 overflow-y-auto text-xs space-y-1">
+        <div class="px-2 py-1.5 rounded bg-amber-500/10 text-amber-900 font-medium">📄 03-数据共享平台方案.md</div>
+        <div class="px-2 py-1.5 rounded hover:bg-black/5 text-stone-600">📄 README.md</div>
+        <div class="px-2 py-1.5 rounded hover:bg-black/5 text-stone-600">📁 docs/</div>
+      </div>
+    </aside>
+
+    <!-- 连续无缝编辑区 (专注模式演示) -->
+    <main class="flex-1 bg-white overflow-y-auto p-12">
+      <div class="max-w-2xl mx-auto space-y-4">
+        <h1 class="text-3xl font-bold opacity-25">新一代数据共享平台建设与运营方案</h1>
+        <p class="text-base leading-relaxed text-stone-800">当前光标所在段落：保持 100% 清晰度，其余段落自动柔化退后（专注模式 Focus Mode）。</p>
+        <p class="text-base leading-relaxed opacity-25">非当前段落自动降低不透明度，帮助写作者保持深度心流。</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- 底部 Typora 风格极简状态栏 -->
+  <footer class="h-7 bg-[#FAF8F5] border-t border-black/5 px-3 flex items-center justify-between text-[11px] text-stone-500">
+    <div class="flex items-center space-x-2">
+      <button class="px-1.5 py-0.5 hover:bg-black/5 rounded">侧边栏</button>
+      <button class="px-1.5 py-0.5 hover:bg-black/5 rounded">&lt;/&gt; 实时渲染</button>
+    </div>
+    <div class="flex items-center space-x-3">
+      <button class="px-1.5 py-0.5 bg-amber-500/15 text-amber-800 rounded font-medium">专注模式</button>
+      <button class="px-1.5 py-0.5 hover:bg-black/5 rounded">打字机模式</button>
+      <button class="px-1.5 py-0.5 hover:bg-black/5 rounded font-mono">1,280 词 ▾</button>
+    </div>
+  </footer>
+</body>
+</html>

@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 import { exportHtmlFile, exportPdfFile } from './exportService';
+import { scanMarkdownDirectory, readMarkdownFileByPath } from './folderService';
 
 // 注册安全特权协议（必须在 app.whenReady 之前执行）
 protocol.registerSchemesAsPrivileged([
@@ -84,6 +85,28 @@ ipcMain.handle('file:open', async () => {
   } catch (error) {
     return { error: (error as Error).message };
   }
+});
+
+ipcMain.handle('file:readByPath', async (_event, { filePath }: { filePath: string }) => {
+  return await readMarkdownFileByPath(filePath);
+});
+
+ipcMain.handle('folder:open', async () => {
+  if (!mainWindow) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: '打开文件夹',
+    properties: ['openDirectory'],
+  });
+  if (canceled || filePaths.length === 0) {
+    return null;
+  }
+  const folderPath = filePaths[0];
+  const tree = await scanMarkdownDirectory(folderPath);
+  return { folderPath, tree };
+});
+
+ipcMain.handle('folder:readDir', async (_event, { dirPath }: { dirPath: string }) => {
+  return await scanMarkdownDirectory(dirPath);
 });
 
 ipcMain.handle('file:save', async (_event, { filePath, content }: { filePath: string; content: string }) => {

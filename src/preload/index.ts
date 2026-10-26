@@ -1,9 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ElectronAPI, FileOpenResult, FileSaveResult } from '../types';
+import type { ElectronAPI, FileOpenResult, FileSaveResult, FileTreeNode } from '../types';
 
 const api: ElectronAPI = {
   openFile: (): Promise<FileOpenResult | null> => {
     return ipcRenderer.invoke('file:open');
+  },
+  readFileByPath: (filePath: string): Promise<FileOpenResult | null> => {
+    return ipcRenderer.invoke('file:readByPath', { filePath });
+  },
+  openFolder: (): Promise<{ folderPath: string; tree: FileTreeNode[] } | null> => {
+    return ipcRenderer.invoke('folder:open');
+  },
+  readDirectory: (dirPath: string): Promise<FileTreeNode[]> => {
+    return ipcRenderer.invoke('folder:readDir', { dirPath });
   },
   saveFile: (filePath: string, content: string): Promise<FileSaveResult> => {
     return ipcRenderer.invoke('file:save', { filePath, content });

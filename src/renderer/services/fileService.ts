@@ -1,10 +1,31 @@
-import type { FileOpenResult, FileSaveResult } from '../../types';
+import type { FileOpenResult, FileSaveResult, FileTreeNode } from '../../types';
 
 export async function openDocument(): Promise<FileOpenResult | null> {
   if (window.electronAPI?.openFile) {
     return await window.electronAPI.openFile();
   }
   return null;
+}
+
+export async function openDocumentByPath(filePath: string): Promise<FileOpenResult | null> {
+  if (window.electronAPI?.readFileByPath) {
+    return await window.electronAPI.readFileByPath(filePath);
+  }
+  return null;
+}
+
+export async function openFolderDialog(): Promise<{ folderPath: string; tree: FileTreeNode[] } | null> {
+  if (window.electronAPI?.openFolder) {
+    return await window.electronAPI.openFolder();
+  }
+  return null;
+}
+
+export async function scanDirectoryTree(dirPath: string): Promise<FileTreeNode[]> {
+  if (window.electronAPI?.readDirectory) {
+    return await window.electronAPI.readDirectory(dirPath);
+  }
+  return [];
 }
 
 export async function saveDocument(

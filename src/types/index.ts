@@ -42,8 +42,18 @@ export interface SaveImageResult {
   error?: string;
 }
 
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  children?: FileTreeNode[];
+}
+
 export interface ElectronAPI {
   openFile?: () => Promise<FileOpenResult | null>;
+  readFileByPath?: (filePath: string) => Promise<FileOpenResult | null>;
+  openFolder?: () => Promise<{ folderPath: string; tree: FileTreeNode[] } | null>;
+  readDirectory?: (dirPath: string) => Promise<FileTreeNode[]>;
   saveFile?: (filePath: string, content: string) => Promise<FileSaveResult>;
   saveFileAs?: (defaultName: string, content: string) => Promise<FileOpenResult | null>;
   saveImageBuffer?: (docFilePath: string | null, buffer: Uint8Array, ext?: string) => Promise<SaveImageResult>;
