@@ -127,7 +127,7 @@ export interface ElectronAPI {
 
 | Task 编号 | 内容与交付物 | 覆盖 AC | 依赖 | 状态 |
 |---|---|---|---|---|
-| **T1** | 开发悬浮式查找与替换系统（SearchPanel 组件、Cmd+F/Cmd+H 快捷键、全篇高亮与跳转）并覆盖单测 | AC6.1, AC6.2, AC6.3 | M2 | 待开始 |
+| **T1** | 开发悬浮式查找与替换系统（SearchPanel 组件、Cmd+F/Cmd+H 快捷键、全篇高亮与跳转）并覆盖单测 | AC6.1, AC6.2, AC6.3 | M2 | 已完成 (Search 引擎与 SearchPanel 单测全通) |
 | **T2** | 增强围栏代码块卡片（FencedCode 语言标签、代码美化与一键复制代码按钮）并覆盖单测 | AC2.5 | M1, M2 | 待开始 |
 | **T3** | 实现微信公众号/知乎一键排版引擎（Inline Style 转换与 ClipboardItem 写入）并覆盖单测 | AC7.3 | M2 | 待开始 |
 | **T4** | 实现单文件自包含 HTML 与 PDF 导出服务（主进程 printToPDF 与导出保存对话框）并覆盖集成测试 | AC7.1, AC7.2 | M1, M3-T3 | 待开始 |
