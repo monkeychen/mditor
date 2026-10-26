@@ -1,4 +1,35 @@
-/* Milkdown / ProseMirror macOS 沉浸式排版样式 */
+/* Milkdown / ProseMirror macOS 沉浸式排版与纸张工作区样式 */
+
+.milkdown-wysiwyg-container {
+  cursor: text;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* 沉浸式纸张工作台 (Typora 式明确编辑区视觉区分) */
+.milkdown-wysiwyg-container .milkdown {
+  width: 100%;
+  max-width: 840px;
+  min-height: calc(100% - 2rem);
+  background-color: #FFFFFF;
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 12px 32px -4px rgba(0, 0, 0, 0.03);
+  padding: 3rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.milkdown-wysiwyg-container .milkdown:focus-within {
+  border-color: rgba(59, 130, 246, 0.28);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 12px 32px -4px rgba(59, 130, 246, 0.05);
+}
 
 .milkdown-wysiwyg-container .ProseMirror {
   outline: none !important;
@@ -7,6 +38,23 @@
   line-height: 1.75;
   color: #1F2937;
   user-select: text !important;
+  cursor: text;
+  min-height: 100%;
+  flex: 1;
+  padding-bottom: 25vh; /* 底部呼吸留白，避免打字沉底 */
+}
+
+/* 空文档首行占位符 (Placeholder) */
+.milkdown-wysiwyg-container .ProseMirror p.is-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9CA3AF;
+  pointer-events: none;
+  height: 0;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 1rem;
+  user-select: none;
 }
 
 /* 标题样式：尺寸恒定、精致内敛 */
@@ -122,4 +170,14 @@
   border: none;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .milkdown-wysiwyg-container {
+    padding: 1rem 0.5rem !important;
+  }
+  .milkdown-wysiwyg-container .milkdown {
+    padding: 1.75rem 1.25rem !important;
+    border-radius: 0.75rem !important;
+  }
 }

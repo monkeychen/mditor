@@ -24,11 +24,13 @@ import { createCodeBlockWidgetPlugin } from './code/codeBlockWidgetPlugin';
 import { createCodeBlockKeymapPlugin } from './code/codeBlockKeymap';
 import { createImageWidgetPlugin } from './image/imageWidgetPlugin';
 import { createImagePastePlugin } from './image/imagePastePlugin';
+import { createPlaceholderPlugin } from './placeholderPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
   initialContent?: string;
   docFilePath?: string | null;
+  autoFocus?: boolean;
   onChange?: (markdown: string) => void;
   onCursorChange?: (line: number, col: number) => void;
   className?: string;
@@ -47,6 +49,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     {
       initialContent = '',
       docFilePath = null,
+      autoFocus = true,
       onChange,
       onCursorChange: _onCursorChange,
       className = '',
@@ -152,6 +155,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           }));
           ctx.update(prosePluginsCtx, (prev) => [
             ...prev,
+            createPlaceholderPlugin('开始书写，或输入 # 创建标题、- 创建列表、| 创建表格...'),
             createDelimiterPlugin(),
             createAutoPairPlugin(),
             createFormatKeymapPlugin(),
@@ -180,6 +184,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           try {
             const view = createdEditor.action((ctx) => ctx.get(editorViewCtx));
             setEditorView(view);
+            if (autoFocus) {
+              view.focus();
+            }
           } catch {
             // ignore
           }
@@ -197,15 +204,43 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       };
     }, []); // 仅挂载一次，内容更新通过 setMarkdown 控制
 
+    const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      // 避免点中按钮、工具栏等交互控件时干扰焦点
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('button') ||
+        target.closest('.table-toolbar') ||
+        target.closest('.image-source-pill') ||
+        target.closest('.code-copy-btn') ||
+        target.closest('.code-lang-selector')
+      ) {
+        return;
+      }
+
+      const editor = editorInstanceRef.current;
+      if (!editor) return;
+
+      try {
+        editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          if (!view.hasFocus()) {
+            view.focus();
+          }
+        });
+      } catch {
+        // ignore
+      }
+    };
+
     return (
-      <div className="relative w-full h-full overflow-hidden">
+      <div className="relative w-full h-full overflow-hidden" onClick={handleContainerClick}>
         <TableToolbar
           toolbarState={tableToolbarState}
           editorView={editorView}
           containerRect={containerRef.current?.getBoundingClientRect()}
         />
         <div
-          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto px-8 md:px-20 lg:px-32 py-10 text-stone-800 ${className}`}
+          className={`milkdown-wysiwyg-container w-full h-full overflow-y-auto px-4 md:px-8 py-6 text-stone-800 ${className}`}
           ref={containerRef}
         />
       </div>
