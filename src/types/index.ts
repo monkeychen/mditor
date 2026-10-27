@@ -49,6 +49,13 @@ export interface FileTreeNode {
   children?: FileTreeNode[];
 }
 
+export interface WorkspaceFolder {
+  id: string;
+  name: string;
+  path: string;
+  tree: FileTreeNode[];
+}
+
 export interface ElectronAPI {
   openFile?: () => Promise<FileOpenResult | null>;
   readFileByPath?: (filePath: string) => Promise<FileOpenResult | null>;

@@ -29,7 +29,30 @@ import {
   saveDocument,
   saveDocumentAs,
 } from './services/fileService';
-import type { FileTreeNode } from '../types';
+import type { WorkspaceFolder } from '../types';
+
+const STORAGE_KEY_WORKSPACE_FOLDERS = 'mditor_workspace_folders';
+
+function getStoredWorkspaceFolderPaths(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_WORKSPACE_FOLDERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter((p) => typeof p === 'string');
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function saveStoredWorkspaceFolderPaths(paths: string[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY_WORKSPACE_FOLDERS, JSON.stringify(paths));
+  } catch {
+    // ignore
+  }
+}
 import {
   FolderOpen,
   Save,
@@ -116,9 +139,29 @@ export const App: React.FC = () => {
   const [isOutlineOpen, setIsOutlineOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
 
-  // 文件树状态 (Typora 双视图侧边栏：文件 / 大纲)
-  const [currentFolderPath, setCurrentFolderPath] = useState<string | null>(null);
-  const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
+  // 工作区多文件夹状态 (Typora 双视图侧边栏：文件夹 / 大纲)
+  const [workspaceFolders, setWorkspaceFolders] = useState<WorkspaceFolder[]>([]);
+
+  // 恢复持久化的工作区文件夹列表
+  useEffect(() => {
+    const storedPaths = getStoredWorkspaceFolderPaths();
+    if (storedPaths.length > 0) {
+      Promise.all(
+        storedPaths.map(async (folderPath) => {
+          const tree = await scanDirectoryTree(folderPath);
+          const name = folderPath.split('/').pop() || folderPath;
+          return {
+            id: folderPath,
+            name,
+            path: folderPath,
+            tree,
+          };
+        })
+      ).then((folders) => {
+        setWorkspaceFolders(folders.filter(Boolean));
+      });
+    }
+  }, []);
 
   // 专注模式 (F8) 与打字机滚动模式 (F9)
   const [focusMode, setFocusMode] = useState(false);
@@ -242,19 +285,6 @@ export const App: React.FC = () => {
     return calculateDocumentStats(activeTab.content);
   }, [activeTab.content]);
 
-  // 当打开了具有本地路径的文档且当前尚未加载其父目录时，自动扫描所在目录填充侧边栏文件树
-  useEffect(() => {
-    if (!activeTab.filePath) return;
-    const lastSlash = activeTab.filePath.lastIndexOf('/');
-    if (lastSlash <= 0) return;
-    const parentDir = activeTab.filePath.substring(0, lastSlash);
-    if (!currentFolderPath || !activeTab.filePath.startsWith(currentFolderPath)) {
-      setCurrentFolderPath(parentDir);
-      scanDirectoryTree(parentDir).then((tree) => {
-        setFileTree(tree);
-      });
-    }
-  }, [activeTab.filePath, currentFolderPath]);
 
   // 搜索匹配计算
   const matches = useMemo(() => {
@@ -309,6 +339,22 @@ export const App: React.FC = () => {
     const res = await openDocument();
     if (res) {
       handleCreateNewTab(res.fileName, res.content, res.filePath);
+
+      // 若打开的文件存在本地磁盘路径，自动将其所在目录加入工作区（若尚未包含）
+      if (res.filePath) {
+        const lastSlash = res.filePath.lastIndexOf('/');
+        if (lastSlash > 0) {
+          const parentDir = res.filePath.substring(0, lastSlash);
+          const tree = await scanDirectoryTree(parentDir);
+          const name = parentDir.split('/').pop() || parentDir;
+          setWorkspaceFolders((prev) => {
+            if (prev.some((f) => f.path === parentDir)) return prev;
+            const updated = [...prev, { id: parentDir, name, path: parentDir, tree }];
+            saveStoredWorkspaceFolderPaths(updated.map((f) => f.path));
+            return updated;
+          });
+        }
+      }
     }
   }, [handleCreateNewTab]);
 
@@ -453,14 +499,48 @@ export const App: React.FC = () => {
     }
   }, [activeTab, searchQuery, replaceText, currentMode, updateTabContent, showToast]);
 
-  // 打开本地文件夹至侧边栏文件树
-  const handleOpenFolder = useCallback(async () => {
+  // 添加本地文件夹至侧边栏工作区 (支持添加多个文件夹)
+  const handleAddFolder = useCallback(async () => {
     const res = await openFolderDialog();
-    if (res) {
-      setCurrentFolderPath(res.folderPath);
-      setFileTree(res.tree);
-    }
-  }, []);
+    if (!res) return;
+
+    setWorkspaceFolders((prev) => {
+      const existing = prev.find((f) => f.path === res.folderPath);
+      if (existing) {
+        showToast(`文件夹 "${existing.name}" 已在工作区列表中`);
+        return prev;
+      }
+
+      const name = res.folderPath.split('/').pop() || res.folderPath;
+      const newFolder: WorkspaceFolder = {
+        id: res.folderPath,
+        name,
+        path: res.folderPath,
+        tree: res.tree,
+      };
+
+      const updated = [...prev, newFolder];
+      saveStoredWorkspaceFolderPaths(updated.map((f) => f.path));
+      showToast(`已添加文件夹 "${name}"`);
+      return updated;
+    });
+  }, [showToast]);
+
+  // 从侧边栏移除已添加的文件夹 (不删除磁盘文件)
+  const handleRemoveFolder = useCallback(
+    (folderPath: string) => {
+      setWorkspaceFolders((prev) => {
+        const target = prev.find((f) => f.path === folderPath);
+        const updated = prev.filter((f) => f.path !== folderPath);
+        saveStoredWorkspaceFolderPaths(updated.map((f) => f.path));
+        if (target) {
+          showToast(`已从侧边栏移除 "${target.name}"`);
+        }
+        return updated;
+      });
+    },
+    [showToast]
+  );
 
   // 点击侧边栏文件树中的 Markdown 文件直接打开或切换
   const handleSelectSidebarFile = useCallback(
@@ -756,11 +836,11 @@ export const App: React.FC = () => {
           outline={outline}
           activeHeadingId={activeHeadingId}
           onSelectHeading={handleSelectOutlineHeading}
-          fileTree={fileTree}
-          currentFolderPath={currentFolderPath}
+          folders={workspaceFolders}
           activeFilePath={activeTab.filePath}
           onSelectFile={handleSelectSidebarFile}
-          onOpenFolder={handleOpenFolder}
+          onAddFolder={handleAddFolder}
+          onRemoveFolder={handleRemoveFolder}
         />
 
         <main className="flex-1 overflow-hidden relative bg-[var(--bg-primary,#FFFFFF)] transition-colors duration-150">

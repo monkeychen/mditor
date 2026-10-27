@@ -102,11 +102,17 @@ test.describe('Dual-tier Header & Folding Toolbar E2E (v0.3.1 M1: AC-26.1 ~ AC-2
     await sidebarToggleBtn.click();
     await expect(sidebar).toHaveClass(/w-60/);
 
-    // 验证侧边栏双视图页签「文件」与「大纲」就位
+    // 验证侧边栏双视图页签「文件夹」与「大纲」就位
     const tabFiles = sidebar.locator('[data-testid="sidebar-tab-files"]');
     const tabOutline = sidebar.locator('[data-testid="sidebar-tab-outline"]');
     await expect(tabFiles).toBeVisible();
+    await expect(tabFiles).toContainText('文件夹');
     await expect(tabOutline).toBeVisible();
+
+    // 切换到文件夹视图，验证添加文件夹操作入口
+    await tabFiles.click();
+    const addFolderBtn = sidebar.locator('[data-testid="sidebar-add-folder-btn"]');
+    await expect(addFolderBtn).toBeVisible();
 
     await app.close();
   });
