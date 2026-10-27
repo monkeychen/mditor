@@ -65,9 +65,35 @@ function createWindow() {
 ipcMain.handle('file:open', async () => {
   if (!mainWindow) return null;
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-    title: '打开 Markdown 文件',
+    title: '打开文档或代码文件',
     filters: [
-      { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'txt'] },
+      {
+        name: '所有支持格式',
+        extensions: [
+          'md', 'markdown', 'mdown', 'txt', 'text', 'log', 'diff', 'patch',
+          'json', 'jsonc', 'yaml', 'yml', 'toml', 'xml', 'ini', 'env', 'csv', 'properties',
+          'html', 'htm', 'css', 'scss', 'less', 'svg',
+          'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs',
+          'py', 'pyw', 'sql', 'java', 'kt', 'kts', 'go', 'rs', 'c', 'cpp', 'cc', 'h', 'hpp', 'cs',
+          'sh', 'bash', 'zsh', 'php', 'rb', 'swift', 'dockerfile'
+        ],
+      },
+      { name: 'Markdown 文档', extensions: ['md', 'markdown', 'mdown'] },
+      {
+        name: '源代码与脚本',
+        extensions: [
+          'py', 'pyw', 'sql', 'java', 'kt', 'kts', 'go', 'rs', 'c', 'cpp', 'cc', 'h', 'hpp', 'cs',
+          'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'sh', 'bash', 'zsh', 'php', 'rb', 'swift', 'dockerfile'
+        ],
+      },
+      {
+        name: '数据与配置',
+        extensions: ['json', 'jsonc', 'yaml', 'yml', 'toml', 'xml', 'ini', 'env', 'csv', 'properties'],
+      },
+      {
+        name: '文本与日志',
+        extensions: ['txt', 'text', 'log', 'diff', 'patch'],
+      },
       { name: '所有文件', extensions: ['*'] },
     ],
     properties: ['openFile'],

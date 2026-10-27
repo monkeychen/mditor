@@ -1,9 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { FileTreeNode, FileOpenResult } from '../types';
+import { isSupportedTextFile } from '../renderer/utils/languageClassifier';
 
 const IGNORED_DIRS = new Set(['node_modules', 'dist', 'dist-electron', 'release', '.git', '.idea', '.vscode']);
-const MD_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.txt']);
 
 export async function scanMarkdownDirectory(dirPath: string, currentDepth = 0, maxDepth = 4): Promise<FileTreeNode[]> {
   if (currentDepth > maxDepth) {
@@ -32,8 +32,7 @@ export async function scanMarkdownDirectory(dirPath: string, currentDepth = 0, m
           });
         }
       } else if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase();
-        if (MD_EXTENSIONS.has(ext)) {
+        if (isSupportedTextFile(entry.name)) {
           files.push({
             name: entry.name,
             path: fullPath,
