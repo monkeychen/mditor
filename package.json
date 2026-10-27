@@ -53,6 +53,7 @@
     "@milkdown/ctx": "^7.22.3",
     "@milkdown/plugin-history": "^7.22.3",
     "@milkdown/plugin-listener": "^7.22.3",
+    "@milkdown/plugin-prism": "^7.22.3",
     "@milkdown/preset-commonmark": "^7.22.3",
     "@milkdown/preset-gfm": "^7.22.3",
     "@milkdown/prose": "^7.22.3",

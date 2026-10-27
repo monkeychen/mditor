@@ -302,7 +302,6 @@ body {
               opacity 0.18s ease,
               padding 0.22s ease,
               border-color 0.2s ease;
-  overflow: hidden;
 }
 .toolbar-collapsed {
   max-height: 0px !important;
@@ -311,8 +310,10 @@ body {
   padding-bottom: 0px !important;
   border-bottom-width: 0px !important;
   pointer-events: none;
+  overflow: hidden !important;
 }
 .toolbar-expanded {
   max-height: 48px;
   opacity: 1;
+  overflow: visible !important;
 }

@@ -3,6 +3,7 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
+import { languages } from '@codemirror/language-data';
 import type { AppTheme } from '../../services/themeService';
 import { getCodeMirrorTheme } from '../theme';
 
@@ -47,7 +48,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
         lineNumbers(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        markdown(),
+        markdown({ codeLanguages: languages }),
         updateListener,
         themeCompartmentRef.current.of(getCodeMirrorTheme(theme)),
       ],

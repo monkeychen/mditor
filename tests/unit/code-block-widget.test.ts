@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Editor, defaultValueCtx, rootCtx, editorViewCtx, serializerCtx, prosePluginsCtx } from '@milkdown/core';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
+import { prism } from '@milkdown/plugin-prism';
 import { createCodeBlockWidgetPlugin } from '../../src/renderer/editor/wysiwyg/code/codeBlockWidgetPlugin';
 
 const SAMPLE_CODE_MD = `
@@ -70,6 +71,36 @@ describe('CodeBlock Widget & Header Enhancements (T213 / AC-12.1 ~ AC-12.3)', ()
     });
 
     expect(serialized).toContain('```python');
+
+    editor.destroy();
+    document.body.removeChild(container);
+  });
+
+  it('highlights code syntax with language tokens across different languages', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const editor = await Editor.make()
+      .config((ctx) => {
+        ctx.set(rootCtx, container);
+        ctx.set(defaultValueCtx, SAMPLE_CODE_MD);
+        ctx.update(prosePluginsCtx, (prev) => [
+          ...prev,
+          createCodeBlockWidgetPlugin(),
+        ]);
+      })
+      .use(commonmark)
+      .use(gfm)
+      .use(prism)
+      .create();
+
+    const keywordToken = container.querySelector('.token.keyword');
+    expect(keywordToken).not.toBeNull();
+    expect(keywordToken?.textContent).toBe('const');
+
+    const stringToken = container.querySelector('.token.string');
+    expect(stringToken).not.toBeNull();
+    expect(stringToken?.textContent).toBe('"Hello, mditor"');
 
     editor.destroy();
     document.body.removeChild(container);

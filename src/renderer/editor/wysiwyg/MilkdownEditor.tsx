@@ -31,6 +31,7 @@ import { createTaskListPlugin } from './taskListPlugin';
 import { mathPlugin } from './math/mathPlugin';
 import { extendedTypographyPlugin } from './extended/extendedTypographyPlugin';
 import { createFootnoteTooltipPlugin } from './extended/footnoteTooltipPlugin';
+import { prism, prismConfig } from '@milkdown/plugin-prism';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -277,6 +278,28 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createImagePastePlugin(() => docFilePathRef.current),
             createFootnoteTooltipPlugin(),
           ]);
+          ctx.update(prismConfig.key, (prev) => ({
+            ...prev,
+            configureRefractor: (refractor) => {
+              refractor.alias({
+                cpp: ['c++', 'cplusplus', 'C++', 'CPP'],
+                csharp: ['c#', 'cs', 'C#', 'CS', 'csharp', 'CSharp'],
+                python: ['py', 'PY', 'Python'],
+                javascript: ['js', 'JS', 'javascript', 'JavaScript'],
+                typescript: ['ts', 'TS', 'typescript', 'TypeScript'],
+                bash: ['sh', 'SH', 'shell', 'Shell', 'zsh', 'ZSH', 'bash', 'Bash'],
+                yaml: ['yml', 'YML', 'yaml', 'YAML', 'Yaml'],
+                markdown: ['md', 'MD', 'markdown', 'Markdown'],
+                json: ['JSON', 'json'],
+                html: ['HTML', 'html'],
+                css: ['CSS', 'css'],
+                sql: ['SQL', 'sql'],
+                rust: ['Rust', 'rust', 'rs'],
+                go: ['Go', 'go', 'golang', 'Golang'],
+                java: ['Java', 'java'],
+              });
+            },
+          }));
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isEffectCancelled && onChangeRef.current) {
               onChangeRef.current(markdown);
@@ -285,6 +308,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         })
         .use(commonmark)
         .use(gfm)
+        .use(prism)
         .use(mathPlugin)
         .use(extendedTypographyPlugin)
         .use(listener);

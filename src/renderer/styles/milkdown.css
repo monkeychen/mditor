@@ -380,3 +380,93 @@
   transition: all 0.2s ease;
 }
 
+/* ==========================================================================
+   Code Block 多语言语法高亮样式 (Prism / VS Code Dark+ Theme)
+   ========================================================================== */
+.cm-code-block-wrapper pre code {
+  color: #D4D4D4 !important;
+}
+
+/* 注释与文档说明 (绿色斜体) */
+.cm-code-block-wrapper .token.comment,
+.cm-code-block-wrapper .token.prolog,
+.cm-code-block-wrapper .token.doctype,
+.cm-code-block-wrapper .token.cdata {
+  color: #6A9955 !important;
+  font-style: italic;
+}
+
+/* 标点与分隔符 */
+.cm-code-block-wrapper .token.punctuation {
+  color: #D4D4D4 !important;
+}
+
+/* 关键字 (const, let, var, function, return, if, else, import, export, class, def, async, await...) */
+.cm-code-block-wrapper .token.keyword,
+.cm-code-block-wrapper .token.atrule {
+  color: #569CD6 !important;
+  font-weight: 500;
+}
+
+/* 字符串与字符 */
+.cm-code-block-wrapper .token.string,
+.cm-code-block-wrapper .token.char,
+.cm-code-block-wrapper .token.attr-value {
+  color: #CE9178 !important;
+}
+
+/* 函数与方法名 */
+.cm-code-block-wrapper .token.function,
+.cm-code-block-wrapper .token.function-name {
+  color: #DCDCAA !important;
+}
+
+/* 类名、类型、内置类型与构造器 */
+.cm-code-block-wrapper .token.class-name,
+.cm-code-block-wrapper .token.type,
+.cm-code-block-wrapper .token.builtin,
+.cm-code-block-wrapper .token.namespace,
+.cm-code-block-wrapper .token.maybe-class-name {
+  color: #4EC9B0 !important;
+}
+
+/* 数字、布尔值与常量 */
+.cm-code-block-wrapper .token.number,
+.cm-code-block-wrapper .token.boolean,
+.cm-code-block-wrapper .token.constant {
+  color: #B5CEA8 !important;
+}
+
+/* 属性名、参数与变量 */
+.cm-code-block-wrapper .token.property,
+.cm-code-block-wrapper .token.parameter,
+.cm-code-block-wrapper .token.variable {
+  color: #9CDCFE !important;
+}
+
+/* 操作符 */
+.cm-code-block-wrapper .token.operator,
+.cm-code-block-wrapper .token.entity,
+.cm-code-block-wrapper .token.url {
+  color: #D4D4D4 !important;
+}
+
+/* 正则表达式 */
+.cm-code-block-wrapper .token.regex,
+.cm-code-block-wrapper .token.important {
+  color: #D16969 !important;
+}
+
+/* HTML / JSX / XML 标签与属性 */
+.cm-code-block-wrapper .token.tag {
+  color: #569CD6 !important;
+}
+.cm-code-block-wrapper .token.attr-name {
+  color: #9CDCFE !important;
+}
+
+/* CSS 选择器 */
+.cm-code-block-wrapper .token.selector {
+  color: #D7BA7D !important;
+}
+

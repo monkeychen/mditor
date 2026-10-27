@@ -97,4 +97,34 @@ describe('Dual-tier Header & Document Toolbar (F26 / T261)', () => {
     fireEvent.keyDown(window, { key: 'O', shiftKey: true, metaKey: true });
     expect(sidebar.className).toContain('w-0');
   });
+
+  it('supports opening and closing export dropdown menu in Document Toolbar', () => {
+    render(<App />);
+
+    const exportBtn = screen.getByTestId('toolbar-export-btn');
+    expect(exportBtn).toBeInTheDocument();
+
+    // 初始状态下拉菜单不存在
+    expect(screen.queryByTestId('toolbar-export-menu')).toBeNull();
+
+    // 点击“导出”按钮打开下拉菜单
+    fireEvent.click(exportBtn);
+    const exportMenu = screen.getByTestId('toolbar-export-menu');
+    expect(exportMenu).toBeInTheDocument();
+
+    // 包含微信复制、HTML 导出、PDF 导出三项选项
+    expect(screen.getByTestId('export-wechat-option')).toBeInTheDocument();
+    expect(screen.getByTestId('export-html-option')).toBeInTheDocument();
+    expect(screen.getByTestId('export-pdf-option')).toBeInTheDocument();
+
+    // 按 Escape 键应能自动收起菜单
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('toolbar-export-menu')).toBeNull();
+
+    // 再次点击打开，然后再次点击导出按钮自身，能够正常切换关闭
+    fireEvent.click(exportBtn);
+    expect(screen.getByTestId('toolbar-export-menu')).toBeInTheDocument();
+    fireEvent.click(exportBtn);
+    expect(screen.queryByTestId('toolbar-export-menu')).toBeNull();
+  });
 });

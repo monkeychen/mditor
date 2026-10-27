@@ -205,8 +205,8 @@ export class CodeBlockView implements NodeView {
       code.className = 'font-mono text-xs text-stone-800 outline-none leading-relaxed block';
     } else {
       pre.className =
-        'p-5 pt-8 text-sm font-mono overflow-x-auto leading-relaxed text-emerald-400 bg-transparent m-0';
-      code.className = 'font-mono text-emerald-300';
+        'p-5 pt-8 text-sm font-mono overflow-x-auto leading-relaxed text-[#D4D4D4] bg-transparent m-0';
+      code.className = 'font-mono text-[#D4D4D4] outline-none block';
     }
 
     pre.appendChild(code);

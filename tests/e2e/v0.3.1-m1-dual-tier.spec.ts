@@ -52,6 +52,24 @@ test.describe('Dual-tier Header & Folding Toolbar E2E (v0.3.1 M1: AC-26.1 ~ AC-2
     const searchBtn = docToolbar.locator('[data-testid="toolbar-search-btn"]');
     await expect(searchBtn).toBeVisible();
 
+    // 验证“导出”按钮及下拉菜单展开与收起
+    const exportBtn = docToolbar.locator('[data-testid="toolbar-export-btn"]');
+    await expect(exportBtn).toBeVisible();
+
+    const exportMenu = docToolbar.locator('[data-testid="toolbar-export-menu"]');
+    await expect(exportMenu).toHaveCount(0);
+
+    // 点击“导出”弹出下拉菜单
+    await exportBtn.click();
+    await expect(exportMenu).toBeVisible();
+    await expect(exportMenu.locator('[data-testid="export-wechat-option"]')).toBeVisible();
+    await expect(exportMenu.locator('[data-testid="export-html-option"]')).toBeVisible();
+    await expect(exportMenu.locator('[data-testid="export-pdf-option"]')).toBeVisible();
+
+    // 再次点击收起
+    await exportBtn.click();
+    await expect(exportMenu).toHaveCount(0);
+
     // 3. 测试工具栏折叠交互 (点击工具栏右侧「收起」按钮)
     const collapseBtn = docToolbar.locator('[data-testid="toolbar-collapse-btn"]');
     await expect(collapseBtn).toBeVisible();

@@ -3,6 +3,7 @@ import { EditorState, Extension } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
+import { languages } from '@codemirror/language-data';
 import { macosEditorTheme } from './theme';
 import { livePreviewPlugin } from './livePreview';
 import { imageDropAndPasteExtension } from './imageHandler';
@@ -48,7 +49,7 @@ export const Editor = ({
       extensions: [
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        markdown(),
+        markdown({ codeLanguages: languages }),
         macosEditorTheme,
         livePreviewPlugin,
         imageDropAndPasteExtension(() => docPathRef.current),

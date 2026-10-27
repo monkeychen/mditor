@@ -193,8 +193,37 @@ export const App: React.FC = () => {
 
   // 导出菜单与 Toast 状态
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuContainerRef = useRef<HTMLDivElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 监听点击外部或 ESC 自动收起导出下拉菜单
+  useEffect(() => {
+    if (!isExportMenuOpen) return;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      if (
+        exportMenuContainerRef.current &&
+        !exportMenuContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsExportMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsExportMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isExportMenuOpen]);
 
   const showToast = useCallback((msg: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -561,7 +590,7 @@ export const App: React.FC = () => {
         data-testid="document-toolbar"
         className={`toolbar-container border-b border-black/5 px-4 flex items-center justify-between text-stone-600 text-xs shrink-0 select-none z-20 bg-[#FAF8F5]/95 backdrop-blur-md transition-all duration-200 ${
           isToolbarOpen
-            ? 'toolbar-expanded max-h-10 py-1'
+            ? 'toolbar-expanded py-1 overflow-visible'
             : 'toolbar-collapsed max-h-0 py-0 opacity-0 overflow-hidden pointer-events-none border-b-0'
         }`}
         style={{ minHeight: isToolbarOpen ? '36px' : '0px' }}
@@ -631,7 +660,10 @@ export const App: React.FC = () => {
           <div className="h-3.5 w-px bg-stone-300/60 mx-1.5" />
 
           {/* 文档操作分组 (打开、保存、导出) */}
-          <div className="flex items-center space-x-0.5 relative">
+          <div
+            ref={exportMenuContainerRef}
+            className="flex items-center space-x-0.5 relative"
+          >
             <button
               onClick={handleOpenLocalFile}
               title="打开文档 (Cmd+O)"
@@ -652,7 +684,9 @@ export const App: React.FC = () => {
               onClick={() => setIsExportMenuOpen((prev) => !prev)}
               title="导出 / 分享"
               data-testid="toolbar-export-btn"
-              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition ml-0.5"
+              className={`flex items-center gap-1 px-2 py-1 rounded-md transition ml-0.5 ${
+                isExportMenuOpen ? 'bg-black/10 text-stone-900' : 'hover:bg-black/5 text-stone-700'
+              }`}
             >
               <Share2 className="w-3.5 h-3.5" />
               <span className="text-[11px]">导出</span>
@@ -660,10 +694,14 @@ export const App: React.FC = () => {
 
             {/* 导出下拉菜单 */}
             {isExportMenuOpen && (
-              <div className="absolute top-8 left-0 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-black/10 shadow-xl py-1.5 z-50 text-xs text-stone-700 select-none animate-in fade-in duration-100">
+              <div
+                data-testid="toolbar-export-menu"
+                className="absolute top-8 left-0 w-56 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-xl border border-black/10 dark:border-stone-700 shadow-2xl py-1.5 z-50 text-xs text-stone-700 dark:text-stone-200 select-none animate-in fade-in duration-100"
+              >
                 <div
+                  data-testid="export-wechat-option"
                   onClick={handleCopyWechat}
-                  className="px-3 py-2 hover:bg-amber-50 hover:text-amber-900 cursor-pointer flex items-center justify-between transition"
+                  className="px-3 py-2 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-900 dark:hover:text-amber-200 cursor-pointer flex items-center justify-between transition"
                 >
                   <span className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold font-mono">Wx</span>
@@ -671,10 +709,11 @@ export const App: React.FC = () => {
                   </span>
                   <span className="text-[10px] text-stone-400 font-mono">⌘⇧C</span>
                 </div>
-                <div className="h-px bg-black/5 my-1" />
+                <div className="h-px bg-black/5 dark:bg-stone-800 my-1" />
                 <div
+                  data-testid="export-html-option"
                   onClick={handleExportHtml}
-                  className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
+                  className="px-3 py-2 hover:bg-black/5 dark:hover:bg-stone-800 cursor-pointer flex items-center justify-between transition"
                 >
                   <span className="flex items-center gap-2">
                     <FileCode className="w-3.5 h-3.5 text-amber-600" />
@@ -682,8 +721,9 @@ export const App: React.FC = () => {
                   </span>
                 </div>
                 <div
+                  data-testid="export-pdf-option"
                   onClick={handleExportPdf}
-                  className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
+                  className="px-3 py-2 hover:bg-black/5 dark:hover:bg-stone-800 cursor-pointer flex items-center justify-between transition"
                 >
                   <span className="flex items-center gap-2">
                     <FileText className="w-3.5 h-3.5 text-red-500" />
