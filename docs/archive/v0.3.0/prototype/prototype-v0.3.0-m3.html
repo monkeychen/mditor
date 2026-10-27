@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.3.0-M3 原型：Typora 风格扩展排版语法</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background-color: #FAF8F5;
+      color: #1D1D1F;
+    }
+    .mditor-highlight {
+      background-color: rgba(254, 240, 138, 0.75);
+      border-radius: 3px;
+      padding: 1px 3px;
+    }
+    .footnote-tooltip {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+  </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden">
+  <!-- 顶部 macOS 窗口标题栏 -->
+  <header class="h-11 bg-[#FAF8F5] border-b border-black/5 flex items-center px-4 shrink-0 select-none">
+    <div class="flex items-center space-x-2 mr-6">
+      <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div>
+      <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div>
+      <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div>
+    </div>
+    <div class="flex-1 flex items-center">
+      <span class="text-xs font-medium text-stone-600 bg-black/5 px-2.5 py-1 rounded-md">
+        v0.3.0-M3 原型：高亮 / 脚注 / 上下标 / TOC / Front Matter
+      </span>
+    </div>
+    <div class="text-xs text-stone-400">
+      对标 Typora 原生扩展语法
+    </div>
+  </header>
+
+  <!-- 主编辑区容器 -->
+  <main class="flex-1 overflow-y-auto px-8 py-10 flex justify-center">
+    <div class="w-full max-w-3xl space-y-6">
+
+      <!-- 1. YAML Front Matter 折叠卡片 -->
+      <div class="frontmatter-card rounded-xl border border-stone-200/90 bg-stone-50/70 overflow-hidden shadow-2xs">
+        <div id="fmHeader" class="px-3.5 py-2 flex items-center justify-between cursor-pointer hover:bg-stone-100/70 transition select-none">
+          <div class="flex items-center gap-2 text-xs font-semibold text-stone-700">
+            <span>📄</span>
+            <span>文档元数据 (YAML Front Matter)</span>
+          </div>
+          <button id="fmToggleBtn" class="text-xs text-stone-500 hover:text-stone-800 transition">
+            <span id="fmToggleIcon">▲ 收起</span>
+          </button>
+        </div>
+        <div id="fmBody" class="p-3.5 pt-0 font-mono text-xs text-stone-700 space-y-1 border-t border-stone-200/40 bg-white/60">
+          <div><span class="text-purple-600 font-semibold">title:</span> "设计第一性原理与 macOS 扩展排版"</div>
+          <div><span class="text-purple-600 font-semibold">date:</span> 2026-10-27</div>
+          <div><span class="text-purple-600 font-semibold">author:</span> "安哥"</div>
+          <div><span class="text-purple-600 font-semibold">tags:</span> [AI, Typora, macOS, UX]</div>
+        </div>
+      </div>
+
+      <!-- 2. 文章主标题与自动目录块 [TOC] -->
+      <h1 id="sec-1" class="text-2xl font-bold text-stone-900 border-b border-stone-200/60 pb-3">
+        1. 设计第一性原理与 macOS 手感
+      </h1>
+
+      <!-- 自动生成的 [TOC] 目录卡片 -->
+      <div class="toc-block-card p-4 rounded-xl border border-blue-100 bg-blue-50/40 space-y-2 select-none shadow-2xs">
+        <div class="flex items-center justify-between text-xs font-semibold text-blue-900 border-b border-blue-100/80 pb-2">
+          <span class="flex items-center gap-1.5">
+            <span>📑</span>
+            <span>自动目录块 [TOC] (与正文标题实时双向联动)</span>
+          </span>
+          <span class="text-[10px] text-blue-600 font-normal">点击平滑定位</span>
+        </div>
+        <ul id="tocList" class="text-xs text-blue-800/90 space-y-1.5 pl-2 font-medium">
+          <li><a href="#sec-1" class="hover:underline flex items-center gap-1.5"><span>•</span><span>1. 设计第一性原理与 macOS 手感</span></a></li>
+          <li class="pl-4"><a href="#sec-2" class="hover:underline flex items-center gap-1.5"><span>•</span><span>2. 高亮语法与文字强调</span></a></li>
+          <li class="pl-4"><a href="#sec-3" class="hover:underline flex items-center gap-1.5"><span>•</span><span>3. 科学计算：上下标支持</span></a></li>
+          <li class="pl-4"><a href="#sec-4" class="hover:underline flex items-center gap-1.5"><span>•</span><span>4. 论文级脚注系统与悬浮预览</span></a></li>
+        </ul>
+      </div>
+
+      <!-- 3. 高亮语法 -->
+      <h2 id="sec-2" class="text-lg font-bold text-stone-800 pt-4">
+        2. 高亮语法与文字强调
+      </h2>
+      <p class="text-stone-700 text-sm leading-relaxed">
+        用户体验是所有产品的最高准则。<mark class="mditor-highlight">用户触碰到的每一层必须丝滑</mark>。
+        在编辑器中，输入 <code>==重点突出内容==</code> 即可直接呈现高亮标记底色，光标进出无感自愈。
+      </p>
+
+      <!-- 4. 上标与下标 -->
+      <h2 id="sec-3" class="text-lg font-bold text-stone-800 pt-4">
+        3. 科学计算：上下标支持
+      </h2>
+      <p class="text-stone-700 text-sm leading-relaxed">
+        化学反应中常见的水分子化学式为 <strong>H<sub>2</sub>O</strong>（源码为 <code>H~2~O</code>），
+        而在数学平方运算中，勾股定理写为 <strong>a<sup>2</sup> + b<sup>2</sup> = c<sup>2</sup></strong>（源码为 <code>a^2^ + b^2^ = c^2^</code>）。
+      </p>
+
+      <!-- 5. 脚注与悬浮预览 -->
+      <h2 id="sec-4" class="text-lg font-bold text-stone-800 pt-4">
+        4. 论文级脚注系统与悬浮预览
+      </h2>
+      <p class="text-stone-700 text-sm leading-relaxed relative">
+        系统承担复杂性：能自动化的不手动，能推断的不让用户填<sup id="fnref-1" class="footnote-ref text-blue-600 font-semibold cursor-pointer px-1 py-0.5 rounded hover:bg-blue-100 transition">[1]</sup>，
+        真正做到所见即所得与零心智负担<sup id="fnref-2" class="footnote-ref text-blue-600 font-semibold cursor-pointer px-1 py-0.5 rounded hover:bg-blue-100 transition">[2]</sup>。
+      </p>
+
+      <!-- 悬浮预览 Tooltip 浮窗 -->
+      <div id="fnTooltip" class="footnote-tooltip hidden absolute z-50 p-3 bg-white/95 backdrop-blur-md border border-stone-200/90 rounded-xl max-w-sm text-xs text-stone-700 animate-in fade-in duration-100">
+        <div class="flex items-center justify-between text-[10px] text-stone-400 border-b border-stone-100 pb-1 mb-1.5 font-mono">
+          <span id="tooltipHeader">脚注 [^1] 预览</span>
+          <span>点击跳转</span>
+        </div>
+        <p id="tooltipContent" class="leading-relaxed"></p>
+      </div>
+
+      <!-- 底部脚注定义区域 -->
+      <div class="border-t border-stone-200 pt-6 mt-12 space-y-3 text-xs text-stone-600">
+        <div class="font-semibold text-stone-700 text-xs mb-2">脚注说明：</div>
+        <div id="fndef-1" class="flex items-start gap-2 p-2 rounded-lg transition hover:bg-stone-100/60">
+          <span class="font-mono text-blue-600 font-bold">[1]</span>
+          <span class="flex-1 leading-relaxed">这一原则要求软件工程师在后台处理掉边界分支逻辑，向用户呈现单步即达的操作路径。</span>
+          <a href="#fnref-1" class="text-stone-400 hover:text-stone-700 text-sm leading-none ml-2" title="返回引用位置">↩︎</a>
+        </div>
+        <div id="fndef-2" class="flex items-start gap-2 p-2 rounded-lg transition hover:bg-stone-100/60">
+          <span class="font-mono text-blue-600 font-bold">[2]</span>
+          <span class="flex-1 leading-relaxed">Typora 的核心优势在于将编辑与排版合二为一，避免双栏并排的视觉分裂感。</span>
+          <a href="#fnref-2" class="text-stone-400 hover:text-stone-700 text-sm leading-none ml-2" title="返回引用位置">↩︎</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 1. Front Matter 折叠交互
+    const fmHeader = document.getElementById('fmHeader');
+    const fmBody = document.getElementById('fmBody');
+    const fmToggleIcon = document.getElementById('fmToggleIcon');
+    let fmExpanded = true;
+
+    fmHeader.addEventListener('click', () => {
+      fmExpanded = !fmExpanded;
+      if (fmExpanded) {
+        fmBody.classList.remove('hidden');
+        fmToggleIcon.textContent = '▲ 收起';
+      } else {
+        fmBody.classList.add('hidden');
+        fmToggleIcon.textContent = '▼ 展开';
+      }
+    });
+
+    // 2. 脚注悬浮预览浮窗
+    const fnMap = {
+      'fnref-1': {
+        label: '脚注 [^1] 预览',
+        text: '这一原则要求软件工程师在后台处理掉边界分支逻辑，向用户呈现单步即达的操作路径。',
+        target: 'fndef-1'
+      },
+      'fnref-2': {
+        label: '脚注 [^2] 预览',
+        text: 'Typora 的核心优势在于将编辑与排版合二为一，避免双栏并排的视觉分裂感。',
+        target: 'fndef-2'
+      }
+    };
+
+    const tooltip = document.getElementById('fnTooltip');
+    const tooltipHeader = document.getElementById('tooltipHeader');
+    const tooltipContent = document.getElementById('tooltipContent');
+
+    document.querySelectorAll('.footnote-ref').forEach(ref => {
+      ref.addEventListener('mouseenter', (e) => {
+        const item = fnMap[ref.id];
+        if (!item) return;
+
+        tooltipHeader.textContent = item.label;
+        tooltipContent.textContent = item.text;
+
+        const rect = ref.getBoundingClientRect();
+        tooltip.style.left = (rect.left - 20) + 'px';
+        tooltip.style.top = (rect.top - 75) + 'px';
+        tooltip.classList.remove('hidden');
+      });
+
+      ref.addEventListener('mouseleave', () => {
+        tooltip.classList.add('hidden');
+      });
+
+      ref.addEventListener('click', () => {
+        tooltip.classList.add('hidden');
+        const item = fnMap[ref.id];
+        if (item) {
+          const el = document.getElementById(item.target);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('bg-amber-100/70');
+            setTimeout(() => el.classList.remove('bg-amber-100/70'), 1500);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

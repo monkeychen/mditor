@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-10-27 | 案例 6：多 Runner 并发创建 Draft Release 竞争导致产物分裂与全平台资产硬门禁兜底
+
+- **现象**：v0.3.0 发版时，GitHub Release 页面仅展示 macOS 和 Linux 安装包，缺失 Windows 包；排查发现 Windows 产物被孤立上传至一个未绑定 Tag 的 Draft Release。
+- **根本原因**：
+  1. 多平台 Matrix Runner（macOS, Windows, Ubuntu）并发执行 `electron-builder --publish always` 时，在同一毫秒内向 GitHub API 请求创建草稿，触发服务端写竞争，导致 Windows runner 获取到单独生成的 untagged 草稿并挂载产物；
+  2. 工作流收尾脚本未设全平台资产校验，静默发布了缺失 Windows 产物的半成品。
+- **解决策略**：
+  1. 重构 CI 工作流：前置单节点 `prepare-release` 先行创建 Draft Release 唯一定位锚点，各平台 Runner 统一向该锚点上传资产；
+  2. 收尾 Job 增加 `.dmg`、`.exe`、`.AppImage` 全平台硬门禁校验，缺任一平台则 CI 报错退出。
+- **适用范围**：Electron / GitHub Actions 多平台矩阵自动化发布
+
+---
+
 ## 案例 1：发版时序倒置导致 CI 漏跑与人工上传隐患
 
 - **现象**：v0.1.0 发版后 GitHub Release 页面缺少 Windows 安装包；随后开发者使用本地开发机打包后手动上传至 Release 附件。
