@@ -274,3 +274,56 @@
     padding: 1.75rem 1.25rem 20vh 1.25rem !important;
   }
 }
+
+/* ==========================================================================
+   v0.3.0 M3 扩展排版语法样式 (高亮、上下标、Frontmatter、TOC、脚注)
+   ========================================================================== */
+
+/* 高亮 Mark (==text==) */
+.milkdown-wysiwyg-container .ProseMirror mark,
+.milkdown-wysiwyg-container .ProseMirror .mditor-highlight {
+  background-color: rgba(254, 240, 138, 0.75); /* warm yellow amber-200 */
+  color: inherit;
+  border-radius: 3px;
+  padding: 0.1em 0.25em;
+  margin: 0 0.05em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* 下标与上标 (~sub~ / ^sup^) */
+.milkdown-wysiwyg-container .ProseMirror sub {
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: sub;
+}
+
+.milkdown-wysiwyg-container .ProseMirror sup {
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+/* 脚注引用标号 */
+.milkdown-wysiwyg-container .ProseMirror .footnote-ref,
+.milkdown-wysiwyg-container .ProseMirror sup[data-type="footnote_reference"] {
+  cursor: pointer;
+  color: #2563EB;
+  font-weight: 500;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.milkdown-wysiwyg-container .ProseMirror .footnote-ref:hover,
+.milkdown-wysiwyg-container .ProseMirror sup[data-type="footnote_reference"]:hover {
+  background-color: rgba(37, 99, 235, 0.1);
+  text-decoration: underline;
+}
+
+/* 脚注定义高亮闪烁提示 */
+.footnote-target-highlight {
+  transition: background-color 0.8s ease;
+  background-color: rgba(254, 240, 138, 0.5) !important;
+  border-radius: 4px;
+}

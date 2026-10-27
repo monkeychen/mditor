@@ -29,6 +29,8 @@ import { createFocusModePlugin } from './focusModePlugin';
 import { createTypewriterPlugin } from './typewriterPlugin';
 import { createTaskListPlugin } from './taskListPlugin';
 import { mathPlugin } from './math/mathPlugin';
+import { extendedTypographyPlugin } from './extended/extendedTypographyPlugin';
+import { createFootnoteTooltipPlugin } from './extended/footnoteTooltipPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -273,6 +275,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             createCodeBlockKeymapPlugin(),
             createImageWidgetPlugin(() => docFilePathRef.current),
             createImagePastePlugin(() => docFilePathRef.current),
+            createFootnoteTooltipPlugin(),
           ]);
           ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
             if (!isEffectCancelled && onChangeRef.current) {
@@ -283,6 +286,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         .use(commonmark)
         .use(gfm)
         .use(mathPlugin)
+        .use(extendedTypographyPlugin)
         .use(listener);
 
       pendingEditor = editor;

@@ -5,6 +5,7 @@ import { Editor, defaultValueCtx, rootCtx, editorViewCtx, serializerCtx, remarkS
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 import { mathPlugin } from '../../src/renderer/editor/wysiwyg/math/mathPlugin';
+import { extendedTypographyPlugin } from '../../src/renderer/editor/wysiwyg/extended/extendedTypographyPlugin';
 
 const corpusDir = path.resolve(__dirname, 'corpus');
 const corpusFiles = fs.readdirSync(corpusDir).filter((f) => f.endsWith('.md')).sort();
@@ -69,6 +70,7 @@ describe('File Fidelity Gate (T205 / AC-14.1 / AC-14.2 / AC-14.3)', () => {
         .use(commonmark)
         .use(gfm)
         .use(mathPlugin)
+        .use(extendedTypographyPlugin)
         .create();
 
       const serialized = editor.action((ctx) => {
