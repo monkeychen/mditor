@@ -4,7 +4,6 @@ import {
   isSupportedTextFile,
   getFileExtension,
   getLanguageInfo,
-  SUPPORTED_EXTENSIONS,
 } from '../../src/renderer/utils/languageClassifier';
 
 describe('Language Classifier Module (T401 / AC-29.1 ~ AC-29.2)', () => {
