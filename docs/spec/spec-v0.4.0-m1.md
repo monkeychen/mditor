@@ -62,7 +62,7 @@ status: approved
 
 ## 3. 任务拆解与 TDD 计划（Task Breakdown）
 
-- [ ] **T401：文件格式定义与语言识别分类器模块** (`languageClassifier.ts` + 单元测试)
-- [ ] **T402：主进程文件扫描扩展与对话框文件类型过滤** (`folderService.ts`, `main/index.ts` + 单元测试)
-- [ ] **T403：SourceEditor 动态语言解析包加载与语法着色升级** (`SourceEditor.tsx` + 单元测试)
-- [ ] **T404：App 智能模式路由、侧边栏扩展名图标、状态栏语言指示器与 E2E 验证** (`App.tsx`, `OutlineDrawer.tsx` + Playwright E2E)
+- [x] **T401：文件格式定义与语言识别分类器模块** (`languageClassifier.ts` + 单元测试)
+- [x] **T402：主进程文件扫描扩展与对话框文件类型过滤** (`folderService.ts`, `main/index.ts` + 单元测试)
+- [x] **T403：SourceEditor 动态语言解析包加载与语法着色升级** (`SourceEditor.tsx` + 单元测试)
+- [x] **T404：App 智能模式路由、侧边栏扩展名图标、状态栏语言指示器与 E2E 验证** (`App.tsx`, `OutlineDrawer.tsx` + Playwright E2E)
