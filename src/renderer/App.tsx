@@ -33,7 +33,6 @@ import type { FileTreeNode } from '../types';
 import {
   FolderOpen,
   Save,
-  AlignLeft,
   Search,
   Share2,
   Check,
@@ -45,6 +44,9 @@ import {
   Sigma,
   SquareSigma,
   Palette,
+  PanelLeft,
+  PanelTop,
+  ChevronUp,
 } from 'lucide-react';
 
 const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
@@ -125,6 +127,9 @@ export const App: React.FC = () => {
   // 经典多主题视觉系统 (v0.3.0 M4: AC-22.1 ~ AC-22.3)
   const [currentTheme, setCurrentTheme] = useState<AppTheme>(getStoredTheme);
   const [isThemePopoverOpen, setIsThemePopoverOpen] = useState(false);
+
+  // 顶栏分层解耦与独立可折叠编辑工具栏 (v0.3.1 F26)
+  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
 
   useEffect(() => {
     applyThemeToDOM(currentTheme);
@@ -344,6 +349,9 @@ export const App: React.FC = () => {
       } else if (isMeta && e.shiftKey && !e.altKey && (keyLower === 'o' || keyLower === 'l')) {
         e.preventDefault();
         setIsOutlineOpen((prev) => !prev);
+      } else if (isMeta && e.shiftKey && !e.altKey && keyLower === 't') {
+        e.preventDefault();
+        setIsToolbarOpen((prev) => !prev);
       } else if (isMeta && e.altKey && (keyLower === 't' || e.code === 'KeyT')) {
         e.preventDefault();
         setIsInsertTableOpen(true);
@@ -497,28 +505,17 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#FAF8F5] select-none text-[#1D1D1F] overflow-hidden relative">
-      {/* 顶部标题栏 + 多标签栏一体化 Header */}
+      {/* 第一层：顶部标题栏 + 多标签栏一体化 Header (h-10) */}
       <header
-        className="h-11 bg-[#FAF8F5] border-b border-black/5 flex items-center px-3 z-30 select-none"
+        className="h-10 bg-[#FAF8F5] border-b border-black/5 flex items-center px-3 z-30 select-none shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        {/* 左侧：避让 macOS 交通灯 (固定 72px，不随窗口拉伸偏移) */}
-        <div className="w-[72px] shrink-0 h-full flex items-center" />
-
-        {/* 中间：多标签页管理组件 (TabBar 自适应撑满剩余宽度，始终左对齐紧贴交通灯右侧) */}
-        <TabBar
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onSelectTab={handleSwitchTab}
-          onCloseTab={requestCloseTab}
-          onNewTab={() => handleCreateNewTab()}
-        />
-
-        {/* 右侧：常用工具入口 */}
+        {/* 左侧：避让 macOS 交通灯 (固定 70px) + 原生侧边栏开关 (PanelLeft) */}
         <div
-          className="shrink-0 flex items-center space-x-1 text-stone-500 relative pl-2"
+          className="flex items-center space-x-1.5 shrink-0 pr-2"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <div className="w-[70px] h-full flex items-center" />
           <button
             onClick={() => setIsOutlineOpen((prev) => !prev)}
             title="切换大纲 (Cmd+Shift+O)"
@@ -527,108 +524,190 @@ export const App: React.FC = () => {
               isOutlineOpen ? 'bg-black/10 text-stone-900' : 'hover:bg-black/5 text-stone-600'
             }`}
           >
-            <AlignLeft className="w-4 h-4" />
+            <PanelLeft className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* 中间：多标签页管理组件 (TabBar 自适应撑满剩余宽度，横向从容展开) */}
+        <TabBar
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSelectTab={handleSwitchTab}
+          onCloseTab={requestCloseTab}
+          onNewTab={() => handleCreateNewTab()}
+        />
+
+        {/* 右侧：仅保留窗口级全局核心开关 (工具栏折叠按钮) */}
+        <div
+          className="shrink-0 flex items-center space-x-1.5 text-stone-500 pl-2"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
           <button
-            onClick={() => setIsInsertTableOpen(true)}
-            title="插入表格 (⌥⌘T)"
-            data-testid="toolbar-insert-table-btn"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
-          >
-            <Table className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleInsertMathBlock}
-            title="插入独立公式块 (⌥⌘M)"
-            data-testid="toolbar-insert-math-block-btn"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
-          >
-            <SquareSigma className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleInsertInlineMath}
-            title="插入行内公式 ($formula$)"
-            data-testid="toolbar-insert-math-btn"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
-          >
-            <Sigma className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsThemePopoverOpen((prev) => !prev)}
-            title="切换排版主题"
-            data-testid="toolbar-theme-btn"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
-          >
-            <Palette className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsSearchOpen((prev) => !prev)}
-            title="查找与替换 (Cmd+F)"
-            data-testid="toolbar-search-btn"
-            className={`p-1.5 rounded-md transition ${
-              isSearchOpen ? 'bg-amber-100 text-amber-800' : 'hover:bg-black/5 text-stone-600'
+            onClick={() => setIsToolbarOpen((prev) => !prev)}
+            title="显示/隐藏编辑工具栏 (Cmd+Shift+T)"
+            data-testid="toolbar-toggle-btn"
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition ${
+              isToolbarOpen ? 'bg-black/5 text-stone-700' : 'hover:bg-black/5 text-stone-500'
             }`}
           >
-            <Search className="w-4 h-4" />
+            <PanelTop className="w-3.5 h-3.5" />
+            <span className="text-[11px]">工具栏</span>
           </button>
-          <button
-            onClick={handleOpenLocalFile}
-            title="打开文档 (Cmd+O)"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
-          >
-            <FolderOpen className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleSaveActiveTab}
-            title="保存当前文档 (Cmd+S)"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
-          >
-            <Save className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsExportMenuOpen((prev) => !prev)}
-            title="导出 / 分享"
-            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition ml-0.5"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-
-          {/* 导出下拉菜单 */}
-          {isExportMenuOpen && (
-            <div className="absolute top-9 right-0 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-black/10 shadow-xl py-1.5 z-50 text-xs text-stone-700 select-none animate-in fade-in duration-100">
-              <div
-                onClick={handleCopyWechat}
-                className="px-3 py-2 hover:bg-amber-50 hover:text-amber-900 cursor-pointer flex items-center justify-between transition"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-emerald-600 font-bold font-mono">Wx</span>
-                  <span>复制为公众号/知乎排版</span>
-                </span>
-                <span className="text-[10px] text-stone-400 font-mono">⌘⇧C</span>
-              </div>
-              <div className="h-px bg-black/5 my-1" />
-              <div
-                onClick={handleExportHtml}
-                className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
-              >
-                <span className="flex items-center gap-2">
-                  <FileCode className="w-3.5 h-3.5 text-amber-600" />
-                  <span>导出为独立 HTML</span>
-                </span>
-              </div>
-              <div
-                onClick={handleExportPdf}
-                className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
-              >
-                <span className="flex items-center gap-2">
-                  <FileText className="w-3.5 h-3.5 text-red-500" />
-                  <span>导出为 PDF 文档</span>
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       </header>
+
+      {/* 第二层：文档编辑专属工具栏 (Document Toolbar，高度 36px，可平滑折叠) */}
+      <div
+        data-testid="document-toolbar"
+        className={`toolbar-container border-b border-black/5 px-4 flex items-center justify-between text-stone-600 text-xs shrink-0 select-none z-20 bg-[#FAF8F5]/95 backdrop-blur-md transition-all duration-200 ${
+          isToolbarOpen
+            ? 'toolbar-expanded max-h-10 py-1'
+            : 'toolbar-collapsed max-h-0 py-0 opacity-0 overflow-hidden pointer-events-none border-b-0'
+        }`}
+        style={{ minHeight: isToolbarOpen ? '36px' : '0px' }}
+      >
+        {/* 左侧逻辑分组 */}
+        <div className="flex items-center space-x-1">
+          {/* 插入排版组件分组 (表格、独立公式块、行内公式) */}
+          <div className="flex items-center space-x-0.5">
+            <button
+              onClick={() => setIsInsertTableOpen(true)}
+              title="插入表格 (⌥⌘T)"
+              data-testid="toolbar-insert-table-btn"
+              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span className="text-[11px]">表格</span>
+            </button>
+            <button
+              onClick={handleInsertMathBlock}
+              title="插入独立公式块 (⌥⌘M)"
+              data-testid="toolbar-insert-math-block-btn"
+              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+            >
+              <SquareSigma className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-[11px]">公式块</span>
+            </button>
+            <button
+              onClick={handleInsertInlineMath}
+              title="插入行内公式 ($formula$)"
+              data-testid="toolbar-insert-math-btn"
+              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+            >
+              <Sigma className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-[11px]">行内</span>
+            </button>
+          </div>
+
+          {/* 分隔线 */}
+          <div className="h-3.5 w-px bg-stone-300/60 mx-1.5" />
+
+          {/* 样式与检索分组 (排版主题、查找与替换) */}
+          <div className="flex items-center space-x-0.5 relative">
+            <button
+              onClick={() => setIsThemePopoverOpen((prev) => !prev)}
+              title="切换排版主题"
+              data-testid="toolbar-theme-btn"
+              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+            >
+              <Palette className="w-3.5 h-3.5 text-purple-600" />
+              <span className="text-[11px]">主题</span>
+            </button>
+
+            <button
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              title="查找与替换 (Cmd+F)"
+              data-testid="toolbar-search-btn"
+              className={`flex items-center gap-1 px-2 py-1 rounded-md transition ${
+                isSearchOpen ? 'bg-amber-100 text-amber-800' : 'hover:bg-black/5 text-stone-700'
+              }`}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="text-[11px]">查找</span>
+            </button>
+          </div>
+
+          {/* 分隔线 */}
+          <div className="h-3.5 w-px bg-stone-300/60 mx-1.5" />
+
+          {/* 文档操作分组 (打开、保存、导出) */}
+          <div className="flex items-center space-x-0.5 relative">
+            <button
+              onClick={handleOpenLocalFile}
+              title="打开文档 (Cmd+O)"
+              data-testid="toolbar-open-btn"
+              className="p-1 rounded-md hover:bg-black/5 text-stone-600 hover:text-stone-900 transition"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleSaveActiveTab}
+              title="保存当前文档 (Cmd+S)"
+              data-testid="toolbar-save-btn"
+              className="p-1 rounded-md hover:bg-black/5 text-stone-600 hover:text-stone-900 transition"
+            >
+              <Save className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setIsExportMenuOpen((prev) => !prev)}
+              title="导出 / 分享"
+              data-testid="toolbar-export-btn"
+              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition ml-0.5"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="text-[11px]">导出</span>
+            </button>
+
+            {/* 导出下拉菜单 */}
+            {isExportMenuOpen && (
+              <div className="absolute top-8 left-0 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-black/10 shadow-xl py-1.5 z-50 text-xs text-stone-700 select-none animate-in fade-in duration-100">
+                <div
+                  onClick={handleCopyWechat}
+                  className="px-3 py-2 hover:bg-amber-50 hover:text-amber-900 cursor-pointer flex items-center justify-between transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold font-mono">Wx</span>
+                    <span>复制为公众号/知乎排版</span>
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">⌘⇧C</span>
+                </div>
+                <div className="h-px bg-black/5 my-1" />
+                <div
+                  onClick={handleExportHtml}
+                  className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileCode className="w-3.5 h-3.5 text-amber-600" />
+                    <span>导出为独立 HTML</span>
+                  </span>
+                </div>
+                <div
+                  onClick={handleExportPdf}
+                  className="px-3 py-2 hover:bg-black/5 cursor-pointer flex items-center justify-between transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-red-500" />
+                    <span>导出为 PDF 文档</span>
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 右侧：快捷收起按钮 */}
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => setIsToolbarOpen(false)}
+            title="收起工具栏以享受纯净打字 (Cmd+Shift+T)"
+            data-testid="toolbar-collapse-btn"
+            className="flex items-center gap-1 text-[11px] text-stone-400 hover:text-stone-700 px-2 py-0.5 rounded hover:bg-black/5 transition"
+          >
+            <span>收起</span>
+            <ChevronUp className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
 
       {/* 中间工作区：左侧双视图侧边栏 (文件/大纲) + 右侧连续画布编辑器 */}
       <div className="flex-1 flex overflow-hidden relative">

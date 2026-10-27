@@ -295,3 +295,24 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-bottom: none;
 }
+
+/* 工具栏平滑折叠过渡 */
+.toolbar-container {
+  transition: max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.18s ease,
+              padding 0.22s ease,
+              border-color 0.2s ease;
+  overflow: hidden;
+}
+.toolbar-collapsed {
+  max-height: 0px !important;
+  opacity: 0 !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  border-bottom-width: 0px !important;
+  pointer-events: none;
+}
+.toolbar-expanded {
+  max-height: 48px;
+  opacity: 1;
+}

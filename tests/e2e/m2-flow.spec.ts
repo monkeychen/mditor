@@ -21,7 +21,7 @@ test.describe('Desktop Electron E2E Flow (M2: Tabs, Image & Outline)', () => {
     const initialTabBox = await tab1.boundingBox();
     expect(initialTabBox).not.toBeNull();
     expect(initialTabBox!.x).toBeGreaterThanOrEqual(75);
-    expect(initialTabBox!.x).toBeLessThanOrEqual(110);
+    expect(initialTabBox!.x).toBeLessThanOrEqual(140);
 
     // 验证窗口最大化 / 拉伸至大屏宽度后，TabBar 自动扩展宽度且首个 Tab 保持在左侧原位，绝不往中间漂移
     await window.setViewportSize({ width: 1920, height: 1080 });

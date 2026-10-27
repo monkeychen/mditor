@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor 顶栏分层与完整双视图侧边栏 (文件树+大纲) 原型</title>
+  <!-- KaTeX CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* 平滑过渡工具栏与侧边栏 */
+    .toolbar-container {
+      transition: max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.18s ease,
+                  padding 0.22s ease,
+                  border-color 0.2s ease;
+      overflow: hidden;
+    }
+    .toolbar-collapsed {
+      max-height: 0px !important;
+      opacity: 0 !important;
+      padding-top: 0px !important;
+      padding-bottom: 0px !important;
+      border-bottom-width: 0px !important;
+      pointer-events: none;
+    }
+    .toolbar-expanded {
+      max-height: 44px;
+      opacity: 1;
+    }
+    /* 侧边栏平滑抽屉 */
+    .sidebar-container {
+      transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.2s ease;
+    }
+    .sidebar-collapsed {
+      width: 0px !important;
+      opacity: 0 !important;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .sidebar-expanded {
+      width: 250px !important;
+      opacity: 1;
+    }
+    /* 滚动槽优化 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* 主题样式预设 */
+    .theme-academic {
+      background-color: #F8FAFC !important;
+    }
+    .theme-academic .editor-paper {
+      background-color: #FFFFFF;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+      border-color: #E2E8F0;
+    }
+    .theme-slate {
+      background-color: #1E293B !important;
+      color: #E2E8F0 !important;
+    }
+    .theme-slate .editor-paper {
+      background-color: #0F172A;
+      color: #E2E8F0;
+      border-color: #334155;
+    }
+    .theme-parchment {
+      background-color: #FBF0D9 !important;
+    }
+    .theme-parchment .editor-paper {
+      background-color: #FDF6E2;
+      border-color: #E8DCB8;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 h-screen flex flex-col overflow-hidden select-none transition-colors duration-300">
+
+  <!-- ========================================================================= -->
+  <!-- 第一层：Window Header & TabBar（窗口标题栏与多标签页，高度 40px）            -->
+  <!-- ========================================================================= -->
+  <header
+    id="window-header"
+    class="h-10 bg-[#FAF8F5] border-b border-black/5 flex items-center px-3 z-30 shrink-0 select-none transition-colors duration-300"
+  >
+    <!-- 左侧区域：macOS 交通灯 (72px) + 原生侧边栏开关 (PanelLeft) -->
+    <div class="flex items-center space-x-2 shrink-0 pr-2">
+      <!-- macOS 红黄绿交通灯 -->
+      <div class="w-[70px] h-full flex items-center space-x-2 pl-0.5">
+        <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/60 shadow-2xs"></div>
+        <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/60 shadow-2xs"></div>
+        <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/60 shadow-2xs"></div>
+      </div>
+
+      <!-- 侧边栏开关 (macOS 原生位置：左侧控制左侧，符合直觉) -->
+      <button
+        id="btn-sidebar-toggle"
+        onclick="toggleSidebar()"
+        title="展开/收起侧边栏 (文件与大纲) - Cmd+Shift+O"
+        class="p-1.5 rounded-md text-stone-600 hover:text-stone-900 bg-black/5 hover:bg-black/10 transition flex items-center gap-1"
+      >
+        <i data-lucide="panel-left" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <!-- 中间：自适应全宽多标签栏 (TabBar) -->
+    <!-- 标签拥有横向充裕呼吸空间，未占满区域为天然窗口拖拽区 -->
+    <div id="tab-container" class="flex-1 min-w-0 flex items-center space-x-1.5 overflow-x-auto no-scrollbar px-2">
+      <!-- Tab 1 (Active) -->
+      <div
+        id="tab-btn-1"
+        onclick="switchTab(1)"
+        class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none bg-white/90 border border-black/5 shadow-2xs text-stone-800"
+      >
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="已保存"></span>
+        <span class="truncate max-w-[180px]">01-产品架构与分层重构.md</span>
+        <button onclick="closeTab(event, 1)" class="opacity-0 group-hover:opacity-100 hover:bg-black/10 rounded p-0.5 text-stone-400 hover:text-stone-700 transition">
+          <i data-lucide="x" class="w-3 h-3"></i>
+        </button>
+      </div>
+
+      <!-- Tab 2 (Unsaved) -->
+      <div
+        id="tab-btn-2"
+        onclick="switchTab(2)"
+        class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none text-stone-500 hover:bg-black/5 hover:text-stone-700"
+      >
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" title="未保存修改"></span>
+        <span class="truncate max-w-[180px]">02-高斯微积分与量子理论.md</span>
+        <button onclick="closeTab(event, 2)" class="opacity-0 group-hover:opacity-100 hover:bg-black/10 rounded p-0.5 text-stone-400 hover:text-stone-700 transition">
+          <i data-lucide="x" class="w-3 h-3"></i>
+        </button>
+      </div>
+
+      <!-- Tab 3 -->
+      <div
+        id="tab-btn-3"
+        onclick="switchTab(3)"
+        class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none text-stone-500 hover:bg-black/5 hover:text-stone-700"
+      >
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="已保存"></span>
+        <span class="truncate max-w-[180px]">03-企业级设计排版规范.md</span>
+        <button onclick="closeTab(event, 3)" class="opacity-0 group-hover:opacity-100 hover:bg-black/10 rounded p-0.5 text-stone-400 hover:text-stone-700 transition">
+          <i data-lucide="x" class="w-3 h-3"></i>
+        </button>
+      </div>
+
+      <!-- 新建标签按钮 (+) -->
+      <button
+        onclick="addNewTab()"
+        title="新建标签 (Cmd+T)"
+        class="shrink-0 p-1 hover:bg-black/5 text-stone-400 hover:text-stone-700 rounded-md transition ml-1"
+      >
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <!-- 右侧：仅保留 2 个窗口级核心控件 (不再堆砌排版图标) -->
+    <div id="window-right-actions" class="shrink-0 flex items-center space-x-1.5 text-stone-500 pl-3">
+      <!-- 编辑工具栏展开/折叠切换按钮 (⌘⇧T) -->
+      <button
+        id="toggle-toolbar-btn"
+        onclick="toggleToolbar()"
+        title="显示/隐藏编辑工具栏 (Cmd+Shift+T)"
+        class="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-black/5 hover:bg-black/10 text-stone-700 transition"
+      >
+        <i id="toggle-toolbar-icon" data-lucide="panel-top" class="w-3.5 h-3.5"></i>
+        <span id="toggle-toolbar-label" class="text-[11px]">工具栏</span>
+      </button>
+
+      <!-- 双模式切换：源码模式 vs 实时渲染 (⌘/) -->
+      <button
+        id="mode-toggle-btn"
+        onclick="toggleEditorMode()"
+        title="切换源码模式 / 实时渲染 (Cmd+/)"
+        class="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-stone-600 hover:bg-black/5 hover:text-stone-900 transition"
+      >
+        <i id="mode-icon" data-lucide="split" class="w-3.5 h-3.5"></i>
+        <span id="mode-label" class="text-[11px]">实时</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 第二层：Document Editing Toolbar（文档编辑专属工具栏，高度 36px，可一键收起）-->
+  <!-- ========================================================================= -->
+  <div
+    id="document-toolbar"
+    class="toolbar-container toolbar-expanded bg-[#FAF8F5]/95 backdrop-blur-md border-b border-black/5 px-4 flex items-center justify-between text-stone-600 text-xs shrink-0 select-none z-20"
+    style="height: 36px;"
+  >
+    <!-- 左侧工具组：分逻辑模块，带精巧分割线 -->
+    <div class="flex items-center space-x-1">
+
+      <!-- 插入排版组件分组 (表格、独立公式、行内公式) -->
+      <div class="flex items-center space-x-0.5">
+        <button
+          onclick="triggerToast('已插入 3x3 GFM 表格 (⌥⌘T)')"
+          title="插入 GFM 表格 (⌥⌘T)"
+          class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+        >
+          <i data-lucide="table" class="w-3.5 h-3.5"></i>
+          <span class="text-[11px]">表格</span>
+        </button>
+
+        <button
+          onclick="insertMathBlock()"
+          title="插入独立公式块 (⌥⌘M)"
+          class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+        >
+          <i data-lucide="square-sigma" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span class="text-[11px]">公式块</span>
+        </button>
+
+        <button
+          onclick="insertInlineMath()"
+          title="插入行内公式 ($formula$)"
+          class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+        >
+          <i data-lucide="sigma" class="w-3.5 h-3.5 text-amber-600"></i>
+          <span class="text-[11px]">行内</span>
+        </button>
+      </div>
+
+      <!-- 分隔线 -->
+      <div class="h-3.5 w-px bg-stone-300/60 mx-1.5"></div>
+
+      <!-- 样式与检索分组 (排版主题、查找与替换) -->
+      <div class="flex items-center space-x-0.5 relative">
+        <button
+          id="btn-theme"
+          onclick="toggleThemeMenu()"
+          title="切换排版主题"
+          class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+        >
+          <i data-lucide="palette" class="w-3.5 h-3.5 text-purple-600"></i>
+          <span class="text-[11px]">主题</span>
+        </button>
+
+        <button
+          id="btn-search"
+          onclick="toggleSearchPanel()"
+          title="查找与替换 (Cmd+F)"
+          class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+        >
+          <i data-lucide="search" class="w-3.5 h-3.5"></i>
+          <span class="text-[11px]">查找</span>
+        </button>
+
+        <!-- 主题切换浮窗 -->
+        <div
+          id="theme-popover"
+          class="hidden absolute left-0 top-full mt-1.5 w-44 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-black/10 py-1.5 z-50 text-xs text-stone-700 space-y-0.5"
+        >
+          <div class="px-3 py-1 text-[10px] text-stone-400 font-semibold uppercase tracking-wider">排版主题</div>
+          <button onclick="applyTheme('classic')" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#FAF8F5] border border-stone-300"></span>
+              <span>经典白 (Classic)</span>
+            </span>
+            <span id="theme-check-classic" class="text-blue-600 font-bold">✓</span>
+          </button>
+          <button onclick="applyTheme('academic')" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-blue-50 border border-blue-200"></span>
+              <span>学术蓝 (Academic)</span>
+            </span>
+            <span id="theme-check-academic" class="hidden text-blue-600 font-bold">✓</span>
+          </button>
+          <button onclick="applyTheme('slate')" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-slate-800"></span>
+              <span>深空灰 (Slate)</span>
+            </span>
+            <span id="theme-check-slate" class="hidden text-blue-600 font-bold">✓</span>
+          </button>
+          <button onclick="applyTheme('parchment')" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#FDF6E2] border border-amber-300"></span>
+              <span>羊皮纸 (Warm)</span>
+            </span>
+            <span id="theme-check-parchment" class="hidden text-blue-600 font-bold">✓</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 分隔线 -->
+      <div class="h-3.5 w-px bg-stone-300/60 mx-1.5"></div>
+
+      <!-- 文档操作分组 (打开、保存、导出) -->
+      <div class="flex items-center space-x-0.5 relative">
+        <button
+          onclick="triggerToast('打开本地文档 (Cmd+O)')"
+          title="打开本地文档 (Cmd+O)"
+          class="p-1 rounded-md hover:bg-black/5 text-stone-600 hover:text-stone-900 transition"
+        >
+          <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
+        </button>
+        <button
+          onclick="triggerToast('已保存文档 (Cmd+S)')"
+          title="保存文档 (Cmd+S)"
+          class="p-1 rounded-md hover:bg-black/5 text-stone-600 hover:text-stone-900 transition"
+        >
+          <i data-lucide="save" class="w-3.5 h-3.5"></i>
+        </button>
+        <button
+          id="btn-export"
+          onclick="toggleExportMenu()"
+          title="导出文档 (HTML / PDF / 微信排版)"
+          class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-black/5 text-stone-700 transition"
+        >
+          <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+          <span class="text-[11px]">导出</span>
+        </button>
+
+        <!-- 导出下拉气泡 -->
+        <div
+          id="export-popover"
+          class="hidden absolute left-0 top-full mt-1.5 w-44 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-black/10 py-1.5 z-50 text-xs text-stone-700 space-y-0.5"
+        >
+          <button onclick="triggerToast('已成功导出 HTML'); toggleExportMenu();" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center gap-2">
+            <i data-lucide="file-code" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>导出独立 HTML</span>
+          </button>
+          <button onclick="triggerToast('已生成 PDF 文档'); toggleExportMenu();" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center gap-2">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-red-500"></i>
+            <span>导出 PDF 文档</span>
+          </button>
+          <button onclick="triggerToast('已复制微信公众号富文本'); toggleExportMenu();" class="w-full text-left px-3 py-1.5 hover:bg-stone-100 flex items-center gap-2">
+            <i data-lucide="send" class="w-3.5 h-3.5 text-blue-500"></i>
+            <span>复制微信公众号格式</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：快捷收起按钮 -->
+    <div class="flex items-center space-x-1">
+      <button
+        onclick="toggleToolbar()"
+        title="收起工具栏以享受纯净打字 (Cmd+Shift+T)"
+        class="flex items-center gap-1 text-[11px] text-stone-400 hover:text-stone-700 px-2 py-0.5 rounded hover:bg-black/5 transition"
+      >
+        <span>收起工具栏</span>
+        <i data-lucide="chevron-up" class="w-3 h-3"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 查找与替换面板（可收起展开）                                                -->
+  <!-- ========================================================================= -->
+  <div
+    id="search-panel"
+    class="hidden bg-amber-50/95 border-b border-amber-200/80 px-4 py-2 flex items-center justify-between text-xs text-stone-800 z-10 animate-in fade-in duration-100"
+  >
+    <div class="flex items-center space-x-2">
+      <span class="text-amber-800 font-medium">查找:</span>
+      <input type="text" placeholder="输入搜索词..." class="px-2 py-1 bg-white border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-44" value="高斯积分" />
+      <span class="text-amber-800 font-medium ml-2">替换:</span>
+      <input type="text" placeholder="替换为..." class="px-2 py-1 bg-white border border-amber-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-44" />
+      <button onclick="triggerToast('查找匹配 3 处')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-medium">查找</button>
+      <button onclick="triggerToast('已全部替换')" class="px-2.5 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded text-xs">全部替换</button>
+    </div>
+    <button onclick="toggleSearchPanel()" class="text-stone-400 hover:text-stone-700 p-1">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+    </button>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 主工作区：左侧 Typora 双视图侧边栏 (文件树/大纲) + 右侧沉浸编辑器画布           -->
+  <!-- ========================================================================= -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- 左侧 Typora 完整侧边栏（包含：顶部双视图切换栏 + 文件夹树状工作区 + 文档大纲） -->
+    <aside
+      id="app-sidebar"
+      class="sidebar-container sidebar-expanded shrink-0 border-r border-black/5 bg-[#FAF8F5]/95 flex flex-col overflow-hidden select-none"
+    >
+      <!-- 1. 顶部 Typora 风格双视图切换页签 (文件 | 大纲) -->
+      <div class="h-9 border-b border-black/5 grid grid-cols-2 text-xs font-medium shrink-0 bg-[#FAF8F5]">
+        <button
+          id="sidebar-tab-files-btn"
+          onclick="switchSidebarView('files')"
+          class="flex items-center justify-center gap-1.5 transition border-b-2 border-stone-800 text-stone-900 font-semibold"
+        >
+          <i data-lucide="folder" class="w-3.5 h-3.5"></i>
+          <span>文件</span>
+        </button>
+        <button
+          id="sidebar-tab-outline-btn"
+          onclick="switchSidebarView('outline')"
+          class="flex items-center justify-center gap-1.5 transition border-b-2 border-transparent text-stone-400 hover:text-stone-700"
+        >
+          <i data-lucide="align-left" class="w-3.5 h-3.5"></i>
+          <span>大纲</span>
+        </button>
+      </div>
+
+      <!-- 2. 文件夹视图内容区 (Files View) -->
+      <div id="sidebar-view-files" class="flex-1 flex flex-col overflow-hidden">
+        <!-- 目录头：工作区名称 + 打开文件夹按钮 -->
+        <div class="h-7 px-3 border-b border-black/5 flex items-center justify-between text-[11px] text-stone-400 shrink-0">
+          <span class="truncate font-medium text-stone-600 flex items-center gap-1.5">
+            <i data-lucide="folder-git-2" class="w-3.5 h-3.5 text-amber-600"></i>
+            <span class="font-mono font-medium">mditor/docs</span>
+          </span>
+          <button
+            onclick="triggerToast('切换打开文件夹...')"
+            title="打开其它工作区文件夹"
+            class="hover:text-stone-800 flex items-center gap-1 transition p-0.5 rounded"
+          >
+            <i data-lucide="folder-open" class="w-3 h-3 text-stone-500"></i>
+          </button>
+        </div>
+
+        <!-- 目录树 (层级缩进、折叠/展开、点击文件打开/联动 Tab) -->
+        <div class="flex-1 overflow-y-auto p-2 space-y-0.5 text-xs text-stone-700">
+          <!-- 根目录下的文件夹 1: prd -->
+          <div class="space-y-0.5">
+            <div
+              onclick="toggleTreeNode('dir-prd')"
+              class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600"
+            >
+              <i id="icon-dir-prd" data-lucide="chevron-down" class="w-3 h-3 text-stone-400 transition-transform"></i>
+              <i data-lucide="folder" class="w-3.5 h-3.5 text-amber-600"></i>
+              <span class="font-medium">prd</span>
+            </div>
+            <div id="children-dir-prd" class="pl-4 space-y-0.5">
+              <div onclick="openFileFromTree('PRD-v0.3.0.md')" class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600">
+                <i data-lucide="file-text" class="w-3 h-3 text-stone-400"></i>
+                <span class="truncate">PRD-v0.3.0.md</span>
+              </div>
+              <div onclick="openFileFromTree('PRD-v0.3.1.md')" class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600">
+                <i data-lucide="file-text" class="w-3 h-3 text-stone-400"></i>
+                <span class="truncate">PRD-v0.3.1.md</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 根目录下的文件夹 2: spec -->
+          <div class="space-y-0.5">
+            <div
+              onclick="toggleTreeNode('dir-spec')"
+              class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600"
+            >
+              <i id="icon-dir-spec" data-lucide="chevron-down" class="w-3 h-3 text-stone-400 transition-transform"></i>
+              <i data-lucide="folder" class="w-3.5 h-3.5 text-amber-600"></i>
+              <span class="font-medium">spec</span>
+            </div>
+            <div id="children-dir-spec" class="pl-4 space-y-0.5">
+              <div onclick="openFileFromTree('spec-v0.3.1-m1.md')" class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600">
+                <i data-lucide="file-text" class="w-3 h-3 text-stone-400"></i>
+                <span class="truncate">spec-v0.3.1-m1.md</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 根目录下的直接文件 -->
+          <div
+            id="file-node-1"
+            onclick="switchTab(1)"
+            class="flex items-center space-x-1.5 px-2 py-1 rounded bg-amber-500/15 text-amber-900 font-medium cursor-pointer"
+          >
+            <i data-lucide="file-text" class="w-3 h-3 text-amber-700"></i>
+            <span class="truncate flex-1">01-产品架构与分层重构.md</span>
+          </div>
+
+          <div
+            id="file-node-2"
+            onclick="switchTab(2)"
+            class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600"
+          >
+            <i data-lucide="file-text" class="w-3 h-3 text-stone-400"></i>
+            <span class="truncate flex-1">02-高斯微积分与量子理论.md</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="未保存"></span>
+          </div>
+
+          <div
+            id="file-node-3"
+            onclick="switchTab(3)"
+            class="flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600"
+          >
+            <i data-lucide="file-text" class="w-3 h-3 text-stone-400"></i>
+            <span class="truncate flex-1">03-企业级设计排版规范.md</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 大纲视图内容区 (Outline View，初始隐藏) -->
+      <div id="sidebar-view-outline" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div class="h-7 px-3 border-b border-black/5 flex items-center justify-between text-[11px] text-stone-400 shrink-0">
+          <span>当前文档大纲</span>
+          <span class="font-mono">4 个小节</span>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-2 space-y-0.5 text-xs">
+          <div onclick="scrollToSection('h-intro')" class="p-1.5 bg-amber-500/15 text-amber-900 rounded font-medium cursor-pointer flex items-center space-x-1.5">
+            <span class="text-[10px] font-mono text-amber-600 font-bold shrink-0">H1</span>
+            <span class="truncate flex-1">顶栏分层架构设计意图</span>
+          </div>
+          <div onclick="scrollToSection('h-math-block')" class="p-1.5 hover:bg-black/5 rounded cursor-pointer pl-4 flex items-center space-x-1.5 text-stone-600">
+            <span class="text-[10px] font-mono text-stone-400 shrink-0">H2</span>
+            <span class="truncate flex-1">1.1 独立公式块与交互体验</span>
+          </div>
+          <div onclick="scrollToSection('h-inline-math')" class="p-1.5 hover:bg-black/5 rounded cursor-pointer pl-4 flex items-center space-x-1.5 text-stone-600">
+            <span class="text-[10px] font-mono text-stone-400 shrink-0">H2</span>
+            <span class="truncate flex-1">1.2 行内短公式微浮窗</span>
+          </div>
+          <div onclick="scrollToSection('h-table')" class="p-1.5 hover:bg-black/5 rounded cursor-pointer flex items-center space-x-1.5 text-stone-600">
+            <span class="text-[10px] font-mono text-stone-400 shrink-0">H2</span>
+            <span class="truncate flex-1">2. GFM 结构化排版验证</span>
+          </div>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- 主编辑器沉浸画布 -->
+    <main id="editor-main" class="flex-1 overflow-y-auto p-8 md:px-16 lg:px-24 flex justify-center">
+      <div class="editor-paper w-full max-w-3xl bg-white rounded-2xl border border-black/5 shadow-xs p-8 md:p-12 space-y-6 transition-all duration-300">
+
+        <!-- 标题 -->
+        <div>
+          <h1 id="h-intro" class="text-3xl font-bold tracking-tight text-stone-900 mb-2">
+            顶栏与编辑工具栏分层重构架构方案
+          </h1>
+          <p class="text-xs text-stone-400 font-mono">
+            mditor 体验设计 · Local-first WYSIWYG · 对标 Typora 沉浸式写作
+          </p>
+        </div>
+
+        <div class="p-4 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1.5">
+          <div class="font-semibold flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4 text-emerald-600"></i>
+            <span>完整分层与左侧双视图架构 (Dual-tier & Typora Sidebar)</span>
+          </div>
+          <p class="text-[12px] leading-relaxed text-emerald-800">
+            • <strong>左侧原生双视图侧边栏</strong>：包含「📁 文件工作区树」与「📑 文档大纲导航」，由左上角交通灯旁的 <kbd class="px-1 py-0.5 bg-white border border-emerald-300 rounded font-mono">PanelLeft</kbd> 按钮或 <kbd class="px-1 py-0.5 bg-white border border-emerald-300 rounded font-mono">⌘⇧O</kbd> 全局一键收放；<br>
+            • <strong>第一层 Window & TabBar</strong>：专注于会话管理，Tab 拥有全宽展开空间，未占满区域为窗口拖拽区；<br>
+            • <strong>第二层 Document Toolbar</strong>：专注于正文排版（表格、公式、主题、搜索、导出），随时按 <kbd class="px-1 py-0.5 bg-white border border-emerald-300 rounded font-mono">⌘⇧T</kbd> 收起享受纯净打字。
+          </p>
+        </div>
+
+        <!-- 独立公式块展示 -->
+        <section class="space-y-3">
+          <h2 id="h-math-block" class="text-xl font-semibold text-stone-900 border-b border-stone-100 pb-2">
+            1.1 独立公式块交互还原（Math Block）
+          </h2>
+          <p class="text-[14px] leading-relaxed text-stone-700">
+            独立公式块占据整行，卡片居中呈现大公式矢量排版，下方附带 TeX 源码条，点击即可展开交互抽屉：
+          </p>
+
+          <!-- 独立公式块容器 -->
+          <div
+            id="math-block-card"
+            onclick="toggleBlockDrawer()"
+            class="p-4 bg-stone-50/70 border border-stone-200 rounded-xl hover:border-blue-400 hover:shadow-xs transition cursor-pointer"
+          >
+            <div id="math-block-render" class="flex justify-center text-xl py-3"></div>
+            <div class="mt-2 pt-2 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-400 font-mono">
+              <span>TeX 源码：\int_{-\infty}^{+\infty} e^{-x^2} dx = \sqrt{\pi}</span>
+              <span class="text-stone-400 hover:text-blue-600 transition flex items-center gap-1">点击展开交互编辑面板 ▾</span>
+            </div>
+          </div>
+
+          <!-- 公式块展开抽屉 -->
+          <div
+            id="math-block-drawer"
+            class="hidden p-4 bg-white border border-blue-400 rounded-xl shadow-xl space-y-3 animate-in fade-in duration-150"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-blue-900 flex items-center gap-1.5">
+                <span>📐 独立公式块编辑器</span>
+                <span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-mono">DisplayMode</span>
+              </span>
+              <div class="flex items-center space-x-2 text-xs">
+                <button onclick="triggerToast('源码已复制至剪贴板')" class="px-2 py-1 text-stone-600 hover:bg-stone-100 rounded border border-stone-200">复制代码</button>
+                <button onclick="toggleBlockDrawer()" class="text-stone-400 hover:text-stone-700 font-semibold px-1">收起 ✕</button>
+              </div>
+            </div>
+
+            <textarea
+              id="math-block-textarea"
+              rows="3"
+              class="w-full p-2.5 bg-white border border-blue-300 rounded-lg font-mono text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-y"
+              oninput="updateBlockFormula(this.value)"
+            >\int_{-\infty}^{+\infty} e^{-x^2} dx = \sqrt{\pi}</textarea>
+
+            <!-- 正下方独立实时矢量预览卡片 -->
+            <div class="p-3 bg-stone-50/80 rounded-lg border border-stone-100 min-h-[56px] flex items-center justify-center overflow-x-auto">
+              <div id="drawer-preview-slot"></div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <button onclick="toggleBlockDrawer()" class="px-3.5 py-1.5 text-xs text-stone-700 hover:bg-stone-100 bg-stone-50 border border-stone-200 rounded-lg font-medium transition">完成</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 行内公式展示 -->
+        <section class="space-y-3">
+          <h2 id="h-inline-math" class="text-xl font-semibold text-stone-900 border-b border-stone-100 pb-2">
+            1.2 行内短公式微浮窗（Inline Math）
+          </h2>
+          <p class="text-[14px] leading-relaxed text-stone-700">
+            行内公式自然嵌套在文字句子中，例如经典质能方程
+            <span
+              id="inline-formula-1"
+              onclick="openInlinePopover(event)"
+              class="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded cursor-pointer transition select-none hover:bg-amber-100/80 outline outline-1 outline-amber-300/60 bg-amber-50/60"
+            ></span>
+            ，点击它原地弹出浮窗卡片，输入完成后敲 Enter 即刻保存。
+          </p>
+
+          <!-- 行内公式浮窗面板 -->
+          <div
+            id="inline-math-popover"
+            class="hidden p-3 bg-amber-50/95 backdrop-blur-md border border-amber-300 rounded-xl shadow-xl space-y-2 text-xs min-w-[380px] max-w-lg text-stone-800"
+          >
+            <div class="flex items-center justify-between text-amber-900 font-semibold mb-1">
+              <span>✏️ 正在编辑行内 LaTeX 公式</span>
+              <span class="text-[10px] text-amber-700 font-mono">按 Enter 确认 / Esc 取消</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="font-mono text-stone-400 font-bold">$</span>
+              <input
+                id="inline-input"
+                type="text"
+                class="flex-1 px-2.5 py-1.5 bg-white border border-amber-300 rounded-md font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-stone-900"
+                value="E = mc^2"
+                oninput="updateInlinePreview(this.value)"
+              />
+              <span class="font-mono text-stone-400 font-bold">$</span>
+              <button onclick="commitInline()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-md font-medium text-xs transition">应用</button>
+              <button onclick="closeInlinePopover()" class="px-2.5 py-1.5 text-stone-500 hover:bg-stone-200/50 rounded-md transition">取消</button>
+            </div>
+            <div class="text-[11px] text-stone-500 flex items-center gap-1.5 pt-0.5 border-t border-amber-200/40">
+              <span class="shrink-0 text-stone-400">实时预览:</span>
+              <span id="inline-preview-slot"></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 表格排版示例 -->
+        <section class="space-y-3">
+          <h2 id="h-table" class="text-xl font-semibold text-stone-900 border-b border-stone-100 pb-2">
+            2. GFM 结构化排版体验
+          </h2>
+          <table class="w-full text-xs text-left border-collapse border border-stone-200 rounded-lg overflow-hidden">
+            <thead>
+              <tr class="bg-stone-100 text-stone-700 font-medium border-b border-stone-200">
+                <th class="p-2.5 border-r border-stone-200">排版模式</th>
+                <th class="p-2.5 border-r border-stone-200">触发捷径</th>
+                <th class="p-2.5">交互体验与视觉效果</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-200">
+              <tr class="hover:bg-stone-50">
+                <td class="p-2.5 font-medium border-r border-stone-200">独立公式块 (Math Block)</td>
+                <td class="p-2.5 font-mono text-stone-500 border-r border-stone-200">⌥⌘M / $$ + 回车</td>
+                <td class="p-2.5">居中大公式卡片 + 展开多行文本域 + 独立矢量实时重绘</td>
+              </tr>
+              <tr class="hover:bg-stone-50">
+                <td class="p-2.5 font-medium border-r border-stone-200">行内短公式 (Inline Math)</td>
+                <td class="p-2.5 font-mono text-stone-500 border-r border-stone-200">$formula$</td>
+                <td class="p-2.5">嵌入正文行中，原地微浮窗，短小不占位</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 底部状态栏                                                                -->
+  <!-- ========================================================================= -->
+  <footer class="h-7 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-500 font-mono shrink-0 select-none transition-colors duration-300">
+    <div class="flex items-center space-x-3">
+      <span class="flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span id="footer-status">分层工具栏已就绪 (Dual-tier Mode)</span>
+      </span>
+      <span>UTF-8</span>
+    </div>
+    <div class="flex items-center space-x-4">
+      <span>字数: 1,420</span>
+      <span>行数: 84</span>
+      <span class="text-stone-400">⌘⇧T 切换工具栏 · ⌘⇧O 切换侧边栏</span>
+    </div>
+  </footer>
+
+  <!-- ========================================================================= -->
+  <!-- 右下角悬浮切换器：一键体验「旧版单行拥挤」vs「新版分层解耦」A/B 对比             -->
+  <!-- ========================================================================= -->
+  <div class="fixed bottom-10 right-6 z-50 flex items-center gap-2 p-1.5 bg-stone-900/90 text-white rounded-full shadow-2xl backdrop-blur-md border border-white/10 text-xs">
+    <span class="text-[11px] text-stone-300 pl-2">布局体验对比:</span>
+    <button
+      id="btn-mode-dualtier"
+      onclick="switchToLayout('dualtier')"
+      class="px-3 py-1 rounded-full font-medium transition bg-blue-600 text-white shadow-xs"
+    >
+      新版：分层解耦
+    </button>
+    <button
+      id="btn-mode-singleline"
+      onclick="switchToLayout('singleline')"
+      class="px-3 py-1 rounded-full font-medium transition text-stone-400 hover:text-white"
+    >
+      旧版：单行混杂
+    </button>
+  </div>
+
+  <!-- 轻量 Toast 提示框 -->
+  <div
+    id="toast-msg"
+    class="fixed top-14 right-6 z-50 hidden bg-stone-900/90 text-white px-4 py-2 rounded-xl shadow-xl text-xs flex items-center gap-2 backdrop-blur-md transition transform -translate-y-2 opacity-0"
+  >
+    <i data-lucide="info" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-text">提示信息</span>
+  </div>
+
+  <script>
+    let isToolbarVisible = true;
+    let isSidebarVisible = true;
+    let currentSidebarView = 'files'; // 'files' or 'outline'
+    let currentTheme = 'classic';
+    let currentLayout = 'dualtier'; // 'dualtier' or 'singleline'
+
+    // 页面初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      renderInitialKatex();
+    });
+
+    function renderInitialKatex() {
+      const blockEl = document.getElementById('math-block-render');
+      const drawerSlot = document.getElementById('drawer-preview-slot');
+      const inlineEl = document.getElementById('inline-formula-1');
+      const inlineSlot = document.getElementById('inline-preview-slot');
+
+      if (blockEl) katex.render('\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}', blockEl, { displayMode: true });
+      if (drawerSlot) katex.render('\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}', drawerSlot, { displayMode: true });
+      if (inlineEl) katex.render('E = mc^2', inlineEl, { displayMode: false });
+      if (inlineSlot) katex.render('E = mc^2', inlineSlot, { displayMode: false });
+    }
+
+    // 侧边栏展开/收起 (PanelLeft 按钮触发)
+    function toggleSidebar() {
+      const sidebar = document.getElementById('app-sidebar');
+      const btn = document.getElementById('btn-sidebar-toggle');
+      isSidebarVisible = !isSidebarVisible;
+
+      if (isSidebarVisible) {
+        sidebar.classList.remove('sidebar-collapsed');
+        sidebar.classList.add('sidebar-expanded');
+        btn.classList.add('bg-black/10', 'text-stone-900');
+        btn.classList.remove('text-stone-600');
+        triggerToast('已展开侧边栏 (文件与大纲)');
+      } else {
+        sidebar.classList.remove('sidebar-expanded');
+        sidebar.classList.add('sidebar-collapsed');
+        btn.classList.remove('bg-black/10', 'text-stone-900');
+        btn.classList.add('text-stone-600');
+        triggerToast('已收起侧边栏');
+      }
+    }
+
+    // 切换侧边栏视图 (文件 vs 大纲)
+    function switchSidebarView(view) {
+      currentSidebarView = view;
+      const filesTab = document.getElementById('sidebar-tab-files-btn');
+      const outlineTab = document.getElementById('sidebar-tab-outline-btn');
+      const filesView = document.getElementById('sidebar-view-files');
+      const outlineView = document.getElementById('sidebar-view-outline');
+
+      if (view === 'files') {
+        filesTab.className = "flex items-center justify-center gap-1.5 transition border-b-2 border-stone-800 text-stone-900 font-semibold";
+        outlineTab.className = "flex items-center justify-center gap-1.5 transition border-b-2 border-transparent text-stone-400 hover:text-stone-700";
+        filesView.classList.remove('hidden');
+        outlineView.classList.add('hidden');
+      } else {
+        outlineTab.className = "flex items-center justify-center gap-1.5 transition border-b-2 border-stone-800 text-stone-900 font-semibold";
+        filesTab.className = "flex items-center justify-center gap-1.5 transition border-b-2 border-transparent text-stone-400 hover:text-stone-700";
+        outlineView.classList.remove('hidden');
+        filesView.classList.add('hidden');
+      }
+    }
+
+    // 目录树折叠展开
+    function toggleTreeNode(dirId) {
+      const children = document.getElementById(`children-${dirId}`);
+      const icon = document.getElementById(`icon-${dirId}`);
+      if (children.classList.contains('hidden')) {
+        children.classList.remove('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      } else {
+        children.classList.add('hidden');
+        icon.style.transform = 'rotate(-90deg)';
+      }
+    }
+
+    // 从文件树打开文档 (联动新建 Tab 或切换)
+    function openFileFromTree(fileName) {
+      triggerToast(`已在工作区中打开: ${fileName}`);
+    }
+
+    // 切换工具栏显示/隐藏
+    function toggleToolbar() {
+      const tb = document.getElementById('document-toolbar');
+      const icon = document.getElementById('toggle-toolbar-icon');
+      const label = document.getElementById('toggle-toolbar-label');
+      const btn = document.getElementById('toggle-toolbar-btn');
+
+      isToolbarVisible = !isToolbarVisible;
+
+      if (isToolbarVisible) {
+        tb.classList.remove('toolbar-collapsed');
+        tb.classList.add('toolbar-expanded');
+        btn.classList.add('bg-black/5', 'text-stone-700');
+        btn.classList.remove('text-stone-500');
+        label.textContent = '工具栏';
+        triggerToast('已展开文档编辑工具栏 (⌘⇧T)');
+      } else {
+        tb.classList.remove('toolbar-expanded');
+        tb.classList.add('toolbar-collapsed');
+        btn.classList.remove('bg-black/5');
+        btn.classList.add('text-stone-500');
+        label.textContent = '展开工具栏';
+        triggerToast('已收起工具栏，进入 Typora 沉浸写作态');
+      }
+    }
+
+    // 标签页切换
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-item').forEach(el => {
+        el.classList.remove('bg-white/90', 'border-black/5', 'shadow-2xs', 'text-stone-800');
+        el.classList.add('text-stone-500');
+      });
+      const activeEl = document.getElementById(`tab-btn-${tabId}`);
+      if (activeEl) {
+        activeEl.classList.add('bg-white/90', 'border-black/5', 'shadow-2xs', 'text-stone-800');
+        activeEl.classList.remove('text-stone-500');
+      }
+
+      // 同步文件树高亮
+      for (let i = 1; i <= 3; i++) {
+        const node = document.getElementById(`file-node-${i}`);
+        if (node) {
+          if (i === tabId) {
+            node.className = "flex items-center space-x-1.5 px-2 py-1 rounded bg-amber-500/15 text-amber-900 font-medium cursor-pointer";
+          } else {
+            node.className = "flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-black/5 cursor-pointer text-stone-600";
+          }
+        }
+      }
+
+      triggerToast(`已切换至标签页 ${tabId}`);
+    }
+
+    function closeTab(e, tabId) {
+      e.stopPropagation();
+      const tabEl = document.getElementById(`tab-btn-${tabId}`);
+      if (tabEl) tabEl.remove();
+      triggerToast(`已关闭标签页 ${tabId}`);
+    }
+
+    function addNewTab() {
+      const container = document.getElementById('tab-container');
+      const newTabId = Date.now();
+      const newTab = document.createElement('div');
+      newTab.id = `tab-btn-${newTabId}`;
+      newTab.onclick = () => switchTab(newTabId);
+      newTab.className = "tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none text-stone-500 hover:bg-black/5";
+      newTab.innerHTML = `
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+        <span class="truncate max-w-[180px]">未命名-${container.children.length}.md</span>
+        <button onclick="closeTab(event, ${newTabId})" class="opacity-0 group-hover:opacity-100 hover:bg-black/10 rounded p-0.5 text-stone-400">
+          <i data-lucide="x" class="w-3 h-3"></i>
+        </button>
+      `;
+      container.insertBefore(newTab, container.lastElementChild);
+      lucide.createIcons();
+      switchTab(newTabId);
+    }
+
+    // 公式块交互
+    function toggleBlockDrawer() {
+      const card = document.getElementById('math-block-card');
+      const drawer = document.getElementById('math-block-drawer');
+      if (drawer.classList.contains('hidden')) {
+        drawer.classList.remove('hidden');
+        card.classList.add('hidden');
+        document.getElementById('math-block-textarea').focus();
+      } else {
+        drawer.classList.add('hidden');
+        card.classList.remove('hidden');
+      }
+    }
+
+    function updateBlockFormula(val) {
+      const drawerSlot = document.getElementById('drawer-preview-slot');
+      const cardRender = document.getElementById('math-block-render');
+      try {
+        katex.render(val || '\\quad', drawerSlot, { displayMode: true });
+        katex.render(val || '\\quad', cardRender, { displayMode: true });
+      } catch (e) {
+        drawerSlot.innerHTML = `<span class="text-red-500 font-mono text-xs">${e.message}</span>`;
+      }
+    }
+
+    // 行内公式交互
+    function openInlinePopover(e) {
+      const popover = document.getElementById('inline-math-popover');
+      popover.classList.remove('hidden');
+      document.getElementById('inline-input').focus();
+    }
+
+    function closeInlinePopover() {
+      document.getElementById('inline-math-popover').classList.add('hidden');
+    }
+
+    function updateInlinePreview(val) {
+      const slot = document.getElementById('inline-preview-slot');
+      try {
+        katex.render(val || '\\quad', slot, { displayMode: false });
+      } catch (e) {
+        slot.innerHTML = `<span class="text-red-500 text-xs">${e.message}</span>`;
+      }
+    }
+
+    function commitInline() {
+      const val = document.getElementById('inline-input').value;
+      const target = document.getElementById('inline-formula-1');
+      try {
+        katex.render(val, target, { displayMode: false });
+      } catch(e) {}
+      closeInlinePopover();
+      triggerToast('行内公式已更新');
+    }
+
+    // 主题切换
+    function toggleThemeMenu() {
+      const pop = document.getElementById('theme-popover');
+      pop.classList.toggle('hidden');
+    }
+
+    function applyTheme(themeKey) {
+      document.body.className = document.body.className.replace(/theme-\w+/g, '');
+      if (themeKey !== 'classic') {
+        document.body.classList.add(`theme-${themeKey}`);
+      }
+      ['classic', 'academic', 'slate', 'parchment'].forEach(k => {
+        const check = document.getElementById(`theme-check-${k}`);
+        if (check) check.classList.toggle('hidden', k !== themeKey);
+      });
+      toggleThemeMenu();
+      triggerToast(`已切换至「${themeKey}」主题`);
+    }
+
+    // 查找面板
+    function toggleSearchPanel() {
+      const panel = document.getElementById('search-panel');
+      panel.classList.toggle('hidden');
+    }
+
+    // 导出气泡
+    function toggleExportMenu() {
+      const pop = document.getElementById('export-popover');
+      pop.classList.toggle('hidden');
+    }
+
+    // Toast 触发器
+    function triggerToast(text) {
+      const toast = document.getElementById('toast-msg');
+      const toastText = document.getElementById('toast-text');
+      toastText.textContent = text;
+      toast.classList.remove('hidden', '-translate-y-2', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.add('-translate-y-2', 'opacity-0');
+        setTimeout(() => toast.classList.add('hidden'), 200);
+      }, 2000);
+    }
+
+    // 双模式切换 (⌘/)
+    let isSourceMode = false;
+    function toggleEditorMode() {
+      isSourceMode = !isSourceMode;
+      const label = document.getElementById('mode-label');
+      const icon = document.getElementById('mode-icon');
+      if (isSourceMode) {
+        label.textContent = '源码';
+        triggerToast('已切换至纯文本源码模式 (Cmd+/)');
+      } else {
+        label.textContent = '实时';
+        triggerToast('已切换至所见即所得渲染模式 (Cmd+/)');
+      }
+    }
+
+    // 快捷键支持 (⌘⇧T 切换工具栏，⌘⇧O 切换侧边栏)
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'T' || e.key === 't')) {
+        e.preventDefault();
+        toggleToolbar();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    });
+
+    // =========================================================================
+    // A/B 布局体验切换引擎：直观对比「新版分层解耦」vs「旧版单行混杂」
+    // =========================================================================
+    function switchToLayout(layout) {
+      currentLayout = layout;
+      const btnDual = document.getElementById('btn-mode-dualtier');
+      const btnSingle = document.getElementById('btn-mode-singleline');
+      const docToolbar = document.getElementById('document-toolbar');
+      const rightActions = document.getElementById('window-right-actions');
+      const tabContainer = document.getElementById('tab-container');
+      const footerStatus = document.getElementById('footer-status');
+
+      if (layout === 'dualtier') {
+        // 恢复新版分层
+        btnDual.className = "px-3 py-1 rounded-full font-medium transition bg-blue-600 text-white shadow-xs";
+        btnSingle.className = "px-3 py-1 rounded-full font-medium transition text-stone-400 hover:text-white";
+        docToolbar.style.display = 'flex';
+        docToolbar.classList.remove('toolbar-collapsed');
+        docToolbar.classList.add('toolbar-expanded');
+
+        rightActions.innerHTML = `
+          <button
+            id="toggle-toolbar-btn"
+            onclick="toggleToolbar()"
+            title="显示/隐藏编辑工具栏 (Cmd+Shift+T)"
+            class="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-black/5 hover:bg-black/10 text-stone-700 transition"
+          >
+            <i id="toggle-toolbar-icon" data-lucide="panel-top" class="w-3.5 h-3.5"></i>
+            <span id="toggle-toolbar-label" class="text-[11px]">工具栏</span>
+          </button>
+          <button
+            id="mode-toggle-btn"
+            onclick="toggleEditorMode()"
+            title="切换源码模式 / 实时渲染 (Cmd+/)"
+            class="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-stone-600 hover:bg-black/5 hover:text-stone-900 transition"
+          >
+            <i id="mode-icon" data-lucide="split" class="w-3.5 h-3.5"></i>
+            <span id="mode-label" class="text-[11px]">实时</span>
+          </button>
+        `;
+        footerStatus.textContent = "新版：分层解耦模式 (Tab 与工具栏各司其职)";
+        triggerToast("已切换到【新版分层解耦】：Tab 标签拥有全宽空间，工具栏独立可折叠");
+      } else {
+        // 模拟旧版单行混杂堆叠
+        btnSingle.className = "px-3 py-1 rounded-full font-medium transition bg-amber-600 text-white shadow-xs";
+        btnDual.className = "px-3 py-1 rounded-full font-medium transition text-stone-400 hover:text-white";
+        docToolbar.style.display = 'none';
+
+        // 把 10 个按钮全部强行塞入右侧
+        rightActions.innerHTML = `
+          <div class="flex items-center space-x-1 text-stone-500 overflow-x-hidden">
+            <button onclick="toggleSidebar()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="align-left" class="w-3.5 h-3.5"></i></button>
+            <button onclick="triggerToast('表格')" class="p-1 hover:bg-black/5 rounded"><i data-lucide="table" class="w-3.5 h-3.5"></i></button>
+            <button onclick="insertMathBlock()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="square-sigma" class="w-3.5 h-3.5 text-blue-600"></i></button>
+            <button onclick="insertInlineMath()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="sigma" class="w-3.5 h-3.5 text-amber-600"></i></button>
+            <button onclick="toggleThemeMenu()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="palette" class="w-3.5 h-3.5"></i></button>
+            <button onclick="toggleSearchPanel()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="search" class="w-3.5 h-3.5"></i></button>
+            <button onclick="triggerToast('打开')" class="p-1 hover:bg-black/5 rounded"><i data-lucide="folder-open" class="w-3.5 h-3.5"></i></button>
+            <button onclick="triggerToast('保存')" class="p-1 hover:bg-black/5 rounded"><i data-lucide="save" class="w-3.5 h-3.5"></i></button>
+            <button onclick="toggleExportMenu()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="share-2" class="w-3.5 h-3.5"></i></button>
+            <button onclick="toggleEditorMode()" class="p-1 hover:bg-black/5 rounded"><i data-lucide="split" class="w-3.5 h-3.5"></i></button>
+          </div>
+        `;
+        footerStatus.textContent = "旧版：单行混杂模式 (Tab 标签被严重压缩挤扁)";
+        triggerToast("已切换到【旧版单行混杂】：查看右侧 10 个按钮与被挤扁的 Tab 标签");
+      }
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

@@ -16,7 +16,7 @@ test.describe('Desktop Electron E2E Flow (M3: Search, Code Block & Export)', () 
     await window.waitForLoadState('domcontentloaded');
 
     // 1. 点击查找按钮，打开悬浮搜索栏
-    const searchBtn = window.locator('header button[title="查找与替换 (Cmd+F)"]');
+    const searchBtn = window.locator('button[title="查找与替换 (Cmd+F)"]');
     await searchBtn.click();
 
     const searchInput = window.locator('input[placeholder="在当前文档中查找..."]');
@@ -44,7 +44,7 @@ test.describe('Desktop Electron E2E Flow (M3: Search, Code Block & Export)', () 
     await expect(codeBlock.first()).toContainText('interface EditorConfig');
 
     // 3. 验证导出菜单与一键公众号排版 (AC7.3)
-    const exportBtn = window.locator('header button[title="导出 / 分享"]');
+    const exportBtn = window.locator('button[title="导出 / 分享"]');
     await exportBtn.click();
 
     const wechatOption = window.getByText('复制为公众号/知乎排版', { exact: true });

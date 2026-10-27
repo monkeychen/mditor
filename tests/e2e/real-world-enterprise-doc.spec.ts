@@ -37,7 +37,7 @@ test.describe('Real-World Enterprise Production Document E2E', () => {
     );
 
     // 点击工具栏的「打开文档 (Cmd+O)」按钮
-    const openBtn = window.locator('header button[title="打开文档 (Cmd+O)"]');
+    const openBtn = window.locator('button[title="打开文档 (Cmd+O)"]');
     await expect(openBtn).toBeVisible();
     await openBtn.click();
 
