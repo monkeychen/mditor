@@ -72,10 +72,10 @@ Milkdown 编辑器容器与 CodeMirror 源码容器统一引用 CSS 变量：
 
 ## 3. 任务拆解与 TDD 计划（Task Breakdown）
 
-- [ ] **T409：偏好设置模型、本地存储与 DOM CSS 变量热更新服务** (`settingsService.ts` + 单元测试)
-- [ ] **T410：偏好设置模态组件与外观/编辑器/保存设置项交互** (`PreferencesModal.tsx` + 单元测试)
-- [ ] **T411：App 宿主快捷键呼出 (`⌘,`)、画布排版联动与自动保存引擎** (`App.tsx`, `MilkdownEditor.tsx`, `SourceEditor.tsx`)
-- [ ] **T412：版本升级至 v0.4.0、端到端测试与全量自动化门禁** (Playwright E2E: `v0.4.0-m3-preferences.spec.ts` + 全量 CI 门禁)
+- [x] **T409：偏好设置模型、本地存储与 DOM CSS 变量热更新服务** (`settingsService.ts` + 单元测试)
+- [x] **T410：偏好设置模态组件与外观/编辑器/保存设置项交互** (`PreferencesModal.tsx` + 单元测试)
+- [x] **T411：App 宿主快捷键呼出 (`⌘,`)、画布排版联动与自动保存引擎** (`App.tsx`, `MilkdownEditor.tsx`, `SourceEditor.tsx`)
+- [x] **T412：版本升级至 v0.4.0、端到端测试与全量自动化门禁** (Playwright E2E: `v0.4.0-m3-preferences.spec.ts` + 全量 CI 门禁)
 
 ---
 
