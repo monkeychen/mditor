@@ -29,7 +29,7 @@ export class InlineMathView implements NodeView {
     // 2. 交互式行内编辑卡片（浮窗弹层，完全对齐原型设计）
     this.popoverEl = document.createElement('div');
     this.popoverEl.className =
-      'inline-math-editor inline-math-popover hidden absolute left-0 top-full mt-1.5 z-50 p-3 bg-amber-50/95 backdrop-blur-md border border-amber-300 rounded-xl shadow-xl space-y-2 text-xs min-w-[340px] text-stone-800 animate-in fade-in duration-100';
+      'inline-math-editor inline-math-popover hidden absolute left-0 top-full mt-1.5 z-50 p-3 bg-amber-50/95 backdrop-blur-md border border-amber-300 rounded-xl shadow-xl space-y-2 text-xs min-w-[380px] max-w-lg text-stone-800 animate-in fade-in duration-100';
 
     // 头部提示
     const header = document.createElement('div');
@@ -53,7 +53,7 @@ export class InlineMathView implements NodeView {
     this.inputEl.type = 'text';
     this.inputEl.className =
       'inline-math-input flex-1 px-2.5 py-1.5 bg-white border border-amber-300 rounded-md font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-stone-900';
-    this.inputEl.placeholder = '输入 LaTeX，如 E=mc^2';
+    this.inputEl.placeholder = '输入短公式，如 E=mc^2 (独立公式块请用 ⌥⌘M)';
 
     const rightDollar = document.createElement('span');
     rightDollar.className = 'font-mono text-stone-400 font-bold';

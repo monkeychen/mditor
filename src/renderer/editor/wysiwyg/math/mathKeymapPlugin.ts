@@ -10,34 +10,59 @@ export function createMathKeymapPlugin(): Plugin {
         const isMod = event.metaKey || event.ctrlKey;
         const keyLower = event.key ? event.key.toLowerCase() : '';
 
-        // 1. 快捷键 ⌥⌘M (或 Alt+Ctrl+M): 插入或包裹行内公式
+        // 1. 快捷键 ⌥⌘M (或 Alt+Ctrl+M): 智能公式插入 (全面对标 Typora 行为)
         if (isMod && event.altKey && (keyLower === 'm' || event.code === 'KeyM')) {
           event.preventDefault();
           const { state, dispatch } = view;
           const { selection, schema } = state;
-          const inlineMathType = schema.nodes.inline_math;
-          if (!inlineMathType) return false;
-
           const { from, to } = selection;
-          const selectedText = from !== to ? state.doc.textBetween(from, to) : '';
-          const node = inlineMathType.create({ value: selectedText || 'f(x)' });
-          const tr = state.tr.replaceSelectionWith(node);
-          dispatch(tr.scrollIntoView());
-          return true;
+          const selectedText = from !== to ? state.doc.textBetween(from, to).trim() : '';
+
+          if (selectedText) {
+            // 选中文本时，视为行内公式包裹
+            const inlineMathType = schema.nodes.inline_math;
+            if (inlineMathType) {
+              const node = inlineMathType.create({ value: selectedText });
+              const tr = state.tr.replaceSelectionWith(node);
+              dispatch(tr.scrollIntoView());
+              return true;
+            }
+          } else {
+            // 未选中文本时，创建独立公式块 (Math Block)
+            const mathBlockType = schema.nodes.math_block;
+            if (mathBlockType) {
+              const node = mathBlockType.create({
+                value: '\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}',
+              });
+              const tr = state.tr.replaceSelectionWith(node);
+              dispatch(tr.scrollIntoView());
+              return true;
+            }
+          }
         }
 
-        // 2. 行首输入 $$ 并按回车 -> 转换为独立公式块
+        // 2. 行首输入 $$ 或 $$ formula $$ 并按回车 -> 转换为独立公式块
         if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !isMod) {
           const { state, dispatch } = view;
           const { selection, schema } = state;
           const { $from } = selection;
           const parent = $from.parent;
 
-          if (parent.type.name === 'paragraph' && parent.textContent.trim() === '$$') {
+          if (parent.type.name === 'paragraph') {
+            const text = parent.textContent.trim();
             const mathBlockType = schema.nodes.math_block;
-            if (mathBlockType) {
+
+            if (mathBlockType && (text === '$$' || /^\$\$[\s\S]+\$\$$/.test(text))) {
               event.preventDefault();
-              const mathNode = mathBlockType.create({ value: '' });
+              let formulaValue = '';
+              const match = text.match(/^\$\$([\s\S]+)\$\$$/);
+              if (match) {
+                formulaValue = match[1].trim();
+              } else {
+                formulaValue = '\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}';
+              }
+
+              const mathNode = mathBlockType.create({ value: formulaValue });
 
               // 尝试直接替换当前段落
               try {
@@ -50,7 +75,6 @@ export function createMathKeymapPlugin(): Plugin {
                 dispatch(tr.scrollIntoView());
                 return true;
               } catch {
-                // 如果父级容器（如 list_item）对子节点类型有约束，替换外层列表项节点以提升为独立公式块
                 try {
                   const ancestorDepth = $from.depth - 1;
                   const ancestorPos = $from.before(ancestorDepth);

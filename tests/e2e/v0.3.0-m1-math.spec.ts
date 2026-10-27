@@ -74,7 +74,7 @@ test.describe('KaTeX Math System E2E (v0.3.0 M1: AC-19.1 ~ AC-19.3)', () => {
     await textarea.fill('\\int_0^1 x^2 dx = \\frac{1}{3}');
 
     // 验证实时重绘
-    const displayKatex = mathBlock.locator('.katex-display');
+    const displayKatex = drawer.locator('.katex-display');
     await expect(displayKatex).toBeVisible();
 
     // 点击收起按钮

@@ -43,6 +43,7 @@ import {
   Eye,
   AlignCenter,
   Sigma,
+  SquareSigma,
   Palette,
 } from 'lucide-react';
 
@@ -286,16 +287,35 @@ export const App: React.FC = () => {
     }
   }, [activeTab.content, showToast]);
 
-  // 插入数学公式 (⌥⌘M)
-  const handleInsertMath = useCallback(() => {
+  // 插入独立公式块 (Math Block - ⌥⌘M)
+  const handleInsertMathBlock = useCallback(() => {
     if (currentMode === 'wysiwyg' && milkdownRef.current) {
-      milkdownRef.current.insertInlineMath();
-      showToast('已插入数学公式 (⌥⌘M)');
+      milkdownRef.current.insertMathBlock();
+      showToast('已插入独立公式块 (⌥⌘M)');
     } else {
-      updateTabContent(activeTab.id, activeTab.content + ' $f(x)$ ');
-      showToast('已插入数学公式 (⌥⌘M)');
+      updateTabContent(
+        activeTab.id,
+        activeTab.content + '\n\n$$\n\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}\n$$\n\n'
+      );
+      showToast('已插入独立公式块 (⌥⌘M)');
     }
   }, [currentMode, activeTab, updateTabContent, showToast]);
+
+  // 插入行内公式 (Inline Math - $formula$)
+  const handleInsertInlineMath = useCallback(() => {
+    if (currentMode === 'wysiwyg' && milkdownRef.current) {
+      milkdownRef.current.insertInlineMath();
+      showToast('已插入行内公式 ($formula$)');
+    } else {
+      updateTabContent(activeTab.id, activeTab.content + ' $E = mc^2$ ');
+      showToast('已插入行内公式 ($formula$)');
+    }
+  }, [currentMode, activeTab, updateTabContent, showToast]);
+
+  // 快捷键 ⌥⌘M 智能调度
+  const handleInsertMath = useCallback(() => {
+    handleInsertMathBlock();
+  }, [handleInsertMathBlock]);
 
   // 快捷键监听 (全面对齐 Typora / macOS 常用快捷键)
   useEffect(() => {
@@ -518,8 +538,16 @@ export const App: React.FC = () => {
             <Table className="w-4 h-4" />
           </button>
           <button
-            onClick={handleInsertMath}
-            title="插入数学公式 (⌥⌘M)"
+            onClick={handleInsertMathBlock}
+            title="插入独立公式块 (⌥⌘M)"
+            data-testid="toolbar-insert-math-block-btn"
+            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
+          >
+            <SquareSigma className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleInsertInlineMath}
+            title="插入行内公式 ($formula$)"
             data-testid="toolbar-insert-math-btn"
             className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
           >
