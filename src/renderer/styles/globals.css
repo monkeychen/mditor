@@ -2,7 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root, [data-theme="macos-light"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #FAF8F5;
+  --bg-sidebar: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --accent-color: #2563EB;
+  --code-bg: #F3F4F6;
+  --code-text: #1F2937;
+  --table-border: #D1D5DB;
+  --table-header-bg: #F3F4F6;
+  --table-zebra-bg: #F9FAFB;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --font-family-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
   --bg-canvas: #FAF8F5;
   --text-main: #1D1D1F;
   --text-muted: #86868B;
@@ -10,16 +25,147 @@
   --accent: #E58E26;
 }
 
+[data-theme="github"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F6F8FA;
+  --bg-sidebar: #F6F8FA;
+  --bg-card: #FFFFFF;
+  --text-primary: #24292F;
+  --text-secondary: #57606A;
+  --border-color: #D0D7DE;
+  --accent-color: #0969DA;
+  --code-bg: #F6F8FA;
+  --code-text: #24292F;
+  --table-border: #D0D7DE;
+  --table-header-bg: #F6F8FA;
+  --table-zebra-bg: #F6F8FA;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --font-family-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --bg-canvas: #F6F8FA;
+  --text-main: #24292F;
+  --text-muted: #57606A;
+  --mac-border: #D0D7DE;
+  --accent: #0969DA;
+}
+
+[data-theme="night"] {
+  --bg-primary: #1E1E1E;
+  --bg-secondary: #252526;
+  --bg-sidebar: #181818;
+  --bg-card: #252526;
+  --text-primary: #D4D4D4;
+  --text-secondary: #858585;
+  --border-color: #3C3C3C;
+  --accent-color: #3B82F6;
+  --code-bg: #2D2D2D;
+  --code-text: #E6EDF3;
+  --table-border: #3C3C3C;
+  --table-header-bg: #2D2D2D;
+  --table-zebra-bg: #252526;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --font-family-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --bg-canvas: #1E1E1E;
+  --text-main: #D4D4D4;
+  --text-muted: #858585;
+  --mac-border: #3C3C3C;
+  --accent: #3B82F6;
+}
+
+[data-theme="newsprint"] {
+  --bg-primary: #F6F3ED;
+  --bg-secondary: #EFEBE4;
+  --bg-sidebar: #ECE7DF;
+  --bg-card: #FAF8F5;
+  --text-primary: #2C2621;
+  --text-secondary: #70685E;
+  --border-color: #DDD6CA;
+  --accent-color: #B45309;
+  --code-bg: #EAE4D9;
+  --code-text: #2C2621;
+  --table-border: #DDD6CA;
+  --table-header-bg: #EAE4D9;
+  --table-zebra-bg: #F1ECE3;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.14);
+  --font-family-body: "Georgia", "Times New Roman", "Songti SC", serif;
+  --bg-canvas: #F6F3ED;
+  --text-main: #2C2621;
+  --text-muted: #70685E;
+  --mac-border: #DDD6CA;
+  --accent: #B45309;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--bg-canvas);
-  color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
   user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* 沉浸式多主题深度覆盖样式 */
+[data-theme="night"] body,
+[data-theme="night"] .milkdown-wysiwyg-container,
+[data-theme="night"] .cm-editor {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror h1,
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror h2,
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror h3,
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror h4,
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror strong {
+  color: #F3F4F6 !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror table {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror thead,
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror th {
+  background-color: var(--table-header-bg) !important;
+  color: #FFFFFF !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror td {
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror tr {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror tbody tr:nth-child(2n) {
+  background-color: var(--table-zebra-bg) !important;
+}
+
+[data-theme="night"] .milkdown-wysiwyg-container .ProseMirror blockquote {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #9CA3AF !important;
+  border-left-color: #4B5563 !important;
+}
+
+[data-theme="newsprint"] body,
+[data-theme="newsprint"] .milkdown-wysiwyg-container,
+[data-theme="newsprint"] .cm-editor {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-family-body) !important;
+}
+
+[data-theme="newsprint"] .milkdown-wysiwyg-container .ProseMirror {
+  font-family: var(--font-family-body) !important;
 }
 
 /* 允许编辑器内文本正常选择与打字 */

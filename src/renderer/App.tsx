@@ -8,6 +8,14 @@ import UnsavedConfirmModal from './components/UnsavedConfirmModal';
 import SearchPanel from './components/SearchPanel';
 import { WordCountPopover } from './components/WordCountPopover';
 import { InsertTableModal } from './components/InsertTableModal';
+import { ThemeSelectorPopover } from './components/ThemeSelectorPopover';
+import {
+  AppTheme,
+  getStoredTheme,
+  setAppTheme,
+  applyThemeToDOM,
+  THEME_LIST,
+} from './services/themeService';
 import { extractOutline, OutlineItem } from './utils/outline';
 import { calculateDocumentStats } from './utils/counter';
 import { findMatches, replaceSingle, replaceAll } from './utils/search';
@@ -35,6 +43,7 @@ import {
   Eye,
   AlignCenter,
   Sigma,
+  Palette,
 } from 'lucide-react';
 
 const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
@@ -112,6 +121,19 @@ export const App: React.FC = () => {
   const [focusMode, setFocusMode] = useState(false);
   const [typewriterMode, setTypewriterMode] = useState(false);
 
+  // 经典多主题视觉系统 (v0.3.0 M4: AC-22.1 ~ AC-22.3)
+  const [currentTheme, setCurrentTheme] = useState<AppTheme>(getStoredTheme);
+  const [isThemePopoverOpen, setIsThemePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    applyThemeToDOM(currentTheme);
+  }, [currentTheme]);
+
+  const handleSelectTheme = useCallback((theme: AppTheme) => {
+    setCurrentTheme(theme);
+    setAppTheme(theme);
+  }, []);
+
   // 字数统计浮窗与插入表格弹窗
   const [isWordCountOpen, setIsWordCountOpen] = useState(false);
   const [isInsertTableOpen, setIsInsertTableOpen] = useState(false);
@@ -129,6 +151,32 @@ export const App: React.FC = () => {
     const nextMode = currentMode === 'wysiwyg' ? 'source' : 'wysiwyg';
     updateTabMode(activeTab.id, nextMode);
   }, [currentMode, activeTab.id, activeTab.content, updateTabContent, updateTabMode]);
+
+  const handleSwitchTab = useCallback(
+    (targetTabId: string) => {
+      if (currentMode === 'wysiwyg' && milkdownRef.current) {
+        const latestMd = milkdownRef.current.getMarkdown();
+        if (latestMd && latestMd !== activeTab.content) {
+          updateTabContent(activeTab.id, latestMd);
+        }
+      }
+      switchTab(targetTabId);
+    },
+    [currentMode, activeTab.id, activeTab.content, updateTabContent, switchTab]
+  );
+
+  const handleCreateNewTab = useCallback(
+    (fileName?: string, content?: string, filePath?: string | null) => {
+      if (currentMode === 'wysiwyg' && milkdownRef.current) {
+        const latestMd = milkdownRef.current.getMarkdown();
+        if (latestMd && latestMd !== activeTab.content) {
+          updateTabContent(activeTab.id, latestMd);
+        }
+      }
+      createNewTab(fileName, content, filePath);
+    },
+    [currentMode, activeTab.id, activeTab.content, updateTabContent, createNewTab]
+  );
 
   // 搜索替换状态
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -225,9 +273,9 @@ export const App: React.FC = () => {
   const handleOpenLocalFile = useCallback(async () => {
     const res = await openDocument();
     if (res) {
-      createNewTab(res.fileName, res.content, res.filePath);
+      handleCreateNewTab(res.fileName, res.content, res.filePath);
     }
-  }, [createNewTab]);
+  }, [handleCreateNewTab]);
 
   // 复制微信公众号富文本 (⇧⌘C)
   const handleCopyWechat = useCallback(async () => {
@@ -266,7 +314,7 @@ export const App: React.FC = () => {
         handleOpenLocalFile();
       } else if (isMeta && !e.shiftKey && !e.altKey && keyLower === 'n') {
         e.preventDefault();
-        createNewTab();
+        handleCreateNewTab();
       } else if (isMeta && e.shiftKey && !e.altKey && keyLower === 'c') {
         e.preventDefault();
         handleCopyWechat();
@@ -306,7 +354,7 @@ export const App: React.FC = () => {
     handleSaveActiveTab,
     handleSaveAsActiveTab,
     handleOpenLocalFile,
-    createNewTab,
+    handleCreateNewTab,
     handleCopyWechat,
     handleToggleMode,
     handleInsertMath,
@@ -362,15 +410,15 @@ export const App: React.FC = () => {
     async (filePath: string) => {
       const existing = tabs.find((t) => t.filePath === filePath);
       if (existing) {
-        switchTab(existing.id);
+        handleSwitchTab(existing.id);
         return;
       }
       const res = await openDocumentByPath(filePath);
       if (res) {
-        createNewTab(res.fileName, res.content, res.filePath);
+        handleCreateNewTab(res.fileName, res.content, res.filePath);
       }
     },
-    [tabs, switchTab, createNewTab]
+    [tabs, handleSwitchTab, handleCreateNewTab]
   );
 
   // 点击侧边栏大纲项跳转至对应章节
@@ -441,9 +489,9 @@ export const App: React.FC = () => {
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}
-          onSelectTab={switchTab}
+          onSelectTab={handleSwitchTab}
           onCloseTab={requestCloseTab}
-          onNewTab={() => createNewTab()}
+          onNewTab={() => handleCreateNewTab()}
         />
 
         {/* 右侧：常用工具入口 */}
@@ -476,6 +524,14 @@ export const App: React.FC = () => {
             className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
           >
             <Sigma className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsThemePopoverOpen((prev) => !prev)}
+            title="切换排版主题"
+            data-testid="toolbar-theme-btn"
+            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
+          >
+            <Palette className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsSearchOpen((prev) => !prev)}
@@ -560,7 +616,7 @@ export const App: React.FC = () => {
           onOpenFolder={handleOpenFolder}
         />
 
-        <main className="flex-1 overflow-hidden relative bg-white">
+        <main className="flex-1 overflow-hidden relative bg-[var(--bg-primary,#FFFFFF)] transition-colors duration-150">
           {currentMode === 'wysiwyg' ? (
             <MilkdownEditor
               ref={milkdownRef}
@@ -581,6 +637,7 @@ export const App: React.FC = () => {
             <SourceEditor
               key={`${activeTab.id}-source`}
               content={activeTab.content}
+              theme={currentTheme}
               cursorLine={activeTab.cursorLine}
               onChange={(newContent) => updateTabContent(activeTab.id, newContent)}
               onCursorChange={(line, col) => updateTabCursor(activeTab.id, line, col)}
@@ -662,6 +719,16 @@ export const App: React.FC = () => {
 
         <div className="flex items-center space-x-3 text-stone-500 relative">
           <button
+            onClick={() => setIsThemePopoverOpen((prev) => !prev)}
+            title="切换排版主题"
+            data-testid="theme-toggle-btn"
+            className="px-2 py-0.5 rounded hover:bg-black/5 text-stone-600 transition flex items-center gap-1.5"
+          >
+            <Palette className="w-3 h-3 text-stone-400" />
+            <span>{THEME_LIST.find((t) => t.id === currentTheme)?.label || '主题'}</span>
+          </button>
+
+          <button
             onClick={() => setIsWordCountOpen((prev) => !prev)}
             title="点击查看字数与阅读时间详情"
             data-testid="word-count-trigger-btn"
@@ -672,6 +739,13 @@ export const App: React.FC = () => {
             <span>{activeTab.content.length} 字符</span>
           </button>
           <span>{outline.length} 章节</span>
+
+          <ThemeSelectorPopover
+            currentTheme={currentTheme}
+            isOpen={isThemePopoverOpen}
+            onSelect={handleSelectTheme}
+            onClose={() => setIsThemePopoverOpen(false)}
+          />
 
           <WordCountPopover
             stats={docStats}

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.3.0-M4 经典多主题视觉系统原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root, [data-theme="macos-light"] {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F9FAFB;
+      --bg-sidebar: #F8FAFC;
+      --text-primary: #1F2937;
+      --text-secondary: #6B7280;
+      --border-color: #E5E7EB;
+      --accent-color: #2563EB;
+      --code-bg: #F3F4F6;
+      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      --card-bg: #FFFFFF;
+      --tag: "macOS Light";
+    }
+
+    [data-theme="github"] {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F6F8FA;
+      --bg-sidebar: #F6F8FA;
+      --text-primary: #24292F;
+      --text-secondary: #57609A;
+      --border-color: #D0D7DE;
+      --accent-color: #0969DA;
+      --code-bg: #F6F8FA;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --card-bg: #FFFFFF;
+      --tag: "GitHub";
+    }
+
+    [data-theme="night"] {
+      --bg-primary: #1E1E1E;
+      --bg-secondary: #252526;
+      --bg-sidebar: #181818;
+      --text-primary: #D4D4D4;
+      --text-secondary: #858585;
+      --border-color: #3C3C3C;
+      --accent-color: #3B82F6;
+      --code-bg: #2D2D2D;
+      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      --card-bg: #252526;
+      --tag: "Night";
+    }
+
+    [data-theme="newsprint"] {
+      --bg-primary: #F6F3ED;
+      --bg-secondary: #EFEBE4;
+      --bg-sidebar: #ECE7DF;
+      --text-primary: #2C2621;
+      --text-secondary: #70685E;
+      --border-color: #DDD6CA;
+      --accent-color: #B45309;
+      --code-bg: #EAE4D9;
+      --font-body: "Georgia", "Times New Roman", "Songti SC", serif;
+      --card-bg: #FAF8F5;
+      --tag: "Newsprint";
+    }
+
+    .themed-app {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .themed-sidebar {
+      background-color: var(--bg-sidebar);
+      border-color: var(--border-color);
+    }
+
+    .themed-border {
+      border-color: var(--border-color);
+    }
+
+    .themed-code {
+      background-color: var(--code-bg);
+      border-color: var(--border-color);
+    }
+
+    .themed-card {
+      background-color: var(--card-bg);
+      border-color: var(--border-color);
+    }
+  </style>
+</head>
+<body class="bg-stone-900 text-stone-100 min-h-screen p-8 flex flex-col items-center">
+  <div class="max-w-5xl w-full space-y-6">
+    <!-- 原型控制面板 -->
+    <header class="flex flex-wrap items-center justify-between bg-stone-800/80 backdrop-blur-md p-4 rounded-2xl border border-stone-700 shadow-xl">
+      <div>
+        <h1 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>🎨</span>
+          <span>mditor v0.3.0-M4 经典多主题视觉系统原型</span>
+        </h1>
+        <p class="text-xs text-stone-400 mt-1">
+          采用 CSS 变量无感热切换（< 10ms），光标位置、滚动距离与撤销栈 100% 保持
+        </p>
+      </div>
+
+      <!-- 主题切换按钮组 -->
+      <div class="flex items-center gap-2 p-1 bg-stone-900 rounded-xl border border-stone-700">
+        <button onclick="setTheme('macos-light')" id="btn-macos-light" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-blue-600 text-white">
+          macOS Light
+        </button>
+        <button onclick="setTheme('github')" id="btn-github" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-medium transition text-stone-400 hover:text-white">
+          GitHub
+        </button>
+        <button onclick="setTheme('night')" id="btn-night" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-medium transition text-stone-400 hover:text-white">
+          Night (暗黑)
+        </button>
+        <button onclick="setTheme('newsprint')" id="btn-newsprint" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-medium transition text-stone-400 hover:text-white">
+          Newsprint (羊皮纸)
+        </button>
+      </div>
+    </header>
+
+    <!-- 模拟应用窗口 -->
+    <div id="mock-window" data-theme="macos-light" class="themed-app rounded-2xl border themed-border shadow-2xl overflow-hidden flex h-[680px]">
+      <!-- 侧边栏 -->
+      <aside class="themed-sidebar w-60 border-r themed-border p-4 flex flex-col justify-between shrink-0">
+        <div class="space-y-4">
+          <div class="flex items-center gap-2 text-xs font-semibold opacity-70">
+            <span>📁</span>
+            <span>文档大纲</span>
+          </div>
+          <ul class="text-xs space-y-2 opacity-80 pl-2">
+            <li class="cursor-pointer hover:underline text-blue-500 font-medium">第一章：系统设计哲学</li>
+            <li class="cursor-pointer hover:underline pl-3">1.1 第一性原理</li>
+            <li class="cursor-pointer hover:underline pl-3">1.2 扩展排版与数学公式</li>
+            <li class="cursor-pointer hover:underline">第二章：经典视觉体系</li>
+          </ul>
+        </div>
+        <div class="text-[11px] opacity-50 border-t themed-border pt-3">
+          当前主题：<span id="current-theme-label" class="font-mono font-bold">macOS Light</span>
+        </div>
+      </aside>
+
+      <!-- 编辑器连续画布 -->
+      <main class="flex-1 overflow-y-auto p-10 max-w-3xl mx-auto space-y-6">
+        <!-- YAML Front Matter -->
+        <div class="themed-card rounded-xl border p-3.5 text-xs font-mono space-y-1">
+          <div class="font-semibold text-purple-600 opacity-90">---</div>
+          <div><span class="text-purple-600 font-semibold">title:</span> mditor 视觉架构演进</div>
+          <div><span class="text-purple-600 font-semibold">author:</span> 安哥</div>
+          <div><span class="text-purple-600 font-semibold">theme:</span> <span id="frontmatter-theme">macOS Light</span></div>
+          <div class="font-semibold text-purple-600 opacity-90">---</div>
+        </div>
+
+        <h1 class="text-2xl font-bold tracking-tight">第一章：系统设计哲学</h1>
+        <p class="leading-relaxed opacity-90 text-sm">
+          系统设计的第一性原理是：<mark class="bg-amber-200/80 px-1 py-0.5 rounded text-stone-900 font-medium">后端可以很复杂，但用户触碰到的每一层必须丝滑</mark>。
+          无论是排版渲染、公式编辑、还是多主题无感切换，界面响应时间必须被严密控制在人体知觉阈值之内。
+        </p>
+
+        <!-- 表格与公式 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="themed-card rounded-xl border p-4 space-y-2">
+            <div class="text-xs font-semibold opacity-70">📐 行内与独立数学公式</div>
+            <div class="text-sm font-serif italic text-center py-2">
+              f(x) = ∫<sub>-∞</sub><sup>+∞</sup> e<sup>-x²</sup> dx = √π
+            </div>
+          </div>
+          <div class="themed-card rounded-xl border p-4 space-y-2">
+            <div class="text-xs font-semibold opacity-70">📊 矢量图表与排版</div>
+            <div class="text-xs space-y-1">
+              <div>水分子：H<sub>2</sub>O | 质能：E=mc<sup>2</sup></div>
+              <div class="text-blue-500 font-medium cursor-pointer">脚注体系 [^1]</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 代码块 -->
+        <div class="themed-code rounded-xl border p-4 font-mono text-xs overflow-x-auto">
+          <div class="text-stone-400 mb-1 select-none">// TypeScript 切换主题无重新挂载</div>
+          <span class="text-purple-500">function</span> <span class="text-blue-500">setTheme</span>(name: <span class="text-amber-500">string</span>) {<br>
+          &nbsp;&nbsp;document.documentElement.setAttribute(<span class="text-emerald-500">'data-theme'</span>, name);<br>
+          &nbsp;&nbsp;localStorage.setItem(<span class="text-emerald-500">'mditor:theme'</span>, name);<br>
+          }
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    function setTheme(theme) {
+      const mockWin = document.getElementById('mock-window');
+      mockWin.setAttribute('data-theme', theme);
+
+      // 更新按钮状态
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('text-stone-400');
+      });
+      const activeBtn = document.getElementById('btn-' + theme);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-stone-400');
+        activeBtn.classList.add('bg-blue-600', 'text-white');
+      }
+
+      // 更新标签
+      const labels = {
+        'macos-light': 'macOS Light',
+        'github': 'GitHub',
+        'night': 'Night',
+        'newsprint': 'Newsprint'
+      };
+      document.getElementById('current-theme-label').textContent = labels[theme] || theme;
+      document.getElementById('frontmatter-theme').textContent = labels[theme] || theme;
+    }
+  </script>
+</body>
+</html>

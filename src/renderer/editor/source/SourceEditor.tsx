@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
+import type { AppTheme } from '../../services/themeService';
+import { getCodeMirrorTheme } from '../theme';
 
 export interface SourceEditorProps {
   content: string;
+  theme?: AppTheme;
   onChange?: (content: string) => void;
   onCursorChange?: (line: number, col: number) => void;
   cursorLine?: number;
@@ -14,6 +17,7 @@ export interface SourceEditorProps {
 
 export const SourceEditor: React.FC<SourceEditorProps> = ({
   content,
+  theme = 'macos-light',
   onChange,
   onCursorChange,
   cursorLine,
@@ -21,6 +25,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const themeCompartmentRef = useRef<Compartment>(new Compartment());
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -44,31 +49,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
         keymap.of([...defaultKeymap, ...historyKeymap]),
         markdown(),
         updateListener,
-        EditorView.theme({
-          '&': {
-            height: '100%',
-            fontSize: '14px',
-            fontFamily: '"SF Mono", Menlo, Monaco, Consolas, monospace',
-            backgroundColor: 'transparent',
-          },
-          '.cm-scroller': {
-            overflow: 'auto',
-            padding: '16px 20px',
-          },
-          '.cm-content': {
-            caretColor: '#2563EB',
-            lineHeight: '1.6',
-          },
-          '.cm-gutters': {
-            backgroundColor: 'transparent',
-            color: '#9CA3AF',
-            borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-            paddingRight: '8px',
-          },
-          '&.cm-focused': {
-            outline: 'none',
-          },
-        }),
+        themeCompartmentRef.current.of(getCodeMirrorTheme(theme)),
       ],
     });
 
@@ -93,6 +74,14 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
       viewRef.current = null;
     };
   }, []); // 仅在挂载时初始化，避免重复渲染重置光标
+
+  useEffect(() => {
+    if (viewRef.current && themeCompartmentRef.current) {
+      viewRef.current.dispatch({
+        effects: themeCompartmentRef.current.reconfigure(getCodeMirrorTheme(theme)),
+      });
+    }
+  }, [theme]);
 
   return (
     <div
