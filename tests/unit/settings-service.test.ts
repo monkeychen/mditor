@@ -28,7 +28,7 @@ describe('Settings Service (T409 / AC-27.2 ~ AC-27.3)', () => {
     const prefs = getStoredPreferences();
     expect(prefs.fontSize).toBe(18);
     expect(prefs.maxWidth).toBe(860); // 兜底保持默认值
-    expect(prefs.theme).toBe('github');
+    expect(prefs.theme).toBe('macos-light');
 
     // 损坏数据容错
     localStorage.setItem('mditor_preferences', 'invalid-json{{{');

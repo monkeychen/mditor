@@ -1,4 +1,4 @@
-import { AppTheme } from './themeService';
+import type { AppTheme } from './themeService';
 
 export type ColorScheme = 'light' | 'dark' | 'system';
 export type EditorFontFamily = 'system' | 'sans-serif' | 'serif';
@@ -23,7 +23,7 @@ export interface EditorPreferences {
 }
 
 export const DEFAULT_PREFERENCES: EditorPreferences = {
-  theme: 'github',
+  theme: 'macos-light',
   colorScheme: 'system',
   fontFamily: 'system',
   fontSize: 16,
