@@ -1,0 +1,460 @@
+<!-- doc: prototype | product: v0.4.0 | milestone: m2 | status: draft -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.4.0-M2 原型：跨平台侧边栏文件夹管理与安全回收机制</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+    .font-mono-code {
+      font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;
+    }
+    .context-menu-shadow {
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.12);
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 h-screen flex flex-col overflow-hidden">
+
+  <!-- 顶部平台切换器与原型提示条 -->
+  <div class="bg-amber-500/10 border-b border-amber-600/20 px-4 py-1.5 flex items-center justify-between text-xs text-amber-900 shrink-0">
+    <div class="flex items-center gap-2">
+      <span class="font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wide">M2 PROTOTYPE</span>
+      <span>当前模拟操作系统：</span>
+      <div class="inline-flex rounded-md shadow-2xs border border-amber-600/30 overflow-hidden bg-white">
+        <button id="btn-platform-mac" onclick="setPlatform('macOS')" class="px-2.5 py-0.5 font-medium transition bg-amber-600 text-white">macOS</button>
+        <button id="btn-platform-win" onclick="setPlatform('Windows')" class="px-2.5 py-0.5 font-medium transition text-stone-600 hover:bg-stone-100">Windows</button>
+        <button id="btn-platform-linux" onclick="setPlatform('Linux')" class="px-2.5 py-0.5 font-medium transition text-stone-600 hover:bg-stone-100">Linux</button>
+      </div>
+    </div>
+    <div class="text-[11px] text-stone-500">
+      💡 提示：在左侧文件夹或文件项上<b>单击右键</b>体验上下文菜单、内联重命名与非法文件名校验
+    </div>
+  </div>
+
+  <!-- 第一层：窗口级 Header (h-10) -->
+  <header class="h-10 border-b border-black/5 bg-[#FAF8F5]/90 backdrop-blur-md flex items-center px-3 gap-2 shrink-0 z-30">
+    <div class="flex items-center space-x-2 mr-2">
+      <div class="w-3 h-3 rounded-full bg-red-400"></div>
+      <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+      <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+    </div>
+
+    <!-- 侧边栏开关 -->
+    <button class="p-1 rounded hover:bg-black/5 text-stone-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+    </button>
+
+    <!-- 多标签栏 -->
+    <div id="tab-bar-container" class="flex-1 flex items-center space-x-1 overflow-x-auto px-2">
+      <div id="tab-0" class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition bg-white/90 border border-black/5 shadow-2xs text-stone-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span id="tab-title-0" class="truncate max-w-[160px]">macOS-Philosophy.md</span>
+        <button class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 rounded">×</button>
+      </div>
+      <div id="tab-1" style="display: none;" class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition text-stone-500 hover:bg-black/5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span id="tab-title-1" class="truncate max-w-[160px]">demo.py</span>
+        <button onclick="closeTab(1, event)" class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 rounded">×</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 中间主体：侧边栏 + 编辑区 -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- 侧边栏：多工作区文件夹视图 -->
+    <aside class="w-64 border-r border-black/5 bg-[#F6F4EF]/80 flex flex-col shrink-0 select-none">
+      <!-- 视图切换 Tab -->
+      <div class="h-9 px-3 border-b border-black/5 flex items-center justify-between text-xs font-medium">
+        <div class="flex items-center space-x-1 bg-black/5 p-0.5 rounded-md">
+          <button class="px-2 py-0.5 rounded bg-white shadow-2xs text-stone-800 font-semibold">文件夹</button>
+          <button class="px-2 py-0.5 rounded text-stone-500 hover:text-stone-800">大纲</button>
+        </div>
+        <button onclick="handleNewFileClick('workspace-root')" title="新建文件" class="p-1 hover:bg-black/10 rounded text-stone-500">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        </button>
+      </div>
+
+      <!-- 文件树容器 -->
+      <div id="file-tree-container" class="flex-1 overflow-y-auto p-2 text-xs text-stone-700 space-y-0.5">
+
+        <!-- 文件夹 1: mditor-project -->
+        <div class="folder-group" id="folder-mditor-project">
+          <div oncontextmenu="openContextMenu(event, 'folder', 'mditor-project', '/Users/chenzhian/workspace/mditor-project')"
+               class="flex items-center gap-1.5 py-1.5 px-2 rounded-md hover:bg-black/5 cursor-pointer font-medium text-stone-800">
+            <svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+            <span class="truncate flex-1">mditor-project</span>
+          </div>
+
+          <!-- 子文件 -->
+          <div class="pl-4 space-y-0.5" id="folder-children-mditor-project">
+            <!-- 文件: macOS-Philosophy.md -->
+            <div id="file-node-macOS-Philosophy.md"
+                 oncontextmenu="openContextMenu(event, 'file', 'macOS-Philosophy.md', '/Users/chenzhian/workspace/mditor-project/macOS-Philosophy.md')"
+                 onclick="selectFile('macOS-Philosophy.md')"
+                 class="file-item flex items-center gap-1.5 py-1 px-2 rounded-md bg-amber-500/15 text-amber-900 font-semibold cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span class="file-name truncate flex-1">macOS-Philosophy.md</span>
+            </div>
+
+            <!-- 文件: demo.py -->
+            <div id="file-node-demo.py"
+                 oncontextmenu="openContextMenu(event, 'file', 'demo.py', '/Users/chenzhian/workspace/mditor-project/demo.py')"
+                 onclick="selectFile('demo.py')"
+                 class="file-item flex items-center gap-1.5 py-1 px-2 rounded-md hover:bg-black/5 text-stone-600 cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+              <span class="file-name truncate flex-1">demo.py</span>
+            </div>
+
+            <!-- 文件: config.json -->
+            <div id="file-node-config.json"
+                 oncontextmenu="openContextMenu(event, 'file', 'config.json', '/Users/chenzhian/workspace/mditor-project/config.json')"
+                 class="file-item flex items-center gap-1.5 py-1 px-2 rounded-md hover:bg-black/5 text-stone-600 cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-sky-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <span class="file-name truncate flex-1">config.json</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 右侧内容预览区 -->
+    <main class="flex-1 bg-white p-8 overflow-y-auto">
+      <div id="editor-wysiwyg" class="max-w-2xl mx-auto space-y-4">
+        <h1 class="text-3xl font-bold tracking-tight text-stone-900 border-b border-black/5 pb-3">设计第一性原理与 macOS 手感</h1>
+        <p class="text-stone-700 leading-relaxed text-base">
+          好的软件不仅在视觉上克制内敛，在交互上更应该做到「不让用户思考」。从第一性原理出发，文件管理的核心是给予用户极致确定感与安全感。
+        </p>
+        <div class="p-4 bg-amber-50/80 rounded-xl border border-amber-200/60 text-amber-900 text-sm">
+          💡 <b>M2 上下文管理规范亮点</b>：所有删除操作严格调用操作系统原生回收机制（macOS 废纸篓、Windows 回收站），严禁硬删除；Windows 非法字符 <code>\ / : * ? " &lt; &gt; |</code> 前端即时拦截。
+        </div>
+      </div>
+
+      <div id="editor-source" style="display: none;" class="max-w-2xl mx-auto font-mono-code text-sm">
+        <pre class="bg-stone-50 p-6 rounded-xl border border-stone-200 text-stone-800 leading-relaxed"><code><span class="text-blue-600 font-bold">def</span> <span class="text-purple-600 font-semibold">calculate_total</span>(items):
+    <span class="text-stone-500"># Universal Python syntax engine</span>
+    <span class="text-blue-600 font-bold">return</span> sum(item[<span class="text-green-600">"price"</span>] <span class="text-blue-600 font-bold">for</span> item <span class="text-blue-600 font-bold">in</span> items)
+</code></pre>
+      </div>
+    </main>
+  </div>
+
+  <!-- 底部状态栏 -->
+  <footer class="h-7 bg-[#FAF8F5] border-t border-black/5 px-4 flex items-center justify-between text-[11px] text-stone-500 font-mono select-none z-20">
+    <div class="flex items-center space-x-2">
+      <span id="status-mode" class="px-1.5 py-0.5 rounded bg-black/5 text-stone-700">🎨 实时渲染 (⌘/)</span>
+      <span id="status-lang" class="px-1.5 py-0.5 rounded bg-black/5 text-stone-700 font-medium">Markdown</span>
+      <span>UTF-8</span>
+    </div>
+    <div><span>342 字符</span></div>
+  </footer>
+
+  <!-- 原生风格右键上下文菜单浮层 -->
+  <div id="context-menu" style="display: none;" class="fixed z-50 w-56 bg-white/95 backdrop-blur-md border border-black/10 rounded-xl context-menu-shadow py-1.5 text-xs text-stone-700 select-none animate-in fade-in duration-75">
+    <!-- 动态内容注入 -->
+    <div id="context-menu-items" class="space-y-0.5"></div>
+  </div>
+
+  <!-- 提示 Toast -->
+  <div id="toast" style="display: none;" class="fixed bottom-10 right-6 z-50 px-4 py-2 bg-stone-900/90 text-white text-xs rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in slide-in-from-bottom duration-150">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-text">通知内容</span>
+  </div>
+
+  <script>
+    let currentPlatform = 'macOS';
+    let activeContextMenu = null;
+
+    // 平台切换
+    function setPlatform(platform) {
+      currentPlatform = platform;
+      document.getElementById('btn-platform-mac').className = platform === 'macOS' ? 'px-2.5 py-0.5 font-medium transition bg-amber-600 text-white' : 'px-2.5 py-0.5 font-medium transition text-stone-600 hover:bg-stone-100';
+      document.getElementById('btn-platform-win').className = platform === 'Windows' ? 'px-2.5 py-0.5 font-medium transition bg-amber-600 text-white' : 'px-2.5 py-0.5 font-medium transition text-stone-600 hover:bg-stone-100';
+      document.getElementById('btn-platform-linux').className = platform === 'Linux' ? 'px-2.5 py-0.5 font-medium transition bg-amber-600 text-white' : 'px-2.5 py-0.5 font-medium transition text-stone-600 hover:bg-stone-100';
+      showToast(`已切换至 ${platform} 平台模拟`);
+    }
+
+    // 显示 Toast
+    function showToast(text, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastText = document.getElementById('toast-text');
+      const toastIcon = document.getElementById('toast-icon');
+      toastText.innerText = text;
+      toastIcon.innerText = isError ? '⚠️' : '✅';
+      toast.className = isError
+        ? 'fixed bottom-10 right-6 z-50 px-4 py-2.5 bg-red-600 text-white text-xs rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in slide-in-from-bottom duration-150 font-medium'
+        : 'fixed bottom-10 right-6 z-50 px-4 py-2 bg-stone-900/90 text-white text-xs rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in slide-in-from-bottom duration-150';
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    // 打开右键菜单
+    function openContextMenu(e, type, name, fullPath) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const menu = document.getElementById('context-menu');
+      const itemsContainer = document.getElementById('context-menu-items');
+
+      let revealText = '在访达中显示';
+      let revealShortcut = '⌥⌘R';
+      let trashText = '移到废纸篓';
+      let trashShortcut = '⌘⌫';
+      let renameShortcut = 'Enter';
+
+      if (currentPlatform === 'Windows') {
+        revealText = '在文件资源管理器中显示';
+        revealShortcut = 'Shift+Alt+R';
+        trashText = '移到回收站';
+        trashShortcut = 'Delete';
+        renameShortcut = 'F2';
+      } else if (currentPlatform === 'Linux') {
+        revealText = '在文件管理器中显示';
+        revealShortcut = 'Alt+R';
+        trashText = '移到废纸篓';
+        trashShortcut = 'Delete';
+        renameShortcut = 'F2';
+      }
+
+      let html = '';
+
+      if (type === 'folder') {
+        html = `
+          <div onclick="handleNewFileClick('${name}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>📄</span><span>新建文件</span></span>
+            <span class="text-[10px] text-stone-400 font-mono">${currentPlatform === 'macOS' ? '⌘N' : 'Ctrl+N'}</span>
+          </div>
+          <div onclick="handleNewFolderClick('${name}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>📁</span><span>新建文件夹</span></span>
+          </div>
+          <div class="h-px bg-black/5 my-1"></div>
+          <div onclick="handleReveal('${fullPath}', '${revealText}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>🔍</span><span>${revealText}</span></span>
+          </div>
+          <div onclick="handleCopyPath('${fullPath}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>📋</span><span>复制路径</span></span>
+            <span class="text-[10px] text-stone-400 font-mono">${currentPlatform === 'macOS' ? '⌥⌘C' : 'Ctrl+Shift+C'}</span>
+          </div>
+          <div class="h-px bg-black/5 my-1"></div>
+          <div onclick="handleRemoveFolder('${name}')" class="px-3 py-1.5 hover:bg-red-50 text-red-600 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>✖️</span><span>从侧边栏移除</span></span>
+          </div>
+        `;
+      } else {
+        html = `
+          <div onclick="startInlineRename('${name}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>✏️</span><span>重命名</span></span>
+            <span class="text-[10px] text-stone-400 font-mono">${renameShortcut}</span>
+          </div>
+          <div onclick="handleReveal('${fullPath}', '${revealText}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>🔍</span><span>${revealText}</span></span>
+          </div>
+          <div onclick="handleCopyPath('${fullPath}')" class="px-3 py-1.5 hover:bg-black/5 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>📋</span><span>复制绝对路径</span></span>
+            <span class="text-[10px] text-stone-400 font-mono">${currentPlatform === 'macOS' ? '⌥⌘C' : 'Ctrl+Shift+C'}</span>
+          </div>
+          <div class="h-px bg-black/5 my-1"></div>
+          <div onclick="handleMoveToTrash('${name}', '${trashText}')" class="px-3 py-1.5 hover:bg-red-50 text-red-600 cursor-pointer flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>🗑️</span><span>${trashText}</span></span>
+            <span class="text-[10px] text-red-400 font-mono">${trashShortcut}</span>
+          </div>
+        `;
+      }
+
+      itemsContainer.innerHTML = html;
+      menu.style.display = 'block';
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 230)}px`;
+      menu.style.top = `${Math.min(e.clientY, window.innerHeight - 200)}px`;
+      activeContextMenu = { type, name, fullPath };
+    }
+
+    // 关闭右键菜单
+    document.addEventListener('click', () => {
+      document.getElementById('context-menu').style.display = 'none';
+    });
+
+    // 复制路径
+    function handleCopyPath(path) {
+      navigator.clipboard.writeText(path);
+      showToast(`已复制路径: ${path}`);
+    }
+
+    // 在系统文件管理器中定位
+    function handleReveal(path, label) {
+      showToast(`已调用系统 API: ${label} -> ${path}`);
+    }
+
+    // 安全移入废纸篓/回收站
+    function handleMoveToTrash(fileName, trashLabel) {
+      const node = document.getElementById(`file-node-${fileName}`);
+      if (node) {
+        node.style.transition = 'all 0.2s';
+        node.style.opacity = '0';
+        setTimeout(() => {
+          node.remove();
+          showToast(`已成功${trashLabel}（可通过系统放回原处）`);
+        }, 200);
+      }
+    }
+
+    // 从工作区移除
+    function handleRemoveFolder(folderName) {
+      const folderGroup = document.getElementById(`folder-${folderName}`);
+      if (folderGroup) {
+        folderGroup.remove();
+        showToast(`已从侧边栏移除工作区文件夹 "${folderName}"`);
+      }
+    }
+
+    // Windows 非法字符校验逻辑
+    function validateFileName(name) {
+      if (!name || name.trim() === '') {
+        return { valid: false, error: '文件名不能为空' };
+      }
+      // 非法字符过滤
+      const illegalChars = /[\\/:*?"<>|]/;
+      if (illegalChars.test(name)) {
+        return { valid: false, error: '文件名不能包含 \\ / : * ? " < > | 等非法字符' };
+      }
+      // Windows 保留名检测
+      const base = name.split('.')[0].toUpperCase();
+      const reserved = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
+      if (reserved.includes(base)) {
+        return { valid: false, error: `"${base}" 为 Windows 系统保留设备名，禁止使用` };
+      }
+      if (name.endsWith('.') || name.endsWith(' ')) {
+        return { valid: false, error: '文件名末尾不能为英文句点或空格' };
+      }
+      return { valid: true };
+    }
+
+    // 内联重命名
+    function startInlineRename(fileName) {
+      const node = document.getElementById(`file-node-${fileName}`);
+      if (!node) return;
+
+      const nameSpan = node.querySelector('.file-name');
+      const originalName = nameSpan.innerText;
+
+      nameSpan.innerHTML = `
+        <input id="inline-rename-input" type="text" value="${originalName}"
+               class="bg-white border border-blue-500 rounded px-1 py-0.5 text-xs text-stone-900 w-full outline-none font-sans"
+               onclick="event.stopPropagation()" />
+      `;
+
+      const input = document.getElementById('inline-rename-input');
+      input.focus();
+      const dotIndex = originalName.lastIndexOf('.');
+      if (dotIndex > 0) {
+        input.setSelectionRange(0, dotIndex);
+      } else {
+        input.select();
+      }
+
+      function commitRename() {
+        const newName = input.value.trim();
+        if (newName === originalName) {
+          nameSpan.innerText = originalName;
+          return;
+        }
+
+        const check = validateFileName(newName);
+        if (!check.valid) {
+          showToast(check.error, true);
+          input.focus();
+          return;
+        }
+
+        nameSpan.innerText = newName;
+        node.id = `file-node-${newName}`;
+        showToast(`文件已成功重命名为 "${newName}"`);
+      }
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          commitRename();
+        } else if (e.key === 'Escape') {
+          nameSpan.innerText = originalName;
+        }
+      });
+
+      input.addEventListener('blur', commitRename);
+    }
+
+    // 内联新建文件
+    function handleNewFileClick(folderId) {
+      const container = document.getElementById('folder-children-mditor-project');
+      const tempId = `temp-new-${Date.now()}`;
+
+      const newRow = document.createElement('div');
+      newRow.id = tempId;
+      newRow.className = 'flex items-center gap-1.5 py-1 px-2 rounded-md bg-white border border-blue-400';
+      newRow.innerHTML = `
+        <span class="text-xs">📄</span>
+        <input id="${tempId}-input" type="text" value="Untitled.md"
+               class="bg-transparent text-xs text-stone-900 w-full outline-none font-sans" />
+      `;
+
+      container.insertBefore(newRow, container.firstChild);
+      const input = document.getElementById(`${tempId}-input`);
+      input.focus();
+      input.setSelectionRange(0, 8); // 选中 Untitled
+
+      function commitCreate() {
+        const fileName = input.value.trim();
+        const check = validateFileName(fileName);
+        if (!check.valid) {
+          showToast(check.error, true);
+          input.focus();
+          return;
+        }
+
+        newRow.remove();
+
+        // 渲染真实文件节点
+        const realNode = document.createElement('div');
+        realNode.id = `file-node-${fileName}`;
+        realNode.setAttribute('oncontextmenu', `openContextMenu(event, 'file', '${fileName}', '/Users/chenzhian/workspace/mditor-project/${fileName}')`);
+        realNode.setAttribute('onclick', `selectFile('${fileName}')`);
+        realNode.className = 'file-item flex items-center gap-1.5 py-1 px-2 rounded-md hover:bg-black/5 text-stone-600 cursor-pointer';
+        realNode.innerHTML = `
+          <svg class="w-3.5 h-3.5 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span class="file-name truncate flex-1">${fileName}</span>
+        `;
+        container.insertBefore(realNode, container.firstChild);
+        showToast(`已新建文件 "${fileName}" 并打开`);
+        selectFile(fileName);
+      }
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') commitCreate();
+        else if (e.key === 'Escape') newRow.remove();
+      });
+      input.addEventListener('blur', commitCreate);
+    }
+
+    function selectFile(fileName) {
+      document.querySelectorAll('.file-item').forEach(el => {
+        el.className = 'file-item flex items-center gap-1.5 py-1 px-2 rounded-md hover:bg-black/5 text-stone-600 cursor-pointer';
+      });
+      const target = document.getElementById(`file-node-${fileName}`);
+      if (target) {
+        target.className = 'file-item flex items-center gap-1.5 py-1 px-2 rounded-md bg-amber-500/15 text-amber-900 font-semibold cursor-pointer';
+      }
+
+      const isMd = fileName.endsWith('.md');
+      document.getElementById('editor-wysiwyg').style.display = isMd ? 'block' : 'none';
+      document.getElementById('editor-source').style.display = isMd ? 'none' : 'block';
+      document.getElementById('status-mode').innerText = isMd ? '🎨 实时渲染 (⌘/)' : '📝 源码模式 (锁定)';
+      document.getElementById('status-lang').innerText = isMd ? 'Markdown' : (fileName.endsWith('.py') ? 'Python' : 'JSON');
+    }
+  </script>
+</body>
+</html>
