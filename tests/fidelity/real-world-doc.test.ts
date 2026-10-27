@@ -5,9 +5,10 @@ import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 
 const REAL_DOC_PATH = '/Users/chenzhian/cmcc/002-自主研发/001-工作计划/2026/016-数据共享平台v2/03-数据共享平台建设与运营方案-阶段汇报稿-v0.3.0.md';
+const hasRealDoc = fs.existsSync(REAL_DOC_PATH);
 
-describe('Real-World Production Document Verification', () => {
-  const original = fs.readFileSync(REAL_DOC_PATH, 'utf8').trim();
+describe.skipIf(!hasRealDoc)('Real-World Production Document Verification', () => {
+  const original = hasRealDoc ? fs.readFileSync(REAL_DOC_PATH, 'utf8').trim() : '';
 
   it('successfully mounts and parses the enterprise architecture document', async () => {
     const container = document.createElement('div');
