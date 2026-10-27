@@ -10,7 +10,36 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  prepare-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create or Ensure Draft Release Anchor
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "$GITHUB_REF" =~ ^refs/tags/v.* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="v$(node -p "require('./package.json').version")"
+          fi
+          echo "Target Release Tag: $TAG_NAME"
+
+          # 预先单节点创建 Draft Release，为后续多平台 Runner 提供唯一定位锚点，根除并发竞争
+          if ! gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Creating single draft release anchor for $TAG_NAME..."
+            gh release create "$TAG_NAME" \
+              --draft \
+              --title "mditor $TAG_NAME" \
+              --notes "Release $TAG_NAME"
+          else
+            echo "Release anchor $TAG_NAME already exists."
+          fi
+
+  build-and-upload:
+    needs: prepare-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -44,18 +73,51 @@ jobs:
         run: npx electron-builder --publish always
 
   finalize-release:
-    needs: release
+    needs: build-and-upload
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Publish Draft Release
+      - name: Verify All Platform Assets and Publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
-          echo "Publishing draft release for tag: $TAG_NAME"
-          gh release edit "$TAG_NAME" --draft=false || echo "Release already published or not found"
+          if [[ "$GITHUB_REF" =~ ^refs/tags/v.* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="v$(node -p "require('./package.json').version")"
+          fi
+          echo "Verifying release assets for tag: $TAG_NAME"
+
+          # 获取该 Release 下的所有文件列表
+          ASSETS=$(gh release view "$TAG_NAME" --json assets --jq '.assets[].name' || echo "")
+          echo "Found assets:"
+          echo "$ASSETS"
+
+          # 硬门禁：严格校验三大桌面平台产物必须全部就位，缺一不可
+          MISSING=0
+          if ! echo "$ASSETS" | grep -q '\.dmg$'; then
+            echo "::error::Missing macOS artifact (.dmg)!"
+            MISSING=1
+          fi
+
+          if ! echo "$ASSETS" | grep -q '\.exe$'; then
+            echo "::error::Missing Windows artifact (.exe)!"
+            MISSING=1
+          fi
+
+          if ! echo "$ASSETS" | grep -q '\.AppImage$'; then
+            echo "::error::Missing Linux artifact (.AppImage)!"
+            MISSING=1
+          fi
+
+          if [ "$MISSING" -ne 0 ]; then
+            echo "::error::Release asset verification failed! Missing platform packages."
+            exit 1
+          fi
+
+          echo "All platform assets (macOS .dmg, Windows .exe, Linux .AppImage) verified successfully."
+          echo "Publishing release $TAG_NAME..."
+          gh release edit "$TAG_NAME" --draft=false
+          echo "Release $TAG_NAME is now live!"
