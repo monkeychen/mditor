@@ -225,6 +225,7 @@ export function useTabs(initialTab?: TabItem) {
     updateTabMode,
     updateTabCursor,
     requestCloseTab,
+    forceCloseTab,
     confirmDiscardAndClose,
     cancelClose,
   };

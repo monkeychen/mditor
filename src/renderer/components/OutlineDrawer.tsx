@@ -1,8 +1,23 @@
 import React, { useState } from 'react';
-import { AlignLeft, ChevronRight, ChevronDown, Folder, FileText, FileCode, Database, FileJson, Terminal, FolderPlus, Plus, X } from 'lucide-react';
+import {
+  AlignLeft,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FileText,
+  FileCode,
+  Database,
+  FileJson,
+  Terminal,
+  FolderPlus,
+  Plus,
+  X,
+} from 'lucide-react';
 import type { OutlineItem } from '../utils/outline';
 import type { FileTreeNode, WorkspaceFolder } from '../../types';
 import { getLanguageInfo } from '../utils/languageClassifier';
+import { validateFileName } from '../utils/fileNameValidator';
+import { SidebarContextMenu, ContextMenuTarget } from './SidebarContextMenu';
 
 export type SidebarViewMode = 'files' | 'outline';
 
@@ -15,10 +30,18 @@ export interface OutlineDrawerProps {
   fileTree?: FileTreeNode[];
   currentFolderPath?: string | null;
   activeFilePath?: string | null;
+  platform?: 'darwin' | 'win32' | 'linux';
   onSelectFile?: (filePath: string) => void;
   onOpenFolder?: () => void;
   onAddFolder?: () => void;
   onRemoveFolder?: (folderPath: string) => void;
+  onRenameItem?: (oldPath: string, newName: string) => Promise<void> | void;
+  onDeleteItem?: (target: ContextMenuTarget) => Promise<void> | void;
+  onCreateFile?: (parentDir: string, fileName: string) => Promise<void> | void;
+  onCreateFolder?: (parentDir: string, folderName: string) => Promise<void> | void;
+  onRevealInExplorer?: (filePath: string) => void;
+  onCopyPath?: (filePath: string) => void;
+  onValidationError?: (errorMessage: string) => void;
   defaultView?: SidebarViewMode;
   onClose?: () => void;
 }
@@ -46,20 +69,64 @@ const renderFileIcon = (filePathOrName: string, isActive: boolean) => {
   }
 };
 
-const FileTreeItem: React.FC<{
+interface FileTreeItemProps {
   node: FileTreeNode;
   depth: number;
   activeFilePath?: string | null;
   onSelectFile?: (filePath: string) => void;
-}> = ({ node, depth, activeFilePath, onSelectFile }) => {
+  onContextMenu: (e: React.MouseEvent, target: ContextMenuTarget) => void;
+  editingPath: string | null;
+  editName: string;
+  onEditNameChange: (val: string) => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
+  creatingParentPath: string | null;
+  creatingType: 'file' | 'folder' | null;
+  createName: string;
+  onCreateNameChange: (val: string) => void;
+  onCommitCreate: () => void;
+  onCancelCreate: () => void;
+}
+
+const FileTreeItem: React.FC<FileTreeItemProps> = ({
+  node,
+  depth,
+  activeFilePath,
+  onSelectFile,
+  onContextMenu,
+  editingPath,
+  editName,
+  onEditNameChange,
+  onCommitRename,
+  onCancelRename,
+  creatingParentPath,
+  creatingType,
+  createName,
+  onCreateNameChange,
+  onCommitCreate,
+  onCancelCreate,
+}) => {
   const [expanded, setExpanded] = useState(true);
   const paddingLeft = 8 + depth * 14;
 
   if (node.isDirectory) {
+    const isEditing = editingPath === node.path;
+    const isCreatingHere = creatingParentPath === node.path;
+
     return (
       <div>
         <div
           onClick={() => setExpanded((prev) => !prev)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onContextMenu(e, {
+              type: 'folder',
+              path: node.path,
+              name: node.name,
+              isWorkspaceRoot: false,
+            });
+          }}
           style={{ paddingLeft: `${paddingLeft}px` }}
           className="file-tree-dir group py-1.5 pr-2 rounded-md cursor-pointer hover:bg-black/5 text-stone-700 font-medium flex items-center gap-1.5 transition"
         >
@@ -69,27 +136,105 @@ const FileTreeItem: React.FC<{
             <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
           )}
           <Folder className="w-3.5 h-3.5 text-amber-600/80 shrink-0" />
-          <span className="truncate flex-1">{node.name}</span>
-        </div>
-        {expanded &&
-          node.children?.map((child) => (
-            <FileTreeItem
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              activeFilePath={activeFilePath}
-              onSelectFile={onSelectFile}
+          {isEditing ? (
+            <input
+              data-testid="sidebar-inline-rename-input"
+              autoFocus
+              value={editName}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => onEditNameChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                  onCommitRename();
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  onCancelRename();
+                }
+              }}
+              onBlur={onCommitRename}
+              className="flex-1 min-w-0 bg-white dark:bg-stone-800 border border-amber-500 rounded px-1.5 py-0.5 text-xs text-stone-900 dark:text-stone-100 outline-none"
             />
-          ))}
+          ) : (
+            <span className="truncate flex-1">{node.name}</span>
+          )}
+        </div>
+        {expanded && (
+          <div>
+            {isCreatingHere && (
+              <div
+                style={{ paddingLeft: `${paddingLeft + 14}px` }}
+                className="py-1 pr-2 rounded-md flex items-center gap-1.5"
+              >
+                {creatingType === 'folder' ? (
+                  <Folder className="w-3.5 h-3.5 text-amber-600/80 shrink-0" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                )}
+                <input
+                  data-testid="sidebar-inline-create-input"
+                  autoFocus
+                  value={createName}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => onCreateNameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.stopPropagation();
+                      onCommitCreate();
+                    } else if (e.key === 'Escape') {
+                      e.stopPropagation();
+                      onCancelCreate();
+                    }
+                  }}
+                  onBlur={onCommitCreate}
+                  className="flex-1 min-w-0 bg-white dark:bg-stone-800 border border-amber-500 rounded px-1.5 py-0.5 text-xs text-stone-900 dark:text-stone-100 outline-none"
+                />
+              </div>
+            )}
+            {node.children?.map((child) => (
+              <FileTreeItem
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                activeFilePath={activeFilePath}
+                onSelectFile={onSelectFile}
+                onContextMenu={onContextMenu}
+                editingPath={editingPath}
+                editName={editName}
+                onEditNameChange={onEditNameChange}
+                onCommitRename={onCommitRename}
+                onCancelRename={onCancelRename}
+                creatingParentPath={creatingParentPath}
+                creatingType={creatingType}
+                createName={createName}
+                onCreateNameChange={onCreateNameChange}
+                onCommitCreate={onCommitCreate}
+                onCancelCreate={onCancelCreate}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
   const isActive = activeFilePath === node.path;
+  const isEditing = editingPath === node.path;
 
   return (
     <div
-      onClick={() => onSelectFile?.(node.path)}
+      onClick={() => {
+        if (!isEditing) onSelectFile?.(node.path);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu(e, {
+          type: 'file',
+          path: node.path,
+          name: node.name,
+        });
+      }}
       style={{ paddingLeft: `${paddingLeft + 14}px` }}
       data-testid={`file-tree-item-${node.name}`}
       className={`file-tree-item group py-1.5 pr-2 rounded-md cursor-pointer flex items-center gap-1.5 transition ${
@@ -99,9 +244,30 @@ const FileTreeItem: React.FC<{
       }`}
     >
       {renderFileIcon(node.name || node.path, isActive)}
-      <span className="truncate flex-1" title={node.path}>
-        {node.name}
-      </span>
+      {isEditing ? (
+        <input
+          data-testid="sidebar-inline-rename-input"
+          autoFocus
+          value={editName}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => onEditNameChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.stopPropagation();
+              onCommitRename();
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
+              onCancelRename();
+            }
+          }}
+          onBlur={onCommitRename}
+          className="flex-1 min-w-0 bg-white dark:bg-stone-800 border border-amber-500 rounded px-1.5 py-0.5 text-xs text-stone-900 dark:text-stone-100 outline-none"
+        />
+      ) : (
+        <span className="truncate flex-1" title={node.path}>
+          {node.name}
+        </span>
+      )}
     </div>
   );
 };
@@ -115,14 +281,42 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
   fileTree = [],
   currentFolderPath = null,
   activeFilePath = null,
+  platform = 'darwin',
   onSelectFile,
   onOpenFolder,
   onAddFolder,
   onRemoveFolder,
+  onRenameItem,
+  onDeleteItem,
+  onCreateFile,
+  onCreateFolder,
+  onRevealInExplorer,
+  onCopyPath,
+  onValidationError,
   defaultView = 'outline',
 }) => {
   const [viewMode, setViewMode] = useState<SidebarViewMode>(defaultView);
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+
+  // 右键菜单状态
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    target: ContextMenuTarget | null;
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    target: null,
+  });
+
+  // 内联重命名状态
+  const [editingPath, setEditingPath] = useState<string | null>(null);
+  const [editName, setEditName] = useState<string>('');
+
+  // 内联新建文件/文件夹状态
+  const [creatingParentPath, setCreatingParentPath] = useState<string | null>(null);
+  const [creatingType, setCreatingType] = useState<'file' | 'folder' | null>(null);
+  const [createName, setCreateName] = useState<string>('');
 
   const handleAddFolderAction = onAddFolder ?? onOpenFolder;
 
@@ -154,6 +348,102 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
       ...prev,
       [folderPath]: !prev[folderPath],
     }));
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, target: ContextMenuTarget) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      position: { x: e.clientX, y: e.clientY },
+      target,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleStartCreating = (target: ContextMenuTarget, type: 'file' | 'folder') => {
+    setCollapsedFolders((prev) => ({ ...prev, [target.path]: false }));
+    setCreatingParentPath(target.path);
+    setCreatingType(type);
+    setCreateName(type === 'file' ? 'Untitled.md' : '新建文件夹');
+  };
+
+  const handleCommitCreate = () => {
+    if (!creatingParentPath || !creatingType) return;
+    const parent = creatingParentPath;
+    const type = creatingType;
+    const name = createName.trim();
+    setCreatingParentPath(null);
+    setCreatingType(null);
+    if (!name) return;
+
+    const validation = validateFileName(name);
+    if (!validation.valid) {
+      onValidationError?.(validation.error || '无效的名称');
+      return;
+    }
+
+    if (type === 'file') {
+      onCreateFile?.(parent, name);
+    } else {
+      onCreateFolder?.(parent, name);
+    }
+  };
+
+  const handleCancelCreate = () => {
+    setCreatingParentPath(null);
+    setCreatingType(null);
+    setCreateName('');
+  };
+
+  const handleStartRenaming = (target: ContextMenuTarget) => {
+    setEditingPath(target.path);
+    setEditName(target.name);
+  };
+
+  const handleCommitRename = () => {
+    if (!editingPath) return;
+    const currentPath = editingPath;
+    const newName = editName.trim();
+    setEditingPath(null);
+    if (!newName) return;
+
+    const validation = validateFileName(newName);
+    if (!validation.valid) {
+      onValidationError?.(validation.error || '无效的文件名');
+      return;
+    }
+
+    onRenameItem?.(currentPath, newName);
+  };
+
+  const handleCancelRename = () => {
+    setEditingPath(null);
+    setEditName('');
+  };
+
+  const handleCopyPath = (target: ContextMenuTarget) => {
+    if (onCopyPath) {
+      onCopyPath(target.path);
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(target.path);
+    }
+  };
+
+  const handleCopyRelativePath = (target: ContextMenuTarget) => {
+    let relPath = target.name;
+    for (const f of effectiveFolders) {
+      if (target.path.startsWith(f.path)) {
+        relPath = target.path.slice(f.path.length).replace(/^[/\\]/, '');
+        break;
+      }
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(relPath);
+    }
   };
 
   return (
@@ -276,6 +566,8 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
             ) : (
               effectiveFolders.map((folder, folderIdx) => {
                 const isCollapsed = !!collapsedFolders[folder.path];
+                const isCreatingInRoot = creatingParentPath === folder.path;
+
                 return (
                   <div
                     key={folder.path || folderIdx}
@@ -285,6 +577,14 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
                     {/* 文件夹分组标题行 */}
                     <div
                       onClick={() => toggleFolder(folder.path)}
+                      onContextMenu={(e) =>
+                        handleContextMenu(e, {
+                          type: 'folder',
+                          path: folder.path,
+                          name: folder.name,
+                          isWorkspaceRoot: true,
+                        })
+                      }
                       className="folder-header group flex items-center justify-between py-1 px-1.5 rounded-md hover:bg-black/5 text-stone-700 cursor-pointer select-none transition"
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -320,7 +620,37 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
                     {/* 展开时渲染该文件夹的 Markdown 目录树 */}
                     {!isCollapsed && (
                       <div className="pl-1">
-                        {folder.tree.length === 0 ? (
+                        {isCreatingInRoot && (
+                          <div
+                            style={{ paddingLeft: '22px' }}
+                            className="py-1 pr-2 rounded-md flex items-center gap-1.5"
+                          >
+                            {creatingType === 'folder' ? (
+                              <Folder className="w-3.5 h-3.5 text-amber-600/80 shrink-0" />
+                            ) : (
+                              <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            )}
+                            <input
+                              data-testid="sidebar-inline-create-input"
+                              autoFocus
+                              value={createName}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setCreateName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.stopPropagation();
+                                  handleCommitCreate();
+                                } else if (e.key === 'Escape') {
+                                  e.stopPropagation();
+                                  handleCancelCreate();
+                                }
+                              }}
+                              onBlur={handleCommitCreate}
+                              className="flex-1 min-w-0 bg-white dark:bg-stone-800 border border-amber-500 rounded px-1.5 py-0.5 text-xs text-stone-900 dark:text-stone-100 outline-none"
+                            />
+                          </div>
+                        )}
+                        {folder.tree.length === 0 && !isCreatingInRoot ? (
                           <div className="text-[11px] text-stone-400 pl-6 py-1 italic">
                             无 Markdown 文档
                           </div>
@@ -332,6 +662,18 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
                               depth={0}
                               activeFilePath={activeFilePath}
                               onSelectFile={onSelectFile}
+                              onContextMenu={handleContextMenu}
+                              editingPath={editingPath}
+                              editName={editName}
+                              onEditNameChange={setEditName}
+                              onCommitRename={handleCommitRename}
+                              onCancelRename={handleCancelRename}
+                              creatingParentPath={creatingParentPath}
+                              creatingType={creatingType}
+                              createName={createName}
+                              onCreateNameChange={setCreateName}
+                              onCommitCreate={handleCommitCreate}
+                              onCancelCreate={handleCancelCreate}
                             />
                           ))
                         )}
@@ -358,6 +700,23 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
           </div>
         </>
       )}
+
+      {/* 右键上下文菜单 */}
+      <SidebarContextMenu
+        isOpen={contextMenu.isOpen}
+        position={contextMenu.position}
+        target={contextMenu.target}
+        platform={platform}
+        onNewFile={(target) => handleStartCreating(target, 'file')}
+        onNewFolder={(target) => handleStartCreating(target, 'folder')}
+        onRename={handleStartRenaming}
+        onDelete={(target) => onDeleteItem?.(target)}
+        onReveal={(target) => onRevealInExplorer?.(target.path)}
+        onCopyPath={handleCopyPath}
+        onCopyRelativePath={handleCopyRelativePath}
+        onRemoveWorkspaceFolder={(folderPath) => onRemoveFolder?.(folderPath)}
+        onClose={handleCloseContextMenu}
+      />
     </aside>
   );
 };

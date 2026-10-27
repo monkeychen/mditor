@@ -121,6 +121,38 @@ export const SidebarContextMenu: React.FC<SidebarContextMenuProps> = ({
             </span>
           </div>
 
+          {!target.isWorkspaceRoot && (
+            <>
+              <div
+                onClick={() => {
+                  onClose();
+                  onRename?.(target);
+                }}
+                className="px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer flex items-center justify-between transition"
+              >
+                <span className="flex items-center gap-2">
+                  <Edit3 className="w-3.5 h-3.5 text-stone-500" />
+                  <span>重命名</span>
+                </span>
+                <span className="text-[10px] text-stone-400 font-mono">{config.renameShortcut}</span>
+              </div>
+
+              <div
+                onClick={() => {
+                  onClose();
+                  onDelete?.(target);
+                }}
+                className="px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 cursor-pointer flex items-center justify-between transition"
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  <span>{config.trashText}</span>
+                </span>
+                <span className="text-[10px] text-red-400 font-mono">{config.trashShortcut}</span>
+              </div>
+            </>
+          )}
+
           <div className="h-px bg-black/5 dark:bg-white/10 my-1" />
 
           <div

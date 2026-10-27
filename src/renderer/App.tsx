@@ -28,8 +28,14 @@ import {
   scanDirectoryTree,
   saveDocument,
   saveDocumentAs,
+  revealInExplorer,
+  moveToTrash,
+  createFileOnDisk,
+  createFolderOnDisk,
+  renameItemOnDisk,
 } from './services/fileService';
 import type { WorkspaceFolder } from '../types';
+import type { ContextMenuTarget } from './components/SidebarContextMenu';
 import { isMarkdownFile, getLanguageInfo } from './utils/languageClassifier';
 
 const STORAGE_KEY_WORKSPACE_FOLDERS = 'mditor_workspace_folders';
@@ -122,6 +128,7 @@ export const App: React.FC = () => {
     updateTabMode,
     updateTabCursor,
     requestCloseTab,
+    forceCloseTab,
     confirmDiscardAndClose,
     cancelClose,
   } = useTabs({
@@ -578,6 +585,126 @@ export const App: React.FC = () => {
     [showToast]
   );
 
+  // 重命名文件或目录并同步 Tab 与工作区
+  const handleRenameItem = useCallback(
+    async (oldPath: string, newName: string) => {
+      const res = await renameItemOnDisk(oldPath, newName);
+      if (!res.success) {
+        showToast(`重命名失败: ${res.error || '未知错误'}`);
+        return;
+      }
+      const newPath = res.newPath || oldPath;
+      // 同步打开的 Tab
+      tabs.forEach((tab) => {
+        if (tab.filePath === oldPath) {
+          updateTabFile(tab.id, newPath, newName);
+        }
+      });
+      // 刷新所有工作区目录树
+      setWorkspaceFolders((prev) => {
+        Promise.all(
+          prev.map(async (f) => ({
+            ...f,
+            name: f.path === oldPath ? newName : f.name,
+            path: f.path === oldPath ? newPath : f.path,
+            tree: await scanDirectoryTree(f.path === oldPath ? newPath : f.path),
+          }))
+        ).then((updated) => {
+          setWorkspaceFolders(updated);
+          saveStoredWorkspaceFolderPaths(updated.map((f) => f.path));
+        });
+        return prev;
+      });
+      showToast(`已重命名为 "${newName}"`);
+    },
+    [tabs, updateTabFile, showToast]
+  );
+
+  // 安全移到废纸篓 / 回收站并关闭对应 Tab
+  const handleDeleteItem = useCallback(
+    async (target: ContextMenuTarget) => {
+      const res = await moveToTrash(target.path);
+      if (!res.success) {
+        showToast(`删除失败: ${res.error || '无法移到回收站'}`);
+        return;
+      }
+      // 关闭受影响的 Tab
+      tabs.forEach((tab) => {
+        if (
+          tab.filePath === target.path ||
+          (target.type === 'folder' && tab.filePath?.startsWith(target.path + '/'))
+        ) {
+          forceCloseTab(tab.id);
+        }
+      });
+      // 刷新工作区目录树
+      setWorkspaceFolders((prev) => {
+        Promise.all(
+          prev.map(async (f) => ({
+            ...f,
+            tree: await scanDirectoryTree(f.path),
+          }))
+        ).then((updated) => setWorkspaceFolders(updated));
+        return prev;
+      });
+      showToast(platform === 'win32' ? '已移到回收站' : '已移到废纸篓');
+    },
+    [tabs, forceCloseTab, platform, showToast]
+  );
+
+  // 新建文件并自动打开新 Tab
+  const handleCreateFile = useCallback(
+    async (parentDir: string, fileName: string) => {
+      const res = await createFileOnDisk(parentDir, fileName);
+      if (!res.success || !res.filePath) {
+        showToast(`新建文件失败: ${res.error || '创建失败'}`);
+        return;
+      }
+      handleCreateNewTab(fileName, '', res.filePath);
+      setWorkspaceFolders((prev) => {
+        Promise.all(
+          prev.map(async (f) => ({
+            ...f,
+            tree: await scanDirectoryTree(f.path),
+          }))
+        ).then((updated) => setWorkspaceFolders(updated));
+        return prev;
+      });
+      showToast(`已新建文件 "${fileName}"`);
+    },
+    [handleCreateNewTab, showToast]
+  );
+
+  // 新建文件夹
+  const handleCreateFolder = useCallback(
+    async (parentDir: string, folderName: string) => {
+      const res = await createFolderOnDisk(parentDir, folderName);
+      if (!res.success) {
+        showToast(`新建文件夹失败: ${res.error || '创建失败'}`);
+        return;
+      }
+      setWorkspaceFolders((prev) => {
+        Promise.all(
+          prev.map(async (f) => ({
+            ...f,
+            tree: await scanDirectoryTree(f.path),
+          }))
+        ).then((updated) => setWorkspaceFolders(updated));
+        return prev;
+      });
+      showToast(`已新建文件夹 "${folderName}"`);
+    },
+    [showToast]
+  );
+
+  // 在系统文件管理器中显示
+  const handleRevealInExplorer = useCallback(
+    async (filePath: string) => {
+      await revealInExplorer(filePath);
+    },
+    []
+  );
+
   // 点击侧边栏文件树中的 Markdown 文件直接打开或切换
   const handleSelectSidebarFile = useCallback(
     async (filePath: string) => {
@@ -879,9 +1006,16 @@ export const App: React.FC = () => {
           onSelectHeading={handleSelectOutlineHeading}
           folders={workspaceFolders}
           activeFilePath={activeTab.filePath}
+          platform={platform}
           onSelectFile={handleSelectSidebarFile}
           onAddFolder={handleAddFolder}
           onRemoveFolder={handleRemoveFolder}
+          onRenameItem={handleRenameItem}
+          onDeleteItem={handleDeleteItem}
+          onCreateFile={handleCreateFile}
+          onCreateFolder={handleCreateFolder}
+          onRevealInExplorer={handleRevealInExplorer}
+          onValidationError={showToast}
         />
 
         <main className="flex-1 overflow-hidden relative bg-[var(--bg-primary,#FFFFFF)] transition-colors duration-150">
