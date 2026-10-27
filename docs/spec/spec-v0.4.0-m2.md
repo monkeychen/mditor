@@ -75,10 +75,10 @@ status: draft
 
 ## 3. 任务拆解与 TDD 计划（Task Breakdown）
 
-- [ ] **T405：文件名合法性校验器与主进程原生能力扩展** (`fileNameValidator.ts`, `src/main/folderService.ts`, `src/preload/index.ts` + 单元测试)
-- [ ] **T406：侧边栏跨平台右键上下文菜单组件** (`SidebarContextMenu.tsx` + 单元测试)
-- [ ] **T407：文件树内联新建、重命名、安全回收与 Tab 状态联动** (`OutlineDrawer.tsx`, `App.tsx` + 单元测试)
-- [ ] **T408：跨平台快捷键自适应、非法名称防御门禁与 E2E 验证** (Playwright E2E: `v0.4.0-m2-workspace-fs.spec.ts`)
+- [x] **T405：文件名合法性校验器与主进程原生能力扩展** (`fileNameValidator.ts`, `src/main/folderService.ts`, `src/preload/index.ts` + 单元测试)
+- [x] **T406：侧边栏跨平台右键上下文菜单组件** (`SidebarContextMenu.tsx` + 单元测试)
+- [x] **T407：文件树内联新建、重命名、安全回收与 Tab 状态联动** (`OutlineDrawer.tsx`, `App.tsx` + 单元测试)
+- [x] **T408：跨平台快捷键自适应、非法名称防御门禁与 E2E 验证** (Playwright E2E: `v0.4.0-m2-workspace-fs.spec.ts`)
 
 ---
 
