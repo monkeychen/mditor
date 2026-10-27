@@ -28,6 +28,7 @@ import { createPlaceholderPlugin } from './placeholderPlugin';
 import { createFocusModePlugin } from './focusModePlugin';
 import { createTypewriterPlugin } from './typewriterPlugin';
 import { createTaskListPlugin } from './taskListPlugin';
+import { mathPlugin } from './math/mathPlugin';
 import '../../styles/milkdown.css';
 
 export interface MilkdownEditorProps {
@@ -49,6 +50,8 @@ export interface MilkdownEditorRef {
   getCursorPosition: () => { line: number; col: number };
   setCursorPosition: (line: number, col: number) => void;
   insertTable: (rows: number, cols: number) => void;
+  insertInlineMath: (latex?: string) => void;
+  insertMathBlock: (latex?: string) => void;
   scrollToHeading: (headingIndex: number) => void;
 }
 
@@ -178,6 +181,49 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           console.error('[Milkdown] Failed to insert table:', e);
         }
       },
+      insertInlineMath: (latex?: string) => {
+        const editor = editorInstanceRef.current;
+        if (!editor) return;
+        try {
+          editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            const { state, dispatch } = view;
+            const inlineMathType = state.schema.nodes.inline_math;
+            if (!inlineMathType) return;
+            const { from, to } = state.selection;
+            const selectedText = from !== to ? state.doc.textBetween(from, to) : '';
+            const value = latex !== undefined ? latex : (selectedText || 'f(x)');
+            const node = inlineMathType.create({ value });
+            const tr = state.tr.replaceSelectionWith(node);
+            dispatch(tr.scrollIntoView());
+            view.focus();
+          });
+        } catch (e) {
+          console.error('[Milkdown] Failed to insert inline math:', e);
+        }
+      },
+      insertMathBlock: (latex?: string) => {
+        const editor = editorInstanceRef.current;
+        if (!editor) return;
+        try {
+          editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            const { state, dispatch } = view;
+            const mathBlockType = state.schema.nodes.math_block;
+            if (!mathBlockType) return;
+            const value =
+              latex !== undefined
+                ? latex
+                : '\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}';
+            const node = mathBlockType.create({ value });
+            const tr = state.tr.replaceSelectionWith(node);
+            dispatch(tr.scrollIntoView());
+            view.focus();
+          });
+        } catch (e) {
+          console.error('[Milkdown] Failed to insert math block:', e);
+        }
+      },
       scrollToHeading: (headingIndex: number) => {
         const container = containerRef.current;
         if (!container) return;
@@ -236,6 +282,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         })
         .use(commonmark)
         .use(gfm)
+        .use(mathPlugin)
         .use(listener);
 
       pendingEditor = editor;

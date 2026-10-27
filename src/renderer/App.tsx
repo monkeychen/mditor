@@ -34,6 +34,7 @@ import {
   Table,
   Eye,
   AlignCenter,
+  Sigma,
 } from 'lucide-react';
 
 const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
@@ -237,6 +238,17 @@ export const App: React.FC = () => {
     }
   }, [activeTab.content, showToast]);
 
+  // 插入数学公式 (⌥⌘M)
+  const handleInsertMath = useCallback(() => {
+    if (currentMode === 'wysiwyg' && milkdownRef.current) {
+      milkdownRef.current.insertInlineMath();
+      showToast('已插入数学公式 (⌥⌘M)');
+    } else {
+      updateTabContent(activeTab.id, activeTab.content + ' $f(x)$ ');
+      showToast('已插入数学公式 (⌥⌘M)');
+    }
+  }, [currentMode, activeTab, updateTabContent, showToast]);
+
   // 快捷键监听 (全面对齐 Typora / macOS 常用快捷键)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -267,6 +279,9 @@ export const App: React.FC = () => {
       } else if (isMeta && e.altKey && (keyLower === 't' || e.code === 'KeyT')) {
         e.preventDefault();
         setIsInsertTableOpen(true);
+      } else if (isMeta && e.altKey && (keyLower === 'm' || e.code === 'KeyM')) {
+        e.preventDefault();
+        handleInsertMath();
       } else if (e.key === 'F8') {
         e.preventDefault();
         setFocusMode((prev) => !prev);
@@ -294,6 +309,7 @@ export const App: React.FC = () => {
     createNewTab,
     handleCopyWechat,
     handleToggleMode,
+    handleInsertMath,
   ]);
 
   // 搜索上一个 / 下一个
@@ -452,6 +468,14 @@ export const App: React.FC = () => {
             className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
           >
             <Table className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleInsertMath}
+            title="插入数学公式 (⌥⌘M)"
+            data-testid="toolbar-insert-math-btn"
+            className="p-1.5 hover:bg-black/5 rounded-md text-stone-600 hover:text-stone-900 transition"
+          >
+            <Sigma className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsSearchOpen((prev) => !prev)}
