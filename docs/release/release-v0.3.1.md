@@ -39,6 +39,20 @@ mditor v0.3.1 是针对数学公式写作体验与发布工程化的重要补丁
   - 检测到旧版本时，提前弹出友好系统确认框，明确告知用户「将自动清理旧版程序文件，文档数据与个人设置完好保留」；
   - 显式锁定 `deleteAppDataOnUninstall: false`，杜绝覆盖安装或更新过程中损伤 `%APPDATA%\mditor` 下的用户本地数据与偏好配置。
 
+- **侧边栏「文件夹」工作区与多目录管理**：
+  - **心智更名**：侧边栏左侧标签页正式更名为「文件夹」，与「大纲」保持一致的产品认知；
+  - **多工作区文件夹添加与切换**：支持点击「+」添加入口将多个不同本地项目目录同时引入侧边栏，每个文件夹拥有独立的折叠指示器与完整的层级文件树；
+  - **安全从侧边栏移除**：鼠标悬停任意文件夹标题栏时显示「×」移除按钮，一键从侧边栏工作区解绑，严格保障本地磁盘文件不受任何影响；
+  - **无感本地持久化**：多文件夹列表自动保存于本地存储中，应用重启后自动扫描还原所有已添加的工作区目录。
+
+- **代码块主流语言语法高亮与 VS Code Dark+ 经典配色**：
+  - **双模式语法高亮齐备**：WYSIWYG 模式集成 `@milkdown/plugin-prism` 与 `refractor` 别名引擎，覆盖 TypeScript、JavaScript、Python、JSON、HTML、CSS、SQL、Bash/ZSH、Rust、Go、Java、C++、C#、YAML、Markdown 等主流语言；源码模式集成 `@codemirror/language-data` 动态语言包；
+  - **高精代码着色**：完整实现 VS Code Dark+ 规范的语法 Token（关键字、字符串、函数名、内置类型与类名、数字常量、属性名、注释等）。
+
+- **工具栏导出下拉菜单裁切修复与交互增强**：
+  - 解决展开状态下因外层容器 `overflow: hidden` 导致下拉菜单被硬性裁剪遮挡的缺陷，修正为 `overflow: visible`；
+  - 补齐导出菜单的外部点击（Click Outside）与 `Esc` 快捷关闭机制，并适配全局深色模式。
+
 - **CI/CD 云端多平台自动化发布流水线加固**：
   - 重构 `.github/workflows/release.yml`，在多平台 Matrix 构建前增加单节点 `prepare-release`，先行向 GitHub API 创建唯一的 Draft Release 作为锚点，彻底根除 macOS、Windows、Ubuntu 三节点并发竞争导致的产物分裂；
   - 在 `finalize-release` 中引入全平台资产完整性硬门禁校验（严格断言 `.dmg`、`.exe`、`.AppImage` 必须全部就位），自动化杜绝半成品发布。
@@ -58,6 +72,6 @@ mditor v0.3.1 是针对数学公式写作体验与发布工程化的重要补丁
 ## 3. 验收汇总
 
 - **测试全量自动化通过**：
-  - 48 个测试套件，144 个单元与保真度测试全部通过（`npm run test`）；
-  - 13 个 Playwright 真机端到端测试 100% 通过（`npx playwright test`），覆盖公式输入、抽屉展开、实时预览联动、模式切换保真度；
+  - 50 个测试套件，155 个单元与保真度测试全部通过（`npm run test`）；
+  - 14 个 Playwright 真机端到端测试 100% 通过（`npx playwright test`），覆盖公式输入、抽屉展开、实时预览联动、模式切换保真度、工具栏折叠、多工作区文件夹添加与移除；
   - Vite 渲染进程与 TypeScript 主进程构建无报错通过。
