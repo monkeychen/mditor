@@ -1,5 +1,6 @@
 import type { MilkdownPlugin } from '@milkdown/ctx';
-import { $nodeSchema, $view, $remark, $prose } from '@milkdown/utils';
+import { $nodeSchema, $view, $remark, $prose, $inputRule } from '@milkdown/utils';
+import { InputRule } from '@milkdown/prose/inputrules';
 import remarkMath from 'remark-math';
 import { InlineMathView } from './InlineMathView';
 import { MathBlockView } from './MathBlockView';
@@ -104,6 +105,17 @@ export const mathBlockView = $view(mathBlockSchema.node, () => (node, view, getP
 /// 数学公式键盘快捷键插件
 export const mathKeymap = $prose(() => createMathKeymapPlugin());
 
+/// 行内公式输入规则：当输入 $formula$ 时自动转换为 inline_math 节点
+export const inlineMathInputRule = $inputRule((ctx) => {
+  return new InputRule(/(?:\$)([^$\n]+)(?:\$)$/, (state, match, start, end) => {
+    const inlineMathType = inlineMathSchema.type(ctx);
+    if (!inlineMathType) return null;
+    const value = match[1] ?? '';
+    const node = inlineMathType.create({ value });
+    return state.tr.replaceWith(start, end, node);
+  });
+});
+
 /// 聚合数学公式 Milkdown 插件包
 export const mathPlugin: MilkdownPlugin[] = [
   remarkMathPlugin,
@@ -112,4 +124,5 @@ export const mathPlugin: MilkdownPlugin[] = [
   inlineMathView,
   mathBlockView,
   mathKeymap,
+  inlineMathInputRule,
 ].flat() as MilkdownPlugin[];

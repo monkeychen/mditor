@@ -329,3 +329,54 @@
   background-color: rgba(254, 240, 138, 0.5) !important;
   border-radius: 4px;
 }
+
+/* 数学公式相关样式与交互体验 */
+.milkdown-wysiwyg-container .ProseMirror .inline-math-wrapper {
+  position: relative;
+  display: inline-flex;
+  vertical-align: baseline;
+}
+
+.milkdown-wysiwyg-container .ProseMirror .math-inline-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 4px;
+  margin: 0 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  vertical-align: baseline;
+}
+
+.milkdown-wysiwyg-container .ProseMirror .math-inline-badge:hover {
+  background-color: rgba(59, 130, 246, 0.08);
+  outline: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.milkdown-wysiwyg-container .ProseMirror .math-inline-editing {
+  background-color: #FEF3C7 !important;
+  outline: 1px solid #F59E0B !important;
+}
+
+.milkdown-wysiwyg-container .ProseMirror .math-block-container {
+  position: relative;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  background-color: var(--bg-card, #FAFAFA);
+  border: 1px solid var(--border-color, #E5E7EB);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.milkdown-wysiwyg-container .ProseMirror .math-block-container:hover {
+  border-color: #93C5FD;
+  box-shadow: 0 2px 8px -2px rgba(59, 130, 246, 0.1);
+}
+
+.milkdown-wysiwyg-container .ProseMirror .math-block-drawer {
+  position: relative;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
