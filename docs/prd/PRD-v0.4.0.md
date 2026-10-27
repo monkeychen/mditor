@@ -3,7 +3,7 @@ doc: prd
 product: mditor
 version: v0.4.0
 date: 2026-10-27
-status: pending-review
+status: approved
 ---
 
 # PRD-v0.4.0：偏好设置面板、工作区文件管理与全能文本文档/代码高亮引擎
