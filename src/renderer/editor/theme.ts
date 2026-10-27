@@ -45,19 +45,19 @@ export const darkSyntaxHighlight = HighlightStyle.define([
 export const macosEditorTheme = EditorView.theme({
   '&': {
     height: '100%',
-    fontSize: '14px',
+    fontSize: 'var(--editor-font-size, 14px)',
     backgroundColor: '#FFFFFF',
     color: '#1F2937',
-    fontFamily: '"SF Mono", Menlo, Monaco, Consolas, monospace',
+    fontFamily: 'var(--editor-code-font, "SF Mono", Menlo, Monaco, Consolas, monospace)',
   },
   '.cm-scroller': {
     overflow: 'auto',
-    lineHeight: '1.65',
+    lineHeight: 'var(--editor-line-height, 1.65)',
     padding: '16px 20px',
   },
   '.cm-content': {
     caretColor: '#2563EB',
-    maxWidth: '820px',
+    maxWidth: 'var(--editor-max-width, 820px)',
     margin: '0 auto',
     padding: '0 24px 120px 24px',
   },
@@ -82,19 +82,19 @@ export const macosEditorTheme = EditorView.theme({
 export const githubEditorTheme = EditorView.theme({
   '&': {
     height: '100%',
-    fontSize: '14px',
+    fontSize: 'var(--editor-font-size, 14px)',
     backgroundColor: '#FFFFFF',
     color: '#24292F',
-    fontFamily: '"SF Mono", Menlo, Monaco, Consolas, monospace',
+    fontFamily: 'var(--editor-code-font, "SF Mono", Menlo, Monaco, Consolas, monospace)',
   },
   '.cm-scroller': {
     overflow: 'auto',
-    lineHeight: '1.65',
+    lineHeight: 'var(--editor-line-height, 1.65)',
     padding: '16px 20px',
   },
   '.cm-content': {
     caretColor: '#0969DA',
-    maxWidth: '820px',
+    maxWidth: 'var(--editor-max-width, 820px)',
     margin: '0 auto',
     padding: '0 24px 120px 24px',
   },
@@ -119,19 +119,19 @@ export const githubEditorTheme = EditorView.theme({
 export const nightEditorTheme = EditorView.theme({
   '&': {
     height: '100%',
-    fontSize: '14px',
+    fontSize: 'var(--editor-font-size, 14px)',
     backgroundColor: '#1E1E1E',
     color: '#D4D4D4',
-    fontFamily: '"SF Mono", Menlo, Monaco, Consolas, monospace',
+    fontFamily: 'var(--editor-code-font, "SF Mono", Menlo, Monaco, Consolas, monospace)',
   },
   '.cm-scroller': {
     overflow: 'auto',
-    lineHeight: '1.65',
+    lineHeight: 'var(--editor-line-height, 1.65)',
     padding: '16px 20px',
   },
   '.cm-content': {
     caretColor: '#3B82F6',
-    maxWidth: '820px',
+    maxWidth: 'var(--editor-max-width, 820px)',
     margin: '0 auto',
     padding: '0 24px 120px 24px',
   },
@@ -156,19 +156,19 @@ export const nightEditorTheme = EditorView.theme({
 export const newsprintEditorTheme = EditorView.theme({
   '&': {
     height: '100%',
-    fontSize: '14px',
+    fontSize: 'var(--editor-font-size, 14px)',
     backgroundColor: '#F6F3ED',
     color: '#2C2621',
-    fontFamily: '"SF Mono", Menlo, Monaco, Consolas, monospace',
+    fontFamily: 'var(--editor-code-font, "SF Mono", Menlo, Monaco, Consolas, monospace)',
   },
   '.cm-scroller': {
     overflow: 'auto',
-    lineHeight: '1.65',
+    lineHeight: 'var(--editor-line-height, 1.65)',
     padding: '16px 20px',
   },
   '.cm-content': {
     caretColor: '#B45309',
-    maxWidth: '820px',
+    maxWidth: 'var(--editor-max-width, 820px)',
     margin: '0 auto',
     padding: '0 24px 120px 24px',
   },

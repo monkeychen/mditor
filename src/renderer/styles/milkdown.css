@@ -13,7 +13,7 @@
 /* 连续正文工作区 (Typora 式居中沉浸排版，无浮动断裂卡片) */
 .milkdown-wysiwyg-container .milkdown {
   width: 100%;
-  max-width: 840px;
+  max-width: var(--editor-max-width, 860px);
   min-height: 100%;
   margin: 0 auto;
   padding: 3rem 2.5rem 25vh 2.5rem;
@@ -22,6 +22,7 @@
   flex-direction: column;
   box-sizing: border-box;
   cursor: text;
+  transition: max-width 0.15s ease;
 }
 
 .milkdown-wysiwyg-container .ProseMirror {
@@ -30,15 +31,15 @@
   white-space: pre-wrap;
   white-space: break-spaces;
   outline: none !important;
-  font-family: var(--font-family-body, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif);
-  font-size: 16px;
-  line-height: 1.75;
+  font-family: var(--editor-font-family, var(--font-family-body, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif));
+  font-size: var(--editor-font-size, 16px);
+  line-height: var(--editor-line-height, 1.75);
   color: var(--text-primary, #1F2937);
   user-select: text !important;
   cursor: text;
   min-height: 100%;
   flex: 1;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, font-size 0.15s ease;
 }
 
 /* 关键修复：覆盖 Tailwind Preflight 的 img { display: block }，防止 ProseMirror widget 后方的光标定位符强制断行跳到下一行 */
@@ -126,7 +127,7 @@
 }
 
 .milkdown-wysiwyg-container .ProseMirror code {
-  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-family: var(--editor-code-font, "SF Mono", Menlo, Monaco, Consolas, monospace);
   font-size: 0.875em;
   background-color: rgba(0, 0, 0, 0.05);
   color: #B45309;

@@ -9,6 +9,14 @@ import SearchPanel from './components/SearchPanel';
 import { WordCountPopover } from './components/WordCountPopover';
 import { InsertTableModal } from './components/InsertTableModal';
 import { ThemeSelectorPopover } from './components/ThemeSelectorPopover';
+import PreferencesModal from './components/PreferencesModal';
+import {
+  EditorPreferences,
+  DEFAULT_PREFERENCES,
+  getStoredPreferences,
+  savePreferences,
+  applyPreferencesToDOM,
+} from './services/settingsService';
 import {
   AppTheme,
   getStoredTheme,
@@ -77,6 +85,7 @@ import {
   PanelLeft,
   PanelTop,
   ChevronUp,
+  Settings,
 } from 'lucide-react';
 
 const INITIAL_CONTENT = `# 设计第一性原理与 macOS 手感
@@ -204,8 +213,20 @@ export const App: React.FC = () => {
   const [currentTheme, setCurrentTheme] = useState<AppTheme>(getStoredTheme);
   const [isThemePopoverOpen, setIsThemePopoverOpen] = useState(false);
 
+  // 偏好设置状态与即时热重载服务 (v0.4.0 M3: AC-27.1 ~ AC-27.3)
+  const [preferences, setPreferences] = useState<EditorPreferences>(getStoredPreferences);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+
   // 顶栏分层解耦与独立可折叠编辑工具栏 (v0.3.1 F26)
   const [isToolbarOpen, setIsToolbarOpen] = useState(true);
+
+  useEffect(() => {
+    applyPreferencesToDOM(preferences);
+    if (preferences.theme !== currentTheme) {
+      setCurrentTheme(preferences.theme);
+      setAppTheme(preferences.theme);
+    }
+  }, [preferences, currentTheme]);
 
   useEffect(() => {
     applyThemeToDOM(currentTheme);
@@ -214,6 +235,26 @@ export const App: React.FC = () => {
   const handleSelectTheme = useCallback((theme: AppTheme) => {
     setCurrentTheme(theme);
     setAppTheme(theme);
+    setPreferences(savePreferences({ theme }));
+  }, []);
+
+  const handleUpdatePreferences = useCallback(
+    (updates: Partial<EditorPreferences>) => {
+      const updated = savePreferences(updates);
+      setPreferences(updated);
+      if (updates.theme && updates.theme !== currentTheme) {
+        setCurrentTheme(updates.theme);
+        setAppTheme(updates.theme);
+      }
+    },
+    [currentTheme]
+  );
+
+  const handleResetPreferences = useCallback(() => {
+    const defaults = savePreferences(DEFAULT_PREFERENCES);
+    setPreferences(defaults);
+    setCurrentTheme(defaults.theme);
+    setAppTheme(defaults.theme);
   }, []);
 
   // 字数统计浮窗与插入表格弹窗
@@ -485,6 +526,9 @@ export const App: React.FC = () => {
       } else if (isMeta && !e.altKey && keyLower === 'f') {
         e.preventDefault();
         setIsSearchOpen(true);
+      } else if (isMeta && e.key === ',') {
+        e.preventDefault();
+        setIsPreferencesOpen((prev) => !prev);
       } else if (
         isMeta &&
         (keyLower === 'h' || (e.altKey && (keyLower === 'f' || e.code === 'KeyF')))
@@ -505,6 +549,32 @@ export const App: React.FC = () => {
     handleToggleMode,
     handleInsertMath,
   ]);
+
+  // 自动保存引擎 (Auto Save Engine: AC-27.2)
+  useEffect(() => {
+    if (!preferences.autoSaveDelay || preferences.autoSaveDelay <= 0) return;
+    if (!activeTab.isDirty || !activeTab.filePath) return;
+
+    const timer = setTimeout(() => {
+      handleSaveActiveTab();
+    }, preferences.autoSaveDelay);
+
+    return () => clearTimeout(timer);
+  }, [activeTab.isDirty, activeTab.filePath, activeTab.content, preferences.autoSaveDelay, handleSaveActiveTab]);
+
+  // 窗口失去焦点时自动保存 (autoSaveDelay === -1)
+  useEffect(() => {
+    if (preferences.autoSaveDelay !== -1) return;
+
+    const handleBlur = () => {
+      if (activeTab.isDirty && activeTab.filePath) {
+        handleSaveActiveTab();
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, [preferences.autoSaveDelay, activeTab.isDirty, activeTab.filePath, handleSaveActiveTab]);
 
   // 搜索上一个 / 下一个
   const handleNextMatch = useCallback(() => {
@@ -814,11 +884,20 @@ export const App: React.FC = () => {
           onNewTab={() => handleCreateNewTab()}
         />
 
-        {/* 右侧：仅保留窗口级全局核心开关 (工具栏折叠按钮) */}
+        {/* 右侧：仅保留窗口级全局核心开关 (偏好设置 + 工具栏折叠按钮) */}
         <div
           className="shrink-0 flex items-center space-x-1.5 text-stone-500 pl-2"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <button
+            onClick={() => setIsPreferencesOpen(true)}
+            title={platform === 'darwin' ? '偏好设置 (Cmd+,)' : '偏好设置 (Ctrl+,)'}
+            data-testid="header-preferences-btn"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-black/5 text-stone-500 hover:text-stone-700 transition cursor-pointer"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span className="text-[11px]">设置</span>
+          </button>
           <button
             onClick={() => setIsToolbarOpen((prev) => !prev)}
             title="显示/隐藏编辑工具栏 (Cmd+Shift+T)"
@@ -1190,6 +1269,16 @@ export const App: React.FC = () => {
             confirmDiscardAndClose();
           }
         }}
+      />
+
+      {/* 偏好设置模态窗口 (Cmd+,) */}
+      <PreferencesModal
+        isOpen={isPreferencesOpen}
+        preferences={preferences}
+        platform={platform}
+        onUpdatePreferences={handleUpdatePreferences}
+        onResetPreferences={handleResetPreferences}
+        onClose={() => setIsPreferencesOpen(false)}
       />
 
       {/* Toast 提示浮层 */}
