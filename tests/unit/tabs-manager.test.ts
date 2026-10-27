@@ -94,4 +94,23 @@ describe('useTabs Hook (AC1.2, AC1.3, AC1.4)', () => {
     expect(result.current.closePendingTab).toBeNull();
     expect(result.current.tabs.length).toBe(1);
   });
+
+  it('locks mode to source for non-markdown code and data files (AC-29.2)', () => {
+    const { result } = renderHook(() => useTabs());
+
+    let pyTabId = '';
+    act(() => {
+      const newTab = result.current.createNewTab('server.py', 'print("hello")');
+      pyTabId = newTab.id;
+    });
+
+    expect(result.current.activeTab.fileName).toBe('server.py');
+    expect(result.current.activeTab.mode).toBe('source');
+
+    // 尝试将代码文件切换为 wysiwyg 模式，应该依然保持 source
+    act(() => {
+      result.current.updateTabMode(pyTabId, 'wysiwyg');
+    });
+    expect(result.current.activeTab.mode).toBe('source');
+  });
 });

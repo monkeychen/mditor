@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { TabItem, EditorMode } from '../../types';
+import { isMarkdownFile } from '../utils/languageClassifier';
 
 export function createDefaultTab(
   fileName = 'Untitled.md',
   content = '',
   filePath: string | null = null
 ): TabItem {
+  const isMd = isMarkdownFile(filePath || fileName);
   return {
     id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     filePath,
@@ -13,7 +15,7 @@ export function createDefaultTab(
     content,
     isDirty: false,
     saveStatus: 'saved',
-    mode: 'wysiwyg',
+    mode: isMd ? 'wysiwyg' : 'source',
     cursorLine: 1,
     cursorCol: 1,
   };
@@ -76,14 +78,15 @@ export function useTabs(initialTab?: TabItem) {
     );
   }, []);
 
-  // 更新 Tab 的模式 (wysiwyg / source)
+  // 更新 Tab 的模式 (wysiwyg / source) - 非 Markdown 强制锁定 source
   const updateTabMode = useCallback((tabId: string, mode: EditorMode) => {
     setTabs((prev) =>
       prev.map((tab) => {
         if (tab.id === tabId) {
+          const isMd = isMarkdownFile(tab.filePath || tab.fileName);
           return {
             ...tab,
-            mode,
+            mode: isMd ? mode : 'source',
           };
         }
         return tab;
@@ -112,12 +115,14 @@ export function useTabs(initialTab?: TabItem) {
     setTabs((prev) =>
       prev.map((tab) => {
         if (tab.id === tabId) {
+          const isMd = isMarkdownFile(filePath || fileName);
           return {
             ...tab,
             filePath,
             fileName,
             isDirty: false,
             saveStatus: 'saved',
+            mode: !isMd ? 'source' : (tab.mode || 'wysiwyg'),
           };
         }
         return tab;

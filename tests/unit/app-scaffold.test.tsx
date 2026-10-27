@@ -12,10 +12,14 @@ describe('App Scaffold (M2 & Dual-Mode)', () => {
     const milkdownElement = container.querySelector('.milkdown-wysiwyg-container');
     expect(milkdownElement).not.toBeNull();
 
-    // 底部状态栏模式按钮
+    // 底部状态栏模式按钮与语言徽章
     const toggleBtn = screen.getByTestId('mode-toggle-btn');
     expect(toggleBtn).toBeInTheDocument();
     expect(toggleBtn.textContent).toContain('实时渲染');
+
+    const langBadge = screen.getByTestId('status-language-badge');
+    expect(langBadge).toBeInTheDocument();
+    expect(langBadge.textContent).toBe('Markdown');
 
     // 点击切换为源码模式
     fireEvent.click(toggleBtn);

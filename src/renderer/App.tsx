@@ -30,6 +30,7 @@ import {
   saveDocumentAs,
 } from './services/fileService';
 import type { WorkspaceFolder } from '../types';
+import { isMarkdownFile, getLanguageInfo } from './utils/languageClassifier';
 
 const STORAGE_KEY_WORKSPACE_FOLDERS = 'mditor_workspace_folders';
 
@@ -187,10 +188,30 @@ export const App: React.FC = () => {
   const [isWordCountOpen, setIsWordCountOpen] = useState(false);
   const [isInsertTableOpen, setIsInsertTableOpen] = useState(false);
 
-  // 编辑器模式 (即时渲染 vs 纯源码)
-  const currentMode = activeTab.mode || 'wysiwyg';
+  // Toast 状态
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage(msg);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  }, []);
+
+  // 检查当前激活 Tab 是否为 Markdown
+  const isCurrentTabMarkdown = isMarkdownFile(activeTab.filePath || activeTab.fileName);
+  const currentLanguageInfo = getLanguageInfo(activeTab.filePath || activeTab.fileName);
+
+  // 编辑器模式 (即时渲染 vs 纯源码) - 非 Markdown 强制锁定为 source
+  const currentMode = isCurrentTabMarkdown ? (activeTab.mode || 'wysiwyg') : 'source';
 
   const handleToggleMode = useCallback(() => {
+    if (!isCurrentTabMarkdown) {
+      showToast('代码文件仅支持源码模式');
+      return;
+    }
     if (currentMode === 'wysiwyg' && milkdownRef.current) {
       const latestMd = milkdownRef.current.getMarkdown();
       if (latestMd && latestMd !== activeTab.content) {
@@ -199,7 +220,7 @@ export const App: React.FC = () => {
     }
     const nextMode = currentMode === 'wysiwyg' ? 'source' : 'wysiwyg';
     updateTabMode(activeTab.id, nextMode);
-  }, [currentMode, activeTab.id, activeTab.content, updateTabContent, updateTabMode]);
+  }, [isCurrentTabMarkdown, currentMode, activeTab.id, activeTab.content, updateTabContent, updateTabMode, showToast]);
 
   const handleSwitchTab = useCallback(
     (targetTabId: string) => {
@@ -234,11 +255,9 @@ export const App: React.FC = () => {
   const [replaceText, setReplaceText] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // 导出菜单与 Toast 状态
+  // 导出菜单状态
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportMenuContainerRef = useRef<HTMLDivElement | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 监听点击外部或 ESC 自动收起导出下拉菜单
   useEffect(() => {
@@ -267,14 +286,6 @@ export const App: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isExportMenuOpen]);
-
-  const showToast = useCallback((msg: string) => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToastMessage(msg);
-    toastTimerRef.current = setTimeout(() => {
-      setToastMessage(null);
-    }, 2500);
-  }, []);
 
   // 提取大纲与文档详细字数统计
   const outline = useMemo(() => {
@@ -866,6 +877,8 @@ export const App: React.FC = () => {
               content={activeTab.content}
               theme={currentTheme}
               cursorLine={activeTab.cursorLine}
+              filePath={activeTab.filePath}
+              fileName={activeTab.fileName}
               onChange={(newContent) => updateTabContent(activeTab.id, newContent)}
               onCursorChange={(line, col) => updateTabCursor(activeTab.id, line, col)}
             />
@@ -896,9 +909,14 @@ export const App: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleToggleMode}
-            title="点击切换编辑模式 (⌘/)"
+            title={isCurrentTabMarkdown ? "点击切换编辑模式 (⌘/)" : "代码文件仅支持源码模式"}
+            disabled={!isCurrentTabMarkdown}
             data-testid="mode-toggle-btn"
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-black/5 text-stone-700 transition"
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition ${
+              !isCurrentTabMarkdown
+                ? 'opacity-60 cursor-not-allowed text-stone-400'
+                : 'hover:bg-black/5 text-stone-700'
+            }`}
           >
             {currentMode === 'wysiwyg' ? (
               <>
@@ -912,6 +930,14 @@ export const App: React.FC = () => {
               </>
             )}
           </button>
+
+          <span
+            data-testid="status-language-badge"
+            className="px-1.5 py-0.5 rounded bg-black/5 text-stone-600 font-medium"
+            title={`语言类型: ${currentLanguageInfo.displayName}`}
+          >
+            {currentLanguageInfo.displayName}
+          </span>
 
           <button
             onClick={() => setFocusMode((prev) => !prev)}

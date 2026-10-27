@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { AlignLeft, ChevronRight, ChevronDown, Folder, FileText, FolderPlus, Plus, X } from 'lucide-react';
+import { AlignLeft, ChevronRight, ChevronDown, Folder, FileText, FileCode, Database, FileJson, Terminal, FolderPlus, Plus, X } from 'lucide-react';
 import type { OutlineItem } from '../utils/outline';
 import type { FileTreeNode, WorkspaceFolder } from '../../types';
+import { getLanguageInfo } from '../utils/languageClassifier';
 
 export type SidebarViewMode = 'files' | 'outline';
 
@@ -21,6 +22,29 @@ export interface OutlineDrawerProps {
   defaultView?: SidebarViewMode;
   onClose?: () => void;
 }
+
+const renderFileIcon = (filePathOrName: string, isActive: boolean) => {
+  const lang = getLanguageInfo(filePathOrName);
+  const iconClass = `w-3.5 h-3.5 shrink-0 ${isActive ? 'opacity-100' : 'opacity-80'}`;
+
+  switch (lang.iconType) {
+    case 'markdown':
+      return <FileText className={`${iconClass} text-amber-600`} />;
+    case 'python':
+      return <FileCode className={`${iconClass} text-amber-600`} />;
+    case 'database':
+      return <Database className={`${iconClass} text-emerald-600`} />;
+    case 'data':
+      return <FileJson className={`${iconClass} text-sky-600`} />;
+    case 'shell':
+      return <Terminal className={`${iconClass} text-stone-600`} />;
+    case 'code':
+      return <FileCode className={`${iconClass} text-indigo-600`} />;
+    case 'text':
+    default:
+      return <FileText className={`${iconClass} text-stone-400`} />;
+  }
+};
 
 const FileTreeItem: React.FC<{
   node: FileTreeNode;
@@ -67,13 +91,14 @@ const FileTreeItem: React.FC<{
     <div
       onClick={() => onSelectFile?.(node.path)}
       style={{ paddingLeft: `${paddingLeft + 14}px` }}
+      data-testid={`file-tree-item-${node.name}`}
       className={`file-tree-item group py-1.5 pr-2 rounded-md cursor-pointer flex items-center gap-1.5 transition ${
         isActive
           ? 'bg-amber-500/15 text-amber-900 font-semibold'
           : 'text-stone-600 hover:bg-black/5 hover:text-stone-900'
       }`}
     >
-      <FileText className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-amber-600' : 'text-stone-400'}`} />
+      {renderFileIcon(node.name || node.path, isActive)}
       <span className="truncate flex-1" title={node.path}>
         {node.name}
       </span>
