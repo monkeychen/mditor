@@ -56,7 +56,18 @@ export interface WorkspaceFolder {
   tree: FileTreeNode[];
 }
 
+export interface WindowState {
+  isFullScreen: boolean;
+  isMaximized: boolean;
+  platform: 'darwin' | 'win32' | 'linux';
+}
+
 export interface ElectronAPI {
+  platform?: 'darwin' | 'win32' | 'linux';
+  getWindowState?: () => Promise<WindowState>;
+  onWindowStateChange?: (callback: (state: WindowState) => void) => () => void;
+  onFullScreenChange?: (callback: (isFullScreen: boolean) => void) => () => void;
+  onMaximizeChange?: (callback: (isMaximized: boolean) => void) => () => void;
   openFile?: () => Promise<FileOpenResult | null>;
   readFileByPath?: (filePath: string) => Promise<FileOpenResult | null>;
   openFolder?: () => Promise<{ folderPath: string; tree: FileTreeNode[] } | null>;
@@ -68,6 +79,11 @@ export interface ElectronAPI {
   exportHtml?: (defaultName: string, htmlContent: string) => Promise<{ success: boolean; filePath?: string }>;
   exportPdf?: (defaultName: string, htmlContent: string) => Promise<{ success: boolean; filePath?: string }>;
   onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => () => void;
+  revealInExplorer?: (filePath: string) => Promise<boolean>;
+  moveToTrash?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+  createFile?: (parentDir: string, fileName: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+  createFolder?: (parentDir: string, folderName: string) => Promise<{ success: boolean; folderPath?: string; error?: string }>;
+  renameItem?: (oldPath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
 }
 
 declare global {

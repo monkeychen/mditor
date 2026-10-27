@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } from 'electron';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -55,6 +55,37 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  const sendWindowState = () => {
+    if (!mainWindow) return;
+    mainWindow.webContents.send('window:state-change', {
+      isFullScreen: mainWindow.isFullScreen(),
+      isMaximized: mainWindow.isMaximized(),
+      platform: process.platform,
+    });
+  };
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreen-change', true);
+    sendWindowState();
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreen-change', false);
+    sendWindowState();
+  });
+
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('window:maximize-change', true);
+    sendWindowState();
+  });
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('window:maximize-change', false);
+    sendWindowState();
+  });
+
+  mainWindow.on('resized', sendWindowState);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -190,6 +221,84 @@ ipcMain.handle('export:html', async (_event, { defaultName, htmlContent }: { def
 
 ipcMain.handle('export:pdf', async (_event, { defaultName, htmlContent }: { defaultName: string; htmlContent: string }) => {
   return await exportPdfFile(mainWindow, defaultName, htmlContent);
+});
+
+// 窗口状态查询 IPC
+ipcMain.handle('window:getState', () => {
+  return {
+    isFullScreen: mainWindow?.isFullScreen() ?? false,
+    isMaximized: mainWindow?.isMaximized() ?? false,
+    platform: process.platform,
+  };
+});
+
+// 在系统原生文件管理器中定位高亮文件 (Finder / Explorer)
+ipcMain.handle('file:revealInExplorer', async (_event, { filePath }: { filePath: string }) => {
+  try {
+    shell.showItemInFolder(filePath);
+    return true;
+  } catch (error) {
+    console.error('Failed to reveal file:', error);
+    return false;
+  }
+});
+
+// 安全移到废纸篓 / 回收站 (严禁硬删除)
+ipcMain.handle('file:moveToTrash', async (_event, { filePath }: { filePath: string }) => {
+  try {
+    await shell.trashItem(filePath);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 新建文件
+ipcMain.handle('file:create', async (_event, { parentDir, fileName }: { parentDir: string; fileName: string }) => {
+  try {
+    const targetPath = path.join(parentDir, fileName);
+    try {
+      await fs.access(targetPath);
+      return { success: false, error: '同名文件已存在' };
+    } catch {
+      // 不存在，正常创建
+    }
+    await fs.writeFile(targetPath, '', 'utf-8');
+    return { success: true, filePath: targetPath };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 重命名文件或目录
+ipcMain.handle('file:rename', async (_event, { oldPath, newName }: { oldPath: string; newName: string }) => {
+  try {
+    const parentDir = path.dirname(oldPath);
+    const newPath = path.join(parentDir, newName);
+    if (newPath !== oldPath) {
+      try {
+        await fs.access(newPath);
+        return { success: false, error: '同名文件或文件夹已存在' };
+      } catch {
+        // 不存在，正常重命名
+      }
+      await fs.rename(oldPath, newPath);
+    }
+    return { success: true, newPath };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 新建文件夹
+ipcMain.handle('folder:create', async (_event, { parentDir, folderName }: { parentDir: string; folderName: string }) => {
+  try {
+    const targetPath = path.join(parentDir, folderName);
+    await fs.mkdir(targetPath, { recursive: true });
+    return { success: true, folderPath: targetPath };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
 });
 
 app.whenReady().then(() => {

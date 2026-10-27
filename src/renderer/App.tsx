@@ -168,6 +168,31 @@ export const App: React.FC = () => {
   const [focusMode, setFocusMode] = useState(false);
   const [typewriterMode, setTypewriterMode] = useState(false);
 
+  // 全屏与窗口最大化状态（用于自适应避让 macOS 交通灯，最大化、全屏或非 macOS 下自动消除空白）
+  const [windowState, setWindowState] = useState<{ isFullScreen: boolean; isMaximized: boolean }>({
+    isFullScreen: false,
+    isMaximized: false,
+  });
+  const platform = window.electronAPI?.platform || (navigator.userAgent.includes('Mac') ? 'darwin' : 'win32');
+  const isMac = platform === 'darwin';
+
+  useEffect(() => {
+    if (window.electronAPI?.getWindowState) {
+      window.electronAPI.getWindowState().then((state) => {
+        setWindowState({ isFullScreen: state.isFullScreen, isMaximized: state.isMaximized });
+      });
+    }
+    if (window.electronAPI?.onWindowStateChange) {
+      const cleanup = window.electronAPI.onWindowStateChange((state) => {
+        setWindowState({ isFullScreen: state.isFullScreen, isMaximized: state.isMaximized });
+      });
+      return cleanup;
+    }
+  }, []);
+
+  // 仅在 macOS 且非最大化、非全屏时显示交通灯占位
+  const showTrafficLightSpacer = isMac && !windowState.isMaximized && !windowState.isFullScreen;
+
   // 经典多主题视觉系统 (v0.3.0 M4: AC-22.1 ~ AC-22.3)
   const [currentTheme, setCurrentTheme] = useState<AppTheme>(getStoredTheme);
   const [isThemePopoverOpen, setIsThemePopoverOpen] = useState(false);
@@ -630,12 +655,17 @@ export const App: React.FC = () => {
         className="h-10 bg-[#FAF8F5] border-b border-black/5 flex items-center px-3 z-30 select-none shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        {/* 左侧：避让 macOS 交通灯 (固定 70px) + 原生侧边栏开关 (PanelLeft) */}
+        {/* 左侧：避让 macOS 交通灯 (仅 macOS 非全屏时显示 70px 占位) + 原生侧边栏开关 (PanelLeft) */}
         <div
-          className="flex items-center space-x-1.5 shrink-0 pr-2"
+          className="flex items-center space-x-1.5 shrink-0 pr-2 transition-all duration-200"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <div className="w-[70px] h-full flex items-center" />
+          {showTrafficLightSpacer && (
+            <div
+              data-testid="traffic-lights-spacer"
+              className="w-[70px] h-full flex items-center transition-all duration-200"
+            />
+          )}
           <button
             onClick={() => setIsOutlineOpen((prev) => !prev)}
             title="切换大纲 (Cmd+Shift+O)"

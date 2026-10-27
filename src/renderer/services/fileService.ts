@@ -61,3 +61,38 @@ export async function saveDocumentAs(
   }
   return null;
 }
+
+export async function revealInExplorer(filePath: string): Promise<boolean> {
+  if (window.electronAPI?.revealInExplorer) {
+    return await window.electronAPI.revealInExplorer(filePath);
+  }
+  return false;
+}
+
+export async function moveToTrash(filePath: string): Promise<{ success: boolean; error?: string }> {
+  if (window.electronAPI?.moveToTrash) {
+    return await window.electronAPI.moveToTrash(filePath);
+  }
+  return { success: false, error: 'Platform API unavailable' };
+}
+
+export async function createFileOnDisk(parentDir: string, fileName: string): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  if (window.electronAPI?.createFile) {
+    return await window.electronAPI.createFile(parentDir, fileName);
+  }
+  return { success: false, error: 'Platform API unavailable' };
+}
+
+export async function createFolderOnDisk(parentDir: string, folderName: string): Promise<{ success: boolean; folderPath?: string; error?: string }> {
+  if (window.electronAPI?.createFolder) {
+    return await window.electronAPI.createFolder(parentDir, folderName);
+  }
+  return { success: false, error: 'Platform API unavailable' };
+}
+
+export async function renameItemOnDisk(oldPath: string, newName: string): Promise<{ success: boolean; newPath?: string; error?: string }> {
+  if (window.electronAPI?.renameItem) {
+    return await window.electronAPI.renameItem(oldPath, newName);
+  }
+  return { success: false, error: 'Platform API unavailable' };
+}
