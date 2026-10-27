@@ -27,6 +27,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         return (
           <div
             key={tab.id}
+            data-testid={`tab-${tab.fileName}`}
             onClick={() => onSelectTab(tab.id)}
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             className={`tab-item shrink-0 group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none ${
