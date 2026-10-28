@@ -3,7 +3,7 @@ doc: spec
 product: v0.5.0
 milestone: m3
 date: 2026-10-28
-status: draft
+status: approved
 ---
 
 # 技术规格说明书：v0.5.0 - 里程碑 M3：出版级 PDF/Word 导出与图片画布灯箱
