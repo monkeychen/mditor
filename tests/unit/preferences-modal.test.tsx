@@ -129,4 +129,31 @@ describe('PreferencesModal Component (T410 / AC-27.1 ~ AC-27.2)', () => {
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledTimes(3);
   });
+
+  it('switches to About tab and displays version, GitHub URL, and author information', () => {
+    const openExternal = vi.fn();
+    (window as any).electronAPI = { openExternal };
+
+    render(
+      <PreferencesModal
+        isOpen={true}
+        preferences={DEFAULT_PREFERENCES}
+        onUpdatePreferences={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('tab-btn-about'));
+    expect(screen.getByTestId('prefs-about-panel')).toBeInTheDocument();
+    expect(screen.getAllByText(/v0\.5\.0/).length).toBeGreaterThan(0);
+    expect(screen.getByText('https://github.com/monkeychen/mditor')).toBeInTheDocument();
+    expect(screen.getByText('陈志安')).toBeInTheDocument();
+    expect(screen.getByText('cza55007@gmail.com')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('https://github.com/monkeychen/mditor'));
+    expect(openExternal).toHaveBeenCalledWith('https://github.com/monkeychen/mditor');
+
+    fireEvent.click(screen.getByText('cza55007@gmail.com'));
+    expect(openExternal).toHaveBeenCalledWith('mailto:cza55007@gmail.com');
+  });
 });

@@ -596,6 +596,19 @@ export const App: React.FC = () => {
     handleInsertMath,
   ]);
 
+  // 监听原生系统菜单触发事件 (File / Preferences 等)
+  useEffect(() => {
+    if (!window.electronAPI?.onMenuTrigger) return;
+    const cleanup = window.electronAPI.onMenuTrigger((action) => {
+      if (action === 'new') handleCreateNewTab();
+      else if (action === 'open') handleOpenLocalFile();
+      else if (action === 'save') handleSaveActiveTab();
+      else if (action === 'saveAs') handleSaveAsActiveTab();
+      else if (action === 'preferences') setIsPreferencesOpen(true);
+    });
+    return cleanup;
+  }, [handleCreateNewTab, handleOpenLocalFile, handleSaveActiveTab, handleSaveAsActiveTab]);
+
   // 自动保存引擎 (Auto Save Engine: AC-27.2)
   useEffect(() => {
     if (!preferences.autoSaveDelay || preferences.autoSaveDelay <= 0) return;

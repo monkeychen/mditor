@@ -73,8 +73,11 @@ const api: ElectronAPI = {
   searchWorkspace: (options) => {
     return ipcRenderer.invoke('workspace:search', options);
   },
-  onMenuTrigger: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, action: 'new' | 'open' | 'save' | 'saveAs') => callback(action);
+  openExternal: (url: string) => {
+    return ipcRenderer.invoke('shell:openExternal', url);
+  },
+  onMenuTrigger: (callback: (action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => callback(action);
     ipcRenderer.on('menu:trigger', handler);
     return () => {
       ipcRenderer.removeListener('menu:trigger', handler);

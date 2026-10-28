@@ -7,6 +7,7 @@ import { exportHtmlFile, exportPdfFile } from './exportService';
 import { exportDocxFile } from './docxExportService';
 import { scanMarkdownDirectory, readMarkdownFileByPath, moveItem } from './folderService';
 import { searchWorkspaceFiles } from './searchService';
+import { setupAboutPanel, setupApplicationMenu } from './menuService';
 import type { WorkspaceSearchOptions, PdfExportOptions } from '../types';
 
 // 注册安全特权协议（必须在 app.whenReady 之前执行）
@@ -93,6 +94,9 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  setupAboutPanel(app.getVersion());
+  setupApplicationMenu(mainWindow, app.getVersion());
 }
 
 // 注册 IPC 文件处理
@@ -330,6 +334,15 @@ ipcMain.handle('workspace:search', async (_event, options: WorkspaceSearchOption
     console.error('workspace:search error:', error);
     return [];
   }
+});
+
+// 安全打开外部链接
+ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+  if (typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('mailto:'))) {
+    await shell.openExternal(url);
+    return true;
+  }
+  return false;
 });
 
 app.whenReady().then(() => {

@@ -93,7 +93,8 @@ export interface ElectronAPI {
     defaultName: string,
     markdown: string
   ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
-  onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => () => void;
+  onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => void) => () => void;
+  openExternal?: (url: string) => Promise<boolean>;
   revealInExplorer?: (filePath: string) => Promise<boolean>;
   moveToTrash?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
   createFile?: (parentDir: string, fileName: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;

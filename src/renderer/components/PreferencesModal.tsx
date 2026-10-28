@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sliders, Palette, FileText, Check } from 'lucide-react';
+import { X, Sliders, Palette, FileText, Check, Info, ExternalLink, Mail } from 'lucide-react';
 import type {
   EditorPreferences,
   ColorScheme,
@@ -16,7 +16,7 @@ export interface PreferencesModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'appearance' | 'editor' | 'files';
+type SettingsTab = 'appearance' | 'editor' | 'files' | 'about';
 
 export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   isOpen,
@@ -113,6 +113,18 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
           >
             <FileText className="w-3.5 h-3.5" />
             <span>文件与保存 (Files)</span>
+          </button>
+          <button
+            data-testid="tab-btn-about"
+            onClick={() => setActiveTab('about')}
+            className={`py-2.5 border-b-2 flex items-center gap-1.5 transition cursor-pointer ${
+              activeTab === 'about'
+                ? 'border-stone-800 text-stone-900 dark:border-stone-200 dark:text-stone-100 font-semibold'
+                : 'border-transparent hover:text-stone-800 dark:hover:text-stone-200'
+            }`}
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>关于 (About)</span>
           </button>
         </div>
 
@@ -347,6 +359,73 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
                   onChange={(e) => onUpdatePreferences({ restoreLastSession: e.target.checked })}
                   className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
                 />
+              </div>
+            </div>
+          )}
+
+          {/* 关于选项卡 (About) */}
+          {activeTab === 'about' && (
+            <div className="space-y-6 py-2" data-testid="prefs-about-panel">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 shadow-md flex items-center justify-center text-white font-serif font-bold text-2xl select-none">
+                  M
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                    <span>mditor</span>
+                    <span className="px-2 py-0.5 text-xs font-mono bg-black/5 dark:bg-white/10 rounded-full font-normal text-stone-600 dark:text-stone-300">
+                      v0.5.0
+                    </span>
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    一款兼具 macOS 极致优雅视觉与丝滑交互体验的跨平台 Markdown 编辑器
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t border-black/5 dark:border-stone-700/60 text-xs">
+                <div className="flex items-center justify-between py-2 border-b border-black/5 dark:border-stone-700/40">
+                  <span className="text-stone-500 dark:text-stone-400">当前版本</span>
+                  <span className="font-mono text-stone-700 dark:text-stone-200 font-medium">v0.5.0</span>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-b border-black/5 dark:border-stone-700/40">
+                  <span className="text-stone-500 dark:text-stone-400">项目地址</span>
+                  <button
+                    onClick={() => {
+                      if (window.electronAPI?.openExternal) {
+                        window.electronAPI.openExternal('https://github.com/monkeychen/mditor');
+                      } else {
+                        window.open('https://github.com/monkeychen/mditor', '_blank');
+                      }
+                    }}
+                    className="flex items-center gap-1 text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    <span>https://github.com/monkeychen/mditor</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-stone-500 dark:text-stone-400">作者信息</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-stone-800 dark:text-stone-200 font-medium">陈志安</span>
+                    <span className="text-stone-300 dark:text-stone-600">|</span>
+                    <button
+                      onClick={() => {
+                        if (window.electronAPI?.openExternal) {
+                          window.electronAPI.openExternal('mailto:cza55007@gmail.com');
+                        } else {
+                          window.open('mailto:cza55007@gmail.com');
+                        }
+                      }}
+                      className="flex items-center gap-1 text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
+                    >
+                      <Mail className="w-3 h-3" />
+                      <span>cza55007@gmail.com</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
