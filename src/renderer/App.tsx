@@ -31,7 +31,7 @@ import { extractOutline, OutlineItem } from './utils/outline';
 import { calculateDocumentStats } from './utils/counter';
 import { findMatches, replaceSingle, replaceAll } from './utils/search';
 import { copyWechatHtmlToClipboard } from './utils/wechatFormatter';
-import { exportToHtml, exportToPdf } from './services/exportService';
+import { exportToHtml, exportToPdf, exportToDocx } from './services/exportService';
 import {
   openDocument,
   openDocumentByPath,
@@ -934,6 +934,15 @@ export const App: React.FC = () => {
     [activeTab, showToast]
   );
 
+  // 导出为原生 Word (.docx)
+  const handleExportDocx = useCallback(async () => {
+    setIsExportMenuOpen(false);
+    const success = await exportToDocx(activeTab.fileName, activeTab.content);
+    if (success) {
+      showToast('已成功导出为 Word (.docx) 文档');
+    }
+  }, [activeTab, showToast]);
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#FAF8F5] select-none text-[#1D1D1F] overflow-hidden relative">
       {/* 第一层：顶部标题栏 + 多标签栏一体化 Header (h-10) */}
@@ -1153,7 +1162,17 @@ export const App: React.FC = () => {
                 >
                   <span className="flex items-center gap-2">
                     <FileText className="w-3.5 h-3.5 text-red-500" />
-                    <span>导出为 PDF 文档</span>
+                    <span>导出为 PDF 文档...</span>
+                  </span>
+                </div>
+                <div
+                  data-testid="export-docx-option"
+                  onClick={handleExportDocx}
+                  className="px-3 py-2 hover:bg-black/5 dark:hover:bg-stone-800 cursor-pointer flex items-center justify-between transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>导出为 Word (.docx)</span>
                   </span>
                 </div>
               </div>

@@ -89,6 +89,10 @@ export interface ElectronAPI {
     htmlContent: string,
     options?: PdfExportOptions
   ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+  exportDocx?: (
+    defaultName: string,
+    markdown: string
+  ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
   onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => () => void;
   revealInExplorer?: (filePath: string) => Promise<boolean>;
   moveToTrash?: (filePath: string) => Promise<{ success: boolean; error?: string }>;

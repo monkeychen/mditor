@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 import { exportHtmlFile, exportPdfFile } from './exportService';
+import { exportDocxFile } from './docxExportService';
 import { scanMarkdownDirectory, readMarkdownFileByPath, moveItem } from './folderService';
 import { searchWorkspaceFiles } from './searchService';
 import type { WorkspaceSearchOptions, PdfExportOptions } from '../types';
@@ -228,6 +229,13 @@ ipcMain.handle(
     { defaultName, htmlContent, options }: { defaultName: string; htmlContent: string; options?: PdfExportOptions }
   ) => {
     return await exportPdfFile(mainWindow, defaultName, htmlContent, options);
+  }
+);
+
+ipcMain.handle(
+  'export:docx',
+  async (_event, { defaultName, markdown }: { defaultName: string; markdown: string }) => {
+    return await exportDocxFile(mainWindow, defaultName, markdown);
   }
 );
 

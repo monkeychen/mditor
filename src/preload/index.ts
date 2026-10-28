@@ -67,6 +67,9 @@ const api: ElectronAPI = {
   exportPdf: (defaultName: string, htmlContent: string, options?: any) => {
     return ipcRenderer.invoke('export:pdf', { defaultName, htmlContent, options });
   },
+  exportDocx: (defaultName: string, markdown: string) => {
+    return ipcRenderer.invoke('export:docx', { defaultName, markdown });
+  },
   searchWorkspace: (options) => {
     return ipcRenderer.invoke('workspace:search', options);
   },

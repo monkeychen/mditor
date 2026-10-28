@@ -63,6 +63,7 @@
     "@milkdown/react": "^7.22.3",
     "@milkdown/transformer": "^7.22.3",
     "@milkdown/utils": "^7.22.3",
+    "docx": "^9.15.0",
     "katex": "^0.19.1",
     "lucide-react": "^1.16.0",
     "mermaid": "^12.2.0",

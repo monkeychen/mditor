@@ -22,3 +22,11 @@ export async function exportToPdf(
   }
   return false;
 }
+
+export async function exportToDocx(fileName: string, markdown: string): Promise<boolean> {
+  if (window.electronAPI?.exportDocx) {
+    const res = await window.electronAPI.exportDocx(fileName, markdown);
+    return res.success;
+  }
+  return false;
+}
