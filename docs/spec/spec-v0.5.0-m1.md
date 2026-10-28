@@ -80,10 +80,10 @@ export function fuzzyMatch(pattern: string, text: string): FuzzyMatchResult<stri
 
 ## 3. 任务拆解与 TDD 计划（Task Breakdown）
 
-- [ ] **T501：侧边栏边缘拖拽调宽与本地持久化** (`OutlineDrawer.tsx` + 单元测试)
-- [ ] **T502：模糊匹配评分引擎与全文件索引器** (`fuzzySearch.ts` + 单元测试)
-- [ ] **T503：全局快速文件打开组件与键盘流转** (`QuickOpenModal.tsx`, `App.tsx` + 单元测试)
-- [ ] **T504：全工作区全文内容检索 IPC、侧边栏搜索视图与高亮定位联动** (`src/main/searchService.ts`, `src/preload/index.ts`, `OutlineDrawer.tsx`, `App.tsx` + Playwright E2E: `v0.5.0-m1-search.spec.ts`)
+- [x] **T501：侧边栏边缘拖拽调宽与本地持久化** (`OutlineDrawer.tsx` + 单元测试)
+- [x] **T502：模糊匹配评分引擎与全文件索引器** (`fuzzySearch.ts` + 单元测试)
+- [x] **T503：全局快速文件打开组件与键盘流转** (`QuickOpenModal.tsx`, `App.tsx` + 单元测试)
+- [x] **T504：全工作区全文内容检索 IPC、侧边栏搜索视图与高亮定位联动** (`src/main/searchService.ts`, `src/preload/index.ts`, `OutlineDrawer.tsx`, `App.tsx` + Playwright E2E: `v0.5.0-m1-search.spec.ts`)
 
 ---
 
