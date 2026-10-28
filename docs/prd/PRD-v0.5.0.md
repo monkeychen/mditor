@@ -3,7 +3,7 @@ doc: prd
 product: mditor
 version: v0.5.0
 date: 2026-10-28
-status: draft
+status: approved
 ---
 
 # PRD-v0.5.0：工作区全局闪电检索、原生拖拽管理、自由侧边栏与出版级多格式导出
