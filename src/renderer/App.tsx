@@ -10,6 +10,8 @@ import { WordCountPopover } from './components/WordCountPopover';
 import { InsertTableModal } from './components/InsertTableModal';
 import { ThemeSelectorPopover } from './components/ThemeSelectorPopover';
 import PreferencesModal from './components/PreferencesModal';
+import QuickOpenModal from './components/QuickOpenModal';
+import { extractWorkspaceFiles } from './utils/fuzzySearch';
 import {
   EditorPreferences,
   DEFAULT_PREFERENCES,
@@ -216,6 +218,13 @@ export const App: React.FC = () => {
   // 偏好设置状态与即时热重载服务 (v0.4.0 M3: AC-27.1 ~ AC-27.3)
   const [preferences, setPreferences] = useState<EditorPreferences>(getStoredPreferences);
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+
+  // 全局闪电快速打开状态 (F31)
+  const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
+
+  const workspaceFiles = useMemo(() => {
+    return extractWorkspaceFiles(workspaceFolders);
+  }, [workspaceFolders]);
 
   // 顶栏分层解耦与独立可折叠编辑工具栏 (v0.3.1 F26)
   const [isToolbarOpen, setIsToolbarOpen] = useState(true);
@@ -523,6 +532,9 @@ export const App: React.FC = () => {
       } else if (e.key === 'F9') {
         e.preventDefault();
         setTypewriterMode((prev) => !prev);
+      } else if (isMeta && !e.shiftKey && !e.altKey && keyLower === 'p') {
+        e.preventDefault();
+        setIsQuickOpenOpen((prev) => !prev);
       } else if (isMeta && !e.altKey && keyLower === 'f') {
         e.preventDefault();
         setIsSearchOpen(true);
@@ -884,11 +896,20 @@ export const App: React.FC = () => {
           onNewTab={() => handleCreateNewTab()}
         />
 
-        {/* 右侧：仅保留窗口级全局核心开关 (偏好设置 + 工具栏折叠按钮) */}
+        {/* 右侧：仅保留窗口级全局核心开关 (快速打开 + 偏好设置 + 工具栏折叠按钮) */}
         <div
           className="shrink-0 flex items-center space-x-1.5 text-stone-500 pl-2"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <button
+            onClick={() => setIsQuickOpenOpen(true)}
+            title={platform === 'darwin' ? '快速打开文件 (Cmd+P)' : '快速打开文件 (Ctrl+P)'}
+            data-testid="header-quick-open-btn"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-black/5 text-stone-500 hover:text-stone-700 transition cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="text-[11px]">快速打开</span>
+          </button>
           <button
             onClick={() => setIsPreferencesOpen(true)}
             title={platform === 'darwin' ? '偏好设置 (Cmd+,)' : '偏好设置 (Ctrl+,)'}
@@ -1269,6 +1290,14 @@ export const App: React.FC = () => {
             confirmDiscardAndClose();
           }
         }}
+      />
+
+      {/* 全局闪电快速打开模态窗口 (Cmd+P) */}
+      <QuickOpenModal
+        isOpen={isQuickOpenOpen}
+        files={workspaceFiles}
+        onOpenFile={handleSelectSidebarFile}
+        onClose={() => setIsQuickOpenOpen(false)}
       />
 
       {/* 偏好设置模态窗口 (Cmd+,) */}
