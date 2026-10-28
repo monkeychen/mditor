@@ -21,6 +21,11 @@ import { SidebarContextMenu, ContextMenuTarget } from './SidebarContextMenu';
 
 export type SidebarViewMode = 'files' | 'outline';
 
+export const SIDEBAR_WIDTH_STORAGE_KEY = 'mditor_sidebar_width';
+export const DEFAULT_SIDEBAR_WIDTH = 240;
+export const MIN_SIDEBAR_WIDTH = 180;
+export const MAX_SIDEBAR_WIDTH = 520;
+
 export interface OutlineDrawerProps {
   isOpen: boolean;
   outline: OutlineItem[];
@@ -309,6 +314,54 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
     target: null,
   });
 
+  // 侧边栏宽度持久化与拖拽状态 (F30)
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= MAX_SIDEBAR_WIDTH) {
+          return parsed;
+        }
+      }
+    }
+    return DEFAULT_SIDEBAR_WIDTH;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handlePointerDownResize = (e: React.PointerEvent | React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+
+    const onPointerMove = (moveEvent: MouseEvent | PointerEvent) => {
+      const clientX = moveEvent.clientX ?? 0;
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, clientX));
+      setSidebarWidth(newWidth);
+    };
+
+    const onPointerUp = (upEvent: MouseEvent | PointerEvent) => {
+      const clientX = upEvent.clientX ?? 0;
+      const finalWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, clientX));
+      setSidebarWidth(finalWidth);
+      setIsResizing(false);
+      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(finalWidth));
+      window.removeEventListener('pointermove', onPointerMove as any);
+      window.removeEventListener('mousemove', onPointerMove as any);
+      window.removeEventListener('pointerup', onPointerUp as any);
+      window.removeEventListener('mouseup', onPointerUp as any);
+    };
+
+    window.addEventListener('pointermove', onPointerMove as any);
+    window.addEventListener('mousemove', onPointerMove as any);
+    window.addEventListener('pointerup', onPointerUp as any);
+    window.addEventListener('mouseup', onPointerUp as any);
+  };
+
+  const handleDoubleClickResize = () => {
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(DEFAULT_SIDEBAR_WIDTH));
+  };
+
   // 内联重命名状态
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editName, setEditName] = useState<string>('');
@@ -449,10 +502,22 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
   return (
     <aside
       data-testid="typora-sidebar"
-      className={`drawer-transition shrink-0 border-r border-black/5 bg-[#FAF8F5]/95 flex flex-col overflow-hidden transition-all duration-200 select-none ${
-        isOpen ? 'w-60 opacity-100' : 'w-0 opacity-0 pointer-events-none'
-      }`}
+      style={{ width: isOpen ? `${sidebarWidth}px` : 0 }}
+      className={`drawer-transition shrink-0 border-r border-black/5 bg-[#FAF8F5]/95 flex flex-col overflow-hidden relative select-none ${
+        isOpen ? 'opacity-100' : 'w-0 opacity-0 pointer-events-none'
+      } ${isResizing ? 'select-none transition-none' : 'transition-all duration-200'}`}
     >
+      {/* 侧边栏拖拽调宽把手 (F30) */}
+      <div
+        data-testid="sidebar-resize-handle"
+        onPointerDown={handlePointerDownResize}
+        onMouseDown={handlePointerDownResize}
+        onDoubleClick={handleDoubleClickResize}
+        className={`absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-40 transition-colors ${
+          isResizing ? 'bg-amber-500/50' : 'hover:bg-amber-500/30'
+        }`}
+        title="拖动调整宽度 (180~520px)，双击复位 240px"
+      />
       {/* 顶部 Typora 风格双视图切换栏 (文件夹 | 大纲) */}
       <div className="h-9 border-b border-black/5 grid grid-cols-2 text-xs font-medium shrink-0 bg-[#FAF8F5]">
         <button
