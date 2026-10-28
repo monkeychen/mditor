@@ -72,3 +72,19 @@
   `electron-builder --publish always` 在多平台 Matrix 并发运行策略下，为了防止多个 Runner 在不同时段上传时发生竞争冲突，默认行为是创建/追加到 **Draft Release（草稿）**。如果工作流没有在所有构建 Job 结束后显式调用 GitHub API 发布草稿，该 Release 会一直停留在草稿状态，对外不可见。
 - **避坑原则与铁律**：
   在 GitHub Actions 的 `release.yml` 中，必须声明依赖 `needs: release` 的汇聚 Job `finalize-release`，在全部 Runner 上传完成后执行 `gh release edit "$TAG_NAME" --draft=false` 自动发布，实现全流程 0 人工干预。
+
+---
+
+## 案例 7：未 Memoize 的衍生数组传入 useEffect 导致单测无限重渲染死锁与拖拽把手双击拦截
+
+- **现象**：
+  1. `OutlineDrawer` 增加全工作区搜索 `useEffect` 后，Vitest 单测运行卡死挂起 40 多分钟，CPU 占用居高不下；
+  2. 拖拽调宽把手在触发双击复位时，被误判为微小拖拽位移，导致宽度未能成功复位到 240px。
+- **根因分析**：
+  1. `effectiveFolders` 是在组件函数体内每次计算返回的衍生对象（`folders ?? (...) : []`）。当外部未传入 `folders` 时，每次渲染都生成了一个全新的空数组引用 `[]`。
+  2. `useEffect` 依赖了 `effectiveFolders`，且在条件不满足时无条件调用了 `setSearchResults([])` 与 `setIsSearching(false)`，导致触发重渲染 -> 生成新 `[]` -> 触发 Effect -> 再次触发重渲染，陷入无限循环死锁。
+  3. 鼠标在窄把手（4px）双击时会连续触发 `pointerdown`、`pointermove`，若未设置拖拽阈值（`Math.abs(clientX - startX) < 2`），双击点处的微小指针移动会被判定为拖拽事件，覆盖双击复位。
+- **避坑原则与铁律**：
+  1. 任何在组件内部由 Props 衍生出的集合对象，**必须使用 `useMemo` 缓存**；传给 `useEffect` 的依赖尽量降维为基础类型值（如 `folderPaths.join(';')`）。
+  2. `useEffect` 的状态清理守卫必须是幂等的，如 `setSearchResults(prev => prev.length > 0 ? [] : prev)`，避免在值无变化时触发二次重渲染。
+  3. 拖拽交互（Resize / Drag）必须设置微位移启动门限（通常为 2~3px），过滤点击与双击时的误触，并在 `pointerdown` 中辅以时间戳双击检测兜底。
