@@ -101,3 +101,18 @@
   2. React state（如 `draggedTabId`、`dropIndicator`）仅用于处理幽灵卡片半透明、插入指示线等纯视觉 UI 状态，严禁作为放置业务执行的唯一判定源；
   3. 在 `handleDrop` 中采取双重回退策略：`const sourceId = draggedTabId || e.dataTransfer.getData('text/plain')`，确保在任何极速拖拽或测试派发场景下 100% 可靠。
 
+---
+
+## 案例 9：TypeScript 枚举对象字面量类型自动窄化与 E2E 视图前置条件对齐陷阱
+
+- **现象**：
+  1. 使用第三方库（如 `docx` 的 `HeadingLevel`）进行分支判断赋值时，`let headingLevel = HeadingLevel.HEADING_1;` 触发 `TS2322: Type '"Heading2"' is not assignable to type '"Heading1"'` 静态编译报错；
+  2. Playwright E2E 测试寻找工作区文件树元素 `[data-testid="file-tree-item-*"]` 发生 6000ms 超时未找到。
+- **根因分析**：
+  1. TypeScript 对未显式注解的变量声明 `let x = Enum.VAL` 会采用字面量类型推断（Inferred Literal Type），将其类型收敛为单个字面量 `"Heading1"`，而非该枚举值所有可能成员的联合类型；
+  2. 复合侧边栏组件在挂载时默认处于 `outline`（大纲）视图，若未显式触发切到 `sidebar-tab-files`（文件树）视图，树节点尚未渲染进 DOM，导致 E2E 定位失败。
+- **避坑原则与铁律**：
+  1. 涉及枚举或联合类型的多分支可变变量，必须显式声明联合类型注解：`let headingLevel: (typeof HeadingLevel)[keyof typeof HeadingLevel] = HeadingLevel.HEADING_1;`；
+  2. E2E 测试操作依赖特定视图上下文的元素前，必须显式触发切换并断言对应视图 Tab 处于激活状态，杜绝依赖隐式默认视图。
+
+
