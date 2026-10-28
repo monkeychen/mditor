@@ -88,3 +88,16 @@
   1. 任何在组件内部由 Props 衍生出的集合对象，**必须使用 `useMemo` 缓存**；传给 `useEffect` 的依赖尽量降维为基础类型值（如 `folderPaths.join(';')`）。
   2. `useEffect` 的状态清理守卫必须是幂等的，如 `setSearchResults(prev => prev.length > 0 ? [] : prev)`，避免在值无变化时触发二次重渲染。
   3. 拖拽交互（Resize / Drag）必须设置微位移启动门限（通常为 2~3px），过滤点击与双击时的误触，并在 `pointerdown` 中辅以时间戳双击检测兜底。
+
+---
+
+## 案例 8：HTML5 拖拽事件在 React 批处理与自动化测试环境下的数据载荷丢失陷阱
+
+- **现象**：在 Tab 标签拖拽排序或侧边栏文件树拖拽中，如果放置处理函数（`handleDrop`）仅依赖组件内部 React state（例如 `draggedTabId`），在极速拖拽或自动化测试触发 DragEvent 时，`handleDrop` 读取到的状态可能仍为 `null`，导致放置逻辑静默失败。
+- **根因分析**：
+  React 18 的批量更新机制（Automatic Batching）使得 `onDragStart` 中调用的 `setDraggedTabId` 是异步渲染生效的。若 `onDrop` 在同一同步事件序列或状态合并完成前触发，`handleDrop` 闭包中的 `draggedTabId` 尚未更新，导致 `if (!draggedTabId) return;` 阻断。
+- **避坑原则与铁律**：
+  1. 拖拽业务协议必须优先遵循 W3C 标准：使用 `e.dataTransfer.setData(...)` 与 `e.dataTransfer.getData(...)` 传递实体 ID 与路径载荷；
+  2. React state（如 `draggedTabId`、`dropIndicator`）仅用于处理幽灵卡片半透明、插入指示线等纯视觉 UI 状态，严禁作为放置业务执行的唯一判定源；
+  3. 在 `handleDrop` 中采取双重回退策略：`const sourceId = draggedTabId || e.dataTransfer.getData('text/plain')`，确保在任何极速拖拽或测试派发场景下 100% 可靠。
+

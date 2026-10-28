@@ -74,10 +74,10 @@ status: approved
 
 ## 3. 任务拆解与 TDD 计划（Task Breakdown）
 
-- [ ] **T505：Tab 标签页拖拽排序引擎与状态更新** (`useTabs.ts`, `TabBar.tsx` + 单元测试: `tests/unit/tab-reorder.test.tsx`)
-- [ ] **T506：主进程跨目录原子物理移动 IPC 与循环嵌套校验** (`src/main/index.ts`, `src/preload/index.ts`, `fileService.ts` + 单元测试: `tests/unit/file-move-ipc.test.ts`)
-- [ ] **T507：侧边栏文件树拖拽放下交互与 Tab 路径级联同步** (`OutlineDrawer.tsx`, `App.tsx` + 单元测试: `tests/unit/sidebar-drag-drop.test.tsx`)
-- [ ] **T508：拖拽交互全链路自动化验收** (Playwright E2E: `tests/e2e/v0.5.0-m2-drag-drop.spec.ts`)
+- [x] **T505：Tab 标签页拖拽排序引擎与状态更新** (`useTabs.ts`, `TabBar.tsx` + 单元测试: `tests/unit/tab-reorder.test.tsx`)
+- [x] **T506：主进程跨目录原子物理移动 IPC 与循环嵌套校验** (`src/main/index.ts`, `src/preload/index.ts`, `folderService.ts` + 单元测试: `tests/unit/file-move-ipc.test.ts`)
+- [x] **T507：侧边栏文件树拖拽放下交互与 Tab 路径级联同步** (`OutlineDrawer.tsx`, `App.tsx` + 单元测试: `tests/unit/sidebar-drag-drop.test.tsx`)
+- [x] **T508：拖拽交互全链路自动化验收** (Playwright E2E: `tests/e2e/v0.5.0-m2-drag-drop.spec.ts`)
 
 ---
 
