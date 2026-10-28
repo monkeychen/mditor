@@ -7,7 +7,6 @@ import {
   Table,
   TableRow,
   TableCell,
-  BorderStyle,
   WidthType,
 } from 'docx';
 import { BrowserWindow, dialog } from 'electron';
@@ -171,7 +170,7 @@ export function convertMarkdownToDocxDocument(markdown: string, title?: string):
     if (headingMatch) {
       const level = headingMatch[1].length;
       const text = headingMatch[2];
-      let headingLevel = HeadingLevel.HEADING_1;
+      let headingLevel: (typeof HeadingLevel)[keyof typeof HeadingLevel] = HeadingLevel.HEADING_1;
       if (level === 2) headingLevel = HeadingLevel.HEADING_2;
       else if (level === 3) headingLevel = HeadingLevel.HEADING_3;
       else if (level === 4) headingLevel = HeadingLevel.HEADING_4;

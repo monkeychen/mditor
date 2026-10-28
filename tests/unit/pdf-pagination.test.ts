@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { generatePrintHtml, getPdfPrintOptions } from '../../src/renderer/utils/htmlExporter';
-import type { PdfExportOptions } from '../../src/types';
 
 describe('PDF Pagination & Print Rules (T509 / F35 / AC-35.1 ~ AC-35.2)', () => {
   const sampleMarkdown = `
