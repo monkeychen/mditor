@@ -87,10 +87,10 @@ status: approved
 
 ## 3. 任务拆解与 TDD 计划（Task Breakdown）
 
-- [ ] **T509：PDF 出版级分页防断页控制与导出选项模态框** (`exportService.ts`, `ExportModal.tsx` + 单元测试: `tests/unit/pdf-pagination.test.ts`)
-- [ ] **T510：原生 Word (.docx) 结构化转换引擎与文件落盘** (`docxExportService.ts` + 单元测试: `tests/unit/docx-exporter.test.ts`)
-- [ ] **T511：画布图片沉浸式灯箱与多维手势缩放组件** (`ImageLightbox.tsx`, `MilkdownEditor.tsx` + 单元测试: `tests/unit/image-lightbox.test.tsx`)
-- [ ] **T512：出版级导出与灯箱交互全链路 E2E 自动化验收** (Playwright E2E: `tests/e2e/v0.5.0-m3-export-lightbox.spec.ts`)
+- [x] **T509：PDF 出版级分页防断页控制与导出选项模态框** (`exportService.ts`, `ExportModal.tsx` + 单元测试: `tests/unit/pdf-pagination.test.ts`)
+- [x] **T510：原生 Word (.docx) 结构化转换引擎与文件落盘** (`docxExportService.ts` + 单元测试: `tests/unit/docx-exporter.test.ts`)
+- [x] **T511：画布图片沉浸式灯箱与多维手势缩放组件** (`ImageLightbox.tsx`, `MilkdownEditor.tsx` + 单元测试: `tests/unit/image-lightbox.test.tsx`)
+- [x] **T512：出版级导出与灯箱交互全链路 E2E 自动化验收** (Playwright E2E: `tests/e2e/v0.5.0-m3-export-lightbox.spec.ts`)
 
 ---
 
