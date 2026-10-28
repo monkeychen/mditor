@@ -134,6 +134,7 @@ export const App: React.FC = () => {
     closePendingTab,
     createNewTab,
     switchTab,
+    reorderTabs,
     updateTabContent,
     updateTabFile,
     updateTabMode,
@@ -914,6 +915,7 @@ export const App: React.FC = () => {
           onSelectTab={handleSwitchTab}
           onCloseTab={requestCloseTab}
           onNewTab={() => handleCreateNewTab()}
+          onReorderTabs={reorderTabs}
         />
 
         {/* 右侧：仅保留窗口级全局核心开关 (快速打开 + 偏好设置 + 工具栏折叠按钮) */}

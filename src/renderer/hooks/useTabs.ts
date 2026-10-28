@@ -51,6 +51,25 @@ export function useTabs(initialTab?: TabItem) {
     setActiveTabId(tabId);
   }, []);
 
+  // 重新排列 Tab 顺序 (F34)
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
+    setTabs((prev) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        fromIndex >= prev.length ||
+        toIndex < 0 ||
+        toIndex >= prev.length
+      ) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }, []);
+
   // 按索引切换 Tab (0-based)
   const selectTabByIndex = useCallback(
     (index: number) => {
@@ -220,6 +239,7 @@ export function useTabs(initialTab?: TabItem) {
     createNewTab,
     switchTab,
     selectTabByIndex,
+    reorderTabs,
     updateTabContent,
     updateTabFile,
     updateTabMode,
