@@ -38,7 +38,8 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const handleDragOver = (e: React.DragEvent, index: number, tabId: string) => {
     e.preventDefault();
-    if (!draggedTabId || draggedTabId === tabId) return;
+    const sourceId = draggedTabId || e.dataTransfer.getData('text/plain');
+    if (sourceId && sourceId === tabId) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const midX = rect.left + rect.width / 2;
@@ -48,12 +49,13 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const handleDrop = (e: React.DragEvent, toIndex: number, tabId: string) => {
     e.preventDefault();
-    if (!draggedTabId || draggedTabId === tabId) {
+    const sourceId = draggedTabId || e.dataTransfer.getData('text/plain');
+    if (!sourceId || sourceId === tabId) {
       setDropIndicator(null);
       return;
     }
 
-    const fromIndex = tabs.findIndex((t) => t.id === draggedTabId);
+    const fromIndex = tabs.findIndex((t) => t.id === sourceId);
     if (fromIndex >= 0) {
       onReorderTabs?.(fromIndex, toIndex);
     }
@@ -81,6 +83,8 @@ export const TabBar: React.FC<TabBarProps> = ({
           <div
             key={tab.id}
             data-testid={`tab-${tab.fileName}`}
+            data-tab-id={tab.id}
+            data-tab-index={index}
             draggable={true}
             onDragStart={(e) => handleDragStart(e, tab.id)}
             onDragEnd={handleDragEnd}
@@ -132,6 +136,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       <button
         onClick={onNewTab}
         title="新建标签 (Cmd+T)"
+        data-testid="tab-bar-new-tab-btn"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         className="shrink-0 p-1 hover:bg-black/5 text-stone-400 hover:text-stone-700 rounded-md transition ml-1"
       >
