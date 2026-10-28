@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 import { exportHtmlFile, exportPdfFile } from './exportService';
-import { scanMarkdownDirectory, readMarkdownFileByPath } from './folderService';
+import { scanMarkdownDirectory, readMarkdownFileByPath, moveItem } from './folderService';
 import { searchWorkspaceFiles } from './searchService';
 import type { WorkspaceSearchOptions } from '../types';
 
@@ -290,6 +290,11 @@ ipcMain.handle('file:rename', async (_event, { oldPath, newName }: { oldPath: st
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }
+});
+
+// 跨目录原子移动文件或文件夹 (F33)
+ipcMain.handle('file:move', async (_event, { sourcePath, targetDirPath }: { sourcePath: string; targetDirPath: string }) => {
+  return await moveItem(sourcePath, targetDirPath);
 });
 
 // 新建文件夹

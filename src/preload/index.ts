@@ -34,6 +34,9 @@ const api: ElectronAPI = {
   renameItem: (oldPath: string, newName: string) => {
     return ipcRenderer.invoke('file:rename', { oldPath, newName });
   },
+  moveItem: (sourcePath: string, targetDirPath: string) => {
+    return ipcRenderer.invoke('file:move', { sourcePath, targetDirPath });
+  },
   openFile: (): Promise<FileOpenResult | null> => {
     return ipcRenderer.invoke('file:open');
   },

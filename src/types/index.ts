@@ -84,6 +84,7 @@ export interface ElectronAPI {
   createFile?: (parentDir: string, fileName: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
   createFolder?: (parentDir: string, folderName: string) => Promise<{ success: boolean; folderPath?: string; error?: string }>;
   renameItem?: (oldPath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
+  moveItem?: (sourcePath: string, targetDirPath: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
   searchWorkspace?: (options: WorkspaceSearchOptions) => Promise<WorkspaceSearchResult[]>;
 }
 
