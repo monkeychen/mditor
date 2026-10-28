@@ -3,14 +3,14 @@ doc: spec
 product: v0.5.0
 milestone: m2
 date: 2026-10-28
-status: reviewing
+status: approved
 ---
 
 # 技术规格说明书：v0.5.0 - 里程碑 M2：工作区文件拖拽移动与 Tab 标签自由拖拽排序
 
 **版本**：v0.5.0  
 **里程碑**：M2  
-**状态**：Reviewing  
+**状态**：Approved  
 **责任模块**：多标签页管理器 (`TabBar.tsx`, `useTabs.ts`)、侧边栏拖拽放置器 (`OutlineDrawer.tsx`)、文件系统移动 IPC 服务 (`src/main/index.ts`, `src/preload/index.ts`)  
 
 ---
