@@ -3,14 +3,14 @@ doc: spec
 product: v0.5.0
 milestone: m1
 date: 2026-10-28
-status: reviewing
+status: approved
 ---
 
 # 技术规格说明书：v0.5.0 - 里程碑 M1：侧边栏拖拽调宽与全局闪电搜索
 
 **版本**：v0.5.0  
 **里程碑**：M1  
-**状态**：Reviewing  
+**状态**：Approved  
 **责任模块**：侧边栏尺寸调节器 (`OutlineDrawer.tsx`)、快速打开浮层 (`QuickOpenModal.tsx`)、工作区全文检索器 (`workspaceSearch.ts` / `src/main/searchService.ts`)  
 
 ---
