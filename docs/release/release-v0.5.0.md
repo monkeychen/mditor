@@ -3,7 +3,7 @@ doc: release
 product: v0.5.0
 milestone: -
 date: 2026-10-28
-status: reviewing
+status: approved
 ---
 
 # Release Note - mditor v0.5.0：工作区全局闪电检索、原生拖拽重排与出版级多格式导出

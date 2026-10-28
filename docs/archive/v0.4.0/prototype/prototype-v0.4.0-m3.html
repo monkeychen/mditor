@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.4.0 M3 - 偏好设置面板原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --editor-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --editor-font-size: 16px;
+      --editor-line-height: 1.6;
+      --editor-max-width: 860px;
+      --editor-code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    body {
+      font-family: var(--editor-font-family);
+    }
+    .preview-canvas {
+      max-width: var(--editor-max-width);
+      font-size: var(--editor-font-size);
+      line-height: var(--editor-line-height);
+    }
+    .code-preview {
+      font-family: var(--editor-code-font);
+    }
+  </style>
+</head>
+<body class="bg-stone-100 text-stone-800 h-screen flex flex-col overflow-hidden select-none">
+  <!-- 顶栏模拟 -->
+  <header class="h-10 bg-[#FAF8F5] border-b border-black/5 flex items-center justify-between px-4">
+    <div class="flex items-center gap-2">
+      <div class="w-3 h-3 rounded-full bg-red-400"></div>
+      <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+      <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+      <span class="ml-3 text-xs font-semibold text-stone-600">mditor - 偏好设置交互原型</span>
+    </div>
+    <button id="open-prefs-btn" class="px-2.5 py-1 text-xs bg-white border border-stone-200 rounded shadow-2xs hover:bg-stone-50 font-medium text-stone-700 flex items-center gap-1.5 cursor-pointer">
+      <span>偏好设置 (⌘,)</span>
+    </button>
+  </header>
+
+  <!-- 模拟编辑器画布区 -->
+  <div class="flex-1 flex overflow-hidden">
+    <div class="w-56 border-r border-black/5 bg-[#FAF8F5]/90 p-3 text-xs text-stone-600">
+      <div class="font-semibold mb-2 text-stone-700">工作区文档</div>
+      <div class="py-1 px-2 rounded bg-amber-500/10 text-amber-900 font-medium">architecture.md</div>
+      <div class="py-1 px-2 rounded hover:bg-black/5 text-stone-600 mt-1">notes.md</div>
+    </div>
+    
+    <main class="flex-1 overflow-y-auto bg-white p-10 flex flex-col items-center">
+      <div class="preview-canvas w-full transition-all duration-200">
+        <h1 class="text-3xl font-bold tracking-tight mb-4 text-stone-900">系统架构与偏好设置热重载验证</h1>
+        <p class="text-stone-700 mb-4">
+          mditor 致力于提供纯粹的打字体验。在本版本中，偏好设置中的字号、行宽限制与行距将即时作用于整个编辑画布，无需重启应用。
+        </p>
+        <blockquote class="border-l-4 border-amber-500/80 pl-4 py-1 my-4 text-stone-600 italic bg-amber-50/30 rounded-r">
+          「简单至极，即是终极的精纯与力量。」
+        </blockquote>
+        <pre class="code-preview bg-stone-900 text-stone-100 p-4 rounded-xl text-xs overflow-x-auto shadow-inner my-4"><code>export function applyPreferences(prefs: EditorPreferences) {
+  document.documentElement.style.setProperty('--editor-font-size', `${prefs.fontSize}px`);
+  document.documentElement.style.setProperty('--editor-max-width', `${prefs.maxWidth}px`);
+}</code></pre>
+      </div>
+    </main>
+  </div>
+
+  <!-- 偏好设置模态窗口 (Preferences Modal) -->
+  <div id="prefs-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs transition-opacity duration-150">
+    <div class="w-[620px] bg-[#FAF8F5] dark:bg-stone-900 border border-black/10 dark:border-stone-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- 模态顶栏 -->
+      <div class="h-12 border-b border-black/5 flex items-center justify-between px-5 bg-white/50">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold text-stone-800">偏好设置 (Preferences)</span>
+          <span class="text-[10px] text-stone-400 font-mono">⌘,</span>
+        </div>
+        <button id="close-prefs-btn" class="text-stone-400 hover:text-stone-700 text-xs px-2 py-1 rounded hover:bg-black/5 cursor-pointer transition">
+          ✕ 关闭 (Esc)
+        </button>
+      </div>
+
+      <!-- 选项卡导航 (macOS 分类 Tab) -->
+      <div class="flex border-b border-black/5 bg-stone-100/70 px-5 gap-6 text-xs font-medium text-stone-500">
+        <button id="tab-btn-appearance" class="py-2.5 border-b-2 border-stone-800 text-stone-900 font-semibold cursor-pointer">外观 (Appearance)</button>
+        <button id="tab-btn-editor" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">编辑器 (Editor)</button>
+        <button id="tab-btn-files" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">文件与保存 (Files)</button>
+      </div>
+
+      <!-- 设置内容区 -->
+      <div class="p-6 overflow-y-auto max-h-[460px] text-xs space-y-6">
+        
+        <!-- Tab 1: 外观 -->
+        <div id="tab-panel-appearance" class="space-y-5">
+          <div>
+            <label class="block font-semibold text-stone-700 mb-2">默认视觉主题</label>
+            <div class="grid grid-cols-4 gap-3">
+              <div class="theme-card border-2 border-amber-600 bg-white p-3 rounded-xl cursor-pointer hover:shadow-xs transition" data-theme="github">
+                <div class="w-full h-8 bg-white border border-stone-200 rounded mb-1.5 flex items-center justify-center text-[10px] text-stone-700">Aa</div>
+                <div class="font-medium text-stone-800 text-center">GitHub</div>
+              </div>
+              <div class="theme-card border border-stone-200 bg-white p-3 rounded-xl cursor-pointer hover:shadow-xs transition" data-theme="dark">
+                <div class="w-full h-8 bg-stone-900 border border-stone-800 rounded mb-1.5 flex items-center justify-center text-[10px] text-stone-200">Aa</div>
+                <div class="font-medium text-stone-800 text-center">暗夜科技</div>
+              </div>
+              <div class="theme-card border border-stone-200 bg-white p-3 rounded-xl cursor-pointer hover:shadow-xs transition" data-theme="sepia">
+                <div class="w-full h-8 bg-[#FBF0D9] border border-[#F3E5C8] rounded mb-1.5 flex items-center justify-center text-[10px] text-[#5B4636]">Aa</div>
+                <div class="font-medium text-stone-800 text-center">羊皮纸</div>
+              </div>
+              <div class="theme-card border border-stone-200 bg-white p-3 rounded-xl cursor-pointer hover:shadow-xs transition" data-theme="typewriter">
+                <div class="w-full h-8 bg-[#F4F4F0] border border-stone-300 rounded mb-1.5 flex items-center justify-center text-[10px] text-stone-800 font-serif">Aa</div>
+                <div class="font-medium text-stone-800 text-center">复古打字机</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-black/5 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">色彩模式</div>
+              <div class="text-stone-400 text-[11px]">跟随系统或强制指定明暗</div>
+            </div>
+            <select class="px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs outline-none">
+              <option>跟随系统外观 (System)</option>
+              <option>浅色模式 (Light)</option>
+              <option>深色模式 (Dark)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tab 2: 编辑器 (包含热重载参数) -->
+        <div id="tab-panel-editor" class="space-y-5 hidden">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">正文字号 (Font Size)</div>
+              <div class="text-stone-400 text-[11px]">调节即时渲染与源码模式文字大小</div>
+            </div>
+            <select id="font-size-select" class="px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs outline-none cursor-pointer">
+              <option value="13">13 px (小巧)</option>
+              <option value="14">14 px (精简)</option>
+              <option value="15">15 px (适中)</option>
+              <option value="16" selected>16 px (默认推荐)</option>
+              <option value="18">18 px (舒适大号)</option>
+              <option value="20">20 px (超大屏)</option>
+            </select>
+          </div>
+
+          <div class="pt-3 border-t border-black/5 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">画布最大行宽 (Max Content Width)</div>
+              <div class="text-stone-400 text-[11px]">限制打字行长以保证高可读性视觉焦点</div>
+            </div>
+            <select id="max-width-select" class="px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs outline-none cursor-pointer">
+              <option value="720">720 px (经典紧凑)</option>
+              <option value="860" selected>860 px (平衡黄金比例)</option>
+              <option value="1024">1024 px (宽屏展示)</option>
+              <option value="100%">100% (铺满整屏)</option>
+            </select>
+          </div>
+
+          <div class="pt-3 border-t border-black/5 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">行高比例 (Line Height)</div>
+              <div class="text-stone-400 text-[11px]">段落文本上下行间距</div>
+            </div>
+            <select id="line-height-select" class="px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs outline-none cursor-pointer">
+              <option value="1.5">1.5 (紧凑)</option>
+              <option value="1.6" selected>1.6 (默认优美)</option>
+              <option value="1.75">1.75 (通透大间距)</option>
+              <option value="1.8">1.8 (宽松)</option>
+            </select>
+          </div>
+
+          <div class="pt-3 border-t border-black/5 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">代码块等宽字体 (Code Font)</div>
+              <div class="text-stone-400 text-[11px]">针对编程语言代码块与源码模式的排版</div>
+            </div>
+            <select id="code-font-select" class="px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs outline-none cursor-pointer">
+              <option value="ui-monospace, SFMono-Regular, Menlo, monospace">系统等宽 (SF Mono / Menlo)</option>
+              <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+              <option value="'Fira Code', monospace">Fira Code</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tab 3: 文件与保存 -->
+        <div id="tab-panel-files" class="space-y-5 hidden">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">自动保存 (Auto Save)</div>
+              <div class="text-stone-400 text-[11px]">编辑时自动向磁盘落盘已打开的本地文件</div>
+            </div>
+            <select class="px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs outline-none">
+              <option>关闭 (手动 Cmd+S 保存)</option>
+              <option>延迟 1 秒后自动保存</option>
+              <option selected>延迟 5 秒后自动保存 (推荐)</option>
+              <option>窗口失去焦点时自动保存</option>
+            </select>
+          </div>
+
+          <div class="pt-3 border-t border-black/5 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-stone-700">冷启动恢复工作区</div>
+              <div class="text-stone-400 text-[11px]">启动应用时自动恢复上一次退出的工作区与打开的文件</div>
+            </div>
+            <input type="checkbox" checked class="w-4 h-4 accent-amber-600 rounded cursor-pointer" />
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 底部状态说明 -->
+      <div class="h-10 border-t border-black/5 bg-stone-50 px-5 flex items-center justify-between text-[11px] text-stone-400">
+        <span>改动立即自动保存并生效，无需重启</span>
+        <button id="reset-default-btn" class="hover:text-amber-800 cursor-pointer">恢复默认设置</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Tab 切换逻辑
+    const tabs = ['appearance', 'editor', 'files'];
+    tabs.forEach(tab => {
+      const btn = document.getElementById(`tab-btn-${tab}`);
+      btn.addEventListener('click', () => {
+        tabs.forEach(t => {
+          document.getElementById(`tab-btn-${t}`).className = 'py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer';
+          document.getElementById(`tab-panel-${t}`).classList.add('hidden');
+        });
+        btn.className = 'py-2.5 border-b-2 border-stone-800 text-stone-900 font-semibold cursor-pointer';
+        document.getElementById(`tab-panel-${tab}`).classList.remove('hidden');
+      });
+    });
+
+    // 模态窗开闭
+    const modal = document.getElementById('prefs-modal');
+    const openBtn = document.getElementById('open-prefs-btn');
+    const closeBtn = document.getElementById('close-prefs-btn');
+
+    openBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        modal.classList.toggle('hidden');
+      } else if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+    });
+
+    // 热重载监听绑定
+    document.getElementById('font-size-select').addEventListener('change', (e) => {
+      document.documentElement.style.setProperty('--editor-font-size', `${e.target.value}px`);
+    });
+
+    document.getElementById('max-width-select').addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.documentElement.style.setProperty('--editor-max-width', val === '100%' ? '100%' : `${val}px`);
+    });
+
+    document.getElementById('line-height-select').addEventListener('change', (e) => {
+      document.documentElement.style.setProperty('--editor-line-height', e.target.value);
+    });
+
+    document.getElementById('code-font-select').addEventListener('change', (e) => {
+      document.documentElement.style.setProperty('--editor-code-font', e.target.value);
+    });
+  </script>
+</body>
+</html>

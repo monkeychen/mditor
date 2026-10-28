@@ -1,0 +1,473 @@
+<!-- doc: prototype | product: v0.5.0 | milestone: m2 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.5.0-M2 原型：侧边栏文件树拖拽移动与 Tab 标签自由拖拽排序</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+    .font-mono-code {
+      font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;
+    }
+    /* 拖拽中的半透明幽灵状态 */
+    .dragging {
+      opacity: 0.45;
+      transform: scale(0.98);
+    }
+    /* Tab 插入指示线 */
+    .tab-drop-indicator-left {
+      border-left: 2px solid #F59E0B !important;
+    }
+    .tab-drop-indicator-right {
+      border-right: 2px solid #F59E0B !important;
+    }
+    /* 侧边栏目标文件夹高亮 */
+    .folder-drop-hover {
+      background-color: rgba(245, 158, 11, 0.15) !important;
+      outline: 1.5px dashed rgba(245, 158, 11, 0.7) !important;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 h-screen flex flex-col overflow-hidden">
+
+  <!-- 顶部提示条与交互指引 -->
+  <div class="bg-amber-500/10 border-b border-amber-600/20 px-4 py-1.5 flex items-center justify-between text-xs text-amber-900 shrink-0 z-50">
+    <div class="flex items-center gap-3">
+      <span class="font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wide">v0.5.0-M2 PROTOTYPE</span>
+      <span class="font-medium text-stone-700">两大拖拽交互验证：</span>
+      <span class="inline-flex items-center gap-1 bg-white/80 border border-amber-500/30 px-2 py-0.5 rounded text-amber-800">
+        <b>F34</b> 顶栏 Tab 水平拖拽排序 (支持任意位置平滑调换)
+      </span>
+      <span class="inline-flex items-center gap-1 bg-white/80 border border-amber-500/30 px-2 py-0.5 rounded text-amber-800">
+        <b>F33</b> 侧边栏文件拖入文件夹 (物理移动 + Tab 路径级联更新 + 防循环嵌套)
+      </span>
+    </div>
+    <div class="text-[11px] text-stone-500">
+      💡 提示：按住顶栏标签左右拖动；或按住左侧文件拖到任意文件夹试试
+    </div>
+  </div>
+
+  <!-- 第一层：窗口级 Header (h-10) -->
+  <header class="h-10 border-b border-black/5 bg-[#FAF8F5]/90 backdrop-blur-md flex items-center px-3 gap-2 shrink-0 z-30">
+    <!-- macOS 红绿灯 -->
+    <div class="flex items-center space-x-2 mr-2">
+      <div class="w-3 h-3 rounded-full bg-red-400"></div>
+      <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+      <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+    </div>
+
+    <!-- 侧边栏开关 -->
+    <button class="p-1 rounded hover:bg-black/5 text-stone-600 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+    </button>
+
+    <!-- F34: 可拖拽重排的多标签栏 -->
+    <div id="tab-bar-container" class="flex-1 flex items-center space-x-1 overflow-x-auto px-2">
+      <!-- 动态由 JavaScript 渲染以支持拖拽排序 -->
+    </div>
+
+    <!-- 顶部动作条 -->
+    <div class="flex items-center space-x-1">
+      <button class="p-1 rounded text-stone-500 hover:bg-black/5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主体工作区容器 -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- 左侧侧边栏 (F33: 文件树拖拽放置目标) -->
+    <aside style="width: 260px;" class="h-full bg-[#F4F1EA]/80 backdrop-blur-md border-r border-black/5 flex flex-col shrink-0 relative select-none">
+      
+      <!-- 侧边栏顶部 Tab 切换器 -->
+      <div class="p-2 border-b border-black/5 shrink-0 flex items-center justify-between">
+        <div class="flex bg-stone-200/70 p-0.5 rounded-lg text-xs w-full">
+          <button class="flex-1 py-1 rounded font-medium transition bg-white text-stone-800 shadow-2xs">
+            文件夹
+          </button>
+          <button class="flex-1 py-1 rounded font-medium transition text-stone-500 hover:text-stone-800">
+            大纲
+          </button>
+          <button class="flex-1 py-1 rounded font-medium transition text-stone-500 hover:text-stone-800">
+            搜索
+          </button>
+        </div>
+      </div>
+
+      <!-- 文件夹目录树容器 (支持拖拽移动) -->
+      <div class="flex-1 overflow-y-auto p-2 space-y-1 text-xs text-stone-700">
+        <div class="text-[11px] font-semibold text-stone-400 px-2 py-1 tracking-wider uppercase flex items-center justify-between">
+          <span>工作区目录</span>
+          <span class="text-[10px] text-amber-700">可拖拽</span>
+        </div>
+
+        <div id="file-tree-container" class="space-y-1">
+          <!-- 动态渲染文件树 -->
+        </div>
+      </div>
+
+      <!-- 底部拖拽状态提示 -->
+      <div class="p-2 bg-stone-100/60 border-t border-black/5 text-[11px] text-stone-500 px-3">
+        <span>拖动任意文件松开至文件夹即可移动</span>
+      </div>
+
+    </aside>
+
+    <!-- 右侧：主编辑器画布区域 -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-white">
+      <!-- 状态与路径栏 -->
+      <div class="h-8 border-b border-black/5 px-4 flex items-center justify-between text-xs text-stone-500 bg-[#FAF8F5]/40 shrink-0">
+        <div class="flex items-center gap-1.5">
+          <span class="text-stone-400">workspace</span>
+          <span class="text-stone-300">/</span>
+          <span id="breadcrumb-path" class="font-medium text-stone-800">01-核心架构.md</span>
+        </div>
+        <div class="flex items-center gap-3 text-[11px]">
+          <span id="tab-sync-badge" class="hidden text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-medium animate-pulse">
+            Tab 路径已联动更新
+          </span>
+          <span>Markdown (所见即所得)</span>
+        </div>
+      </div>
+
+      <!-- 编辑器画布 -->
+      <div class="flex-1 overflow-y-auto px-12 py-8 max-w-4xl mx-auto w-full leading-relaxed">
+        <h1 id="editor-title" class="text-2xl font-bold text-stone-900 mb-6">01-核心架构</h1>
+        <div id="editor-body" class="text-stone-700 space-y-4">
+          <p>本文档正处于打开编辑状态。在左侧将本文档拖动到不同的文件夹中，顶栏的 Tab 标签路径与当前面包屑路径将自动无缝同步更新，未保存内容与编辑状态完整保留！</p>
+          <div class="p-3 bg-stone-50 rounded-lg border border-black/5 text-xs text-stone-600 space-y-1">
+            <div class="font-semibold text-stone-800">拖拽防呆与安全规范验证：</div>
+            <div>1. <b>同级/原地拖拽</b>：自动忽略，不执行冗余 I/O；</div>
+            <div>2. <b>自包含与循环嵌套</b>：尝试将父文件夹拖入其自身的子目录时，触发安全警告拦截；</div>
+            <div>3. <b>Tab 顺序调整</b>：顶栏标签支持鼠标水平任意拖拽排序，松开即生效。</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- 操作反馈 Toast -->
+  <div id="app-toast" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 bg-stone-900/95 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+    <span id="toast-message">操作完成</span>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. F34: Tab 标签页自由拖拽排序
+    // ==========================================
+    let tabs = [
+      { id: 'tab-1', title: '01-核心架构.md', path: 'workspace/01-核心架构.md', active: true },
+      { id: 'tab-2', title: 'guide.md', path: 'workspace/docs/guide.md', active: false },
+      { id: 'tab-3', title: 'fuzzySearch.ts', path: 'workspace/src/fuzzySearch.ts', active: false },
+      { id: 'tab-4', title: 'api.json', path: 'workspace/api.json', active: false },
+    ];
+
+    let draggedTabId = null;
+
+    function renderTabs() {
+      const container = document.getElementById('tab-bar-container');
+      container.innerHTML = '';
+
+      tabs.forEach((tab, index) => {
+        const tabEl = document.createElement('div');
+        tabEl.draggable = true;
+        tabEl.dataset.id = tab.id;
+        tabEl.dataset.index = index;
+
+        const baseClass = 'tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none ';
+        const activeClass = tab.active 
+          ? 'bg-white/90 border border-black/5 shadow-2xs text-stone-800' 
+          : 'text-stone-500 hover:bg-black/5';
+        tabEl.className = baseClass + activeClass;
+
+        tabEl.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full ${tab.active ? 'bg-emerald-500' : 'bg-stone-300'}"></span>
+          <span class="truncate max-w-[140px]">${tab.title}</span>
+          <button onclick="event.stopPropagation(); closeTab('${tab.id}')" class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 rounded">×</button>
+        `;
+
+        tabEl.onclick = () => activateTab(tab.id);
+
+        // 拖拽事件
+        tabEl.addEventListener('dragstart', (e) => {
+          draggedTabId = tab.id;
+          e.dataTransfer.effectAllowed = 'move';
+          tabEl.classList.add('dragging');
+        });
+
+        tabEl.addEventListener('dragend', () => {
+          tabEl.classList.remove('dragging');
+          clearTabDropIndicators();
+          draggedTabId = null;
+        });
+
+        tabEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (draggedTabId === tab.id) return;
+
+          const rect = tabEl.getBoundingClientRect();
+          const midX = rect.left + rect.width / 2;
+          clearTabDropIndicators();
+
+          if (e.clientX < midX) {
+            tabEl.classList.add('tab-drop-indicator-left');
+          } else {
+            tabEl.classList.add('tab-drop-indicator-right');
+          }
+        });
+
+        tabEl.addEventListener('dragleave', () => {
+          tabEl.classList.remove('tab-drop-indicator-left', 'tab-drop-indicator-right');
+        });
+
+        tabEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (!draggedTabId || draggedTabId === tab.id) return;
+
+          const rect = tabEl.getBoundingClientRect();
+          const midX = rect.left + rect.width / 2;
+          const fromIndex = tabs.findIndex(t => t.id === draggedTabId);
+          let toIndex = index;
+
+          if (e.clientX >= midX && fromIndex < index) {
+            // 放右侧且源在左侧，保持在 index
+          } else if (e.clientX < midX && fromIndex > index) {
+            // 放左侧且源在右侧
+          }
+
+          // 重新排序
+          const [moved] = tabs.splice(fromIndex, 1);
+          tabs.splice(toIndex, 0, moved);
+
+          showToast(`已调整标签顺序："${moved.title}" 移至第 ${toIndex + 1} 位`);
+          renderTabs();
+        });
+
+        container.appendChild(tabEl);
+      });
+    }
+
+    function clearTabDropIndicators() {
+      document.querySelectorAll('.tab-item').forEach(el => {
+        el.classList.remove('tab-drop-indicator-left', 'tab-drop-indicator-right');
+      });
+    }
+
+    function activateTab(tabId) {
+      tabs.forEach(t => t.active = (t.id === tabId));
+      const activeTab = tabs.find(t => t.id === tabId);
+      if (activeTab) {
+        document.getElementById('breadcrumb-path').textContent = activeTab.path;
+        document.getElementById('editor-title').textContent = activeTab.title.replace(/\.[^/.]+$/, '');
+      }
+      renderTabs();
+    }
+
+    function closeTab(tabId) {
+      tabs = tabs.filter(t => t.id !== tabId);
+      if (tabs.length > 0 && !tabs.some(t => t.active)) {
+        tabs[0].active = true;
+      }
+      renderTabs();
+    }
+
+    // ==========================================
+    // 2. F33: 侧边栏文件树拖拽移动与 Tab 级联更新
+    // ==========================================
+    let workspaceData = {
+      name: 'workspace',
+      folders: [
+        {
+          name: 'docs',
+          path: 'workspace/docs',
+          files: ['guide.md', 'spec-m1.md']
+        },
+        {
+          name: 'src',
+          path: 'workspace/src',
+          files: ['fuzzySearch.ts', 'main.ts']
+        }
+      ],
+      rootFiles: ['01-核心架构.md', 'api.json', 'README.md']
+    };
+
+    let draggedItemData = null; // { type: 'file'|'folder', name, parentFolder }
+
+    function renderFileTree() {
+      const container = document.getElementById('file-tree-container');
+      container.innerHTML = '';
+
+      // 根文件夹接收区
+      const rootHeader = document.createElement('div');
+      rootHeader.className = 'flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-black/5 font-semibold text-stone-800 transition cursor-pointer';
+      rootHeader.innerHTML = `
+        <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+        <span>workspace (根目录)</span>
+      `;
+      setupFolderDropTarget(rootHeader, 'workspace');
+      container.appendChild(rootHeader);
+
+      // 渲染子文件夹
+      workspaceData.folders.forEach((folder) => {
+        const folderWrapper = document.createElement('div');
+        folderWrapper.className = 'space-y-0.5';
+
+        const folderRow = document.createElement('div');
+        folderRow.className = 'flex items-center gap-1.5 pl-4 pr-2 py-1 rounded hover:bg-black/5 font-medium text-stone-700 cursor-pointer transition';
+        folderRow.innerHTML = `
+          <svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          <svg class="w-3.5 h-3.5 text-amber-600/80" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+          <span>${folder.name}</span>
+          <span class="text-[10px] text-stone-400 font-mono ml-auto">${folder.files.length}</span>
+        `;
+        setupFolderDropTarget(folderRow, folder.name);
+        folderWrapper.appendChild(folderRow);
+
+        // 文件夹内文件列表
+        folder.files.forEach(fileName => {
+          const fileRow = createFileElement(fileName, folder.name);
+          folderWrapper.appendChild(fileRow);
+        });
+
+        container.appendChild(folderWrapper);
+      });
+
+      // 渲染根目录下的文件
+      workspaceData.rootFiles.forEach(fileName => {
+        const fileRow = createFileElement(fileName, 'workspace');
+        container.appendChild(fileRow);
+      });
+    }
+
+    function createFileElement(fileName, parentFolder) {
+      const el = document.createElement('div');
+      const isRoot = parentFolder === 'workspace';
+      el.className = `flex items-center gap-1.5 ${isRoot ? 'pl-5' : 'pl-9'} pr-2 py-1 rounded hover:bg-black/5 text-stone-700 cursor-pointer transition`;
+      el.draggable = true;
+
+      const isMarkdown = fileName.endsWith('.md');
+      el.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${isMarkdown ? 'bg-emerald-500' : 'bg-blue-400'} shrink-0"></span>
+        <span class="truncate">${fileName}</span>
+      `;
+
+      el.onclick = () => {
+        const fullPath = parentFolder === 'workspace' ? `workspace/${fileName}` : `workspace/${parentFolder}/${fileName}`;
+        document.getElementById('breadcrumb-path').textContent = fullPath;
+        document.getElementById('editor-title').textContent = fileName.replace(/\.[^/.]+$/, '');
+      };
+
+      el.addEventListener('dragstart', (e) => {
+        draggedItemData = { type: 'file', name: fileName, parentFolder: parentFolder };
+        e.dataTransfer.setData('text/plain', fileName);
+        el.classList.add('dragging');
+      });
+
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        draggedItemData = null;
+      });
+
+      return el;
+    }
+
+    function setupFolderDropTarget(targetEl, targetFolderName) {
+      targetEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!draggedItemData) return;
+        targetEl.classList.add('folder-drop-hover');
+      });
+
+      targetEl.addEventListener('dragleave', () => {
+        targetEl.classList.remove('folder-drop-hover');
+      });
+
+      targetEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        targetEl.classList.remove('folder-drop-hover');
+        if (!draggedItemData) return;
+
+        const { name, parentFolder } = draggedItemData;
+
+        // 1. 原地放置拦截
+        if (parentFolder === targetFolderName) {
+          showToast(`文件 "${name}" 已经在当前目录中`);
+          return;
+        }
+
+        // 2. 执行物理移动模拟
+        // 从原位置移除
+        if (parentFolder === 'workspace') {
+          workspaceData.rootFiles = workspaceData.rootFiles.filter(f => f !== name);
+        } else {
+          const prevFolderObj = workspaceData.folders.find(f => f.name === parentFolder);
+          if (prevFolderObj) {
+            prevFolderObj.files = prevFolderObj.files.filter(f => f !== name);
+          }
+        }
+
+        // 放入新位置
+        if (targetFolderName === 'workspace') {
+          workspaceData.rootFiles.push(name);
+        } else {
+          const newFolderObj = workspaceData.folders.find(f => f.name === targetFolderName);
+          if (newFolderObj) {
+            newFolderObj.files.push(name);
+          }
+        }
+
+        // 3. 级联同步更新 Tab 路径
+        const oldPath = parentFolder === 'workspace' ? `workspace/${name}` : `workspace/${parentFolder}/${name}`;
+        const newPath = targetFolderName === 'workspace' ? `workspace/${name}` : `workspace/${targetFolderName}/${name}`;
+
+        let tabSynced = false;
+        tabs.forEach(tab => {
+          if (tab.title === name || tab.path === oldPath) {
+            tab.path = newPath;
+            tabSynced = true;
+          }
+        });
+
+        // 更新面包屑
+        const currentBreadcrumb = document.getElementById('breadcrumb-path').textContent;
+        if (currentBreadcrumb === oldPath) {
+          document.getElementById('breadcrumb-path').textContent = newPath;
+        }
+
+        if (tabSynced) {
+          const badge = document.getElementById('tab-sync-badge');
+          badge.classList.remove('hidden');
+          setTimeout(() => badge.classList.add('hidden'), 2500);
+        }
+
+        showToast(`已移动 "${name}" 至 ${targetFolderName}/ (Tab 路径已同步)`);
+        renderFileTree();
+        renderTabs();
+      });
+    }
+
+    // ==========================================
+    // 3. 辅助交互通知
+    // ==========================================
+    function showToast(msg) {
+      const toast = document.getElementById('app-toast');
+      const text = document.getElementById('toast-message');
+      text.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2000);
+    }
+
+    // 页面初始化
+    renderTabs();
+    renderFileTree();
+  </script>
+</body>
+</html>

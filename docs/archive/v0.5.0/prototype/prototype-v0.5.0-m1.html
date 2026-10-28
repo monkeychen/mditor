@@ -1,0 +1,759 @@
+<!-- doc: prototype | product: v0.5.0 | milestone: m1 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.5.0-M1 原型：侧边栏拖拽调宽、⌘P 闪电跳转与 ⌘⇧F 全工作区全文检索</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+    .font-mono-code {
+      font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;
+    }
+    /* 搜索目标行 1.5s 脉冲闪烁动画 */
+    @keyframes target-pulse {
+      0% { background-color: rgba(245, 158, 11, 0.4); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5); }
+      70% { background-color: rgba(245, 158, 11, 0.25); box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2); }
+      100% { background-color: transparent; box-shadow: none; }
+    }
+    .search-target-highlight {
+      animation: target-pulse 1.5s ease-out forwards;
+      border-radius: 4px;
+    }
+    /* 拖拽手柄条 */
+    .resize-handle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 5px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 40;
+      transition: background-color 0.15s ease;
+    }
+    .resize-handle:hover, .resize-handle.active {
+      background-color: rgba(245, 158, 11, 0.6);
+    }
+    /* 滚动条细化 */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 h-screen flex flex-col overflow-hidden">
+
+  <!-- 顶部提示条与交互指引 -->
+  <div class="bg-amber-500/10 border-b border-amber-600/20 px-4 py-1.5 flex items-center justify-between text-xs text-amber-900 shrink-0 z-50">
+    <div class="flex items-center gap-3">
+      <span class="font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wide">v0.5.0-M1 PROTOTYPE</span>
+      <span class="font-medium text-stone-700">三大核心交互验证：</span>
+      <span class="inline-flex items-center gap-1 bg-white/80 border border-amber-500/30 px-2 py-0.5 rounded text-amber-800">
+        <b>F30</b> 侧边栏边缘拖拽调宽 (180~520px / 双击复位 240px)
+      </span>
+      <span class="inline-flex items-center gap-1 bg-white/80 border border-amber-500/30 px-2 py-0.5 rounded text-amber-800">
+        <b>F31</b> <kbd class="px-1 py-0.2 bg-stone-100 border border-stone-300 rounded font-mono text-[10px]">⌘P</kbd> Spotlight 快速打开
+      </span>
+      <span class="inline-flex items-center gap-1 bg-white/80 border border-amber-500/30 px-2 py-0.5 rounded text-amber-800">
+        <b>F32</b> <kbd class="px-1 py-0.2 bg-stone-100 border border-stone-300 rounded font-mono text-[10px]">⌘⇧F</kbd> 全工作区内容检索与段落微光定位
+      </span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleQuickOpen()" class="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition">呼出 ⌘P 浮层</button>
+      <button onclick="switchToSearchTab()" class="px-2 py-0.5 bg-stone-800 hover:bg-black text-white rounded text-xs transition">打开 ⌘⇧F 搜索</button>
+    </div>
+  </div>
+
+  <!-- 第一层：窗口级 Header (h-10) -->
+  <header class="h-10 border-b border-black/5 bg-[#FAF8F5]/90 backdrop-blur-md flex items-center px-3 gap-2 shrink-0 z-30">
+    <!-- macOS 红绿灯 -->
+    <div class="flex items-center space-x-2 mr-2">
+      <div class="w-3 h-3 rounded-full bg-red-400"></div>
+      <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+      <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+    </div>
+
+    <!-- 侧边栏折叠/展开按钮 -->
+    <button onclick="toggleSidebar()" title="切换侧边栏 (⌘B)" class="p-1 rounded hover:bg-black/5 text-stone-600 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+    </button>
+
+    <!-- 多标签栏 -->
+    <div id="tab-bar-container" class="flex-1 flex items-center space-x-1 overflow-x-auto px-2">
+      <div id="tab-0" onclick="switchActiveTab(0)" class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition bg-white/90 border border-black/5 shadow-2xs text-stone-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span id="tab-title-0" class="truncate max-w-[160px]">01-产品规划.md</span>
+        <button class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 rounded">×</button>
+      </div>
+      <div id="tab-1" onclick="switchActiveTab(1)" class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition text-stone-500 hover:bg-black/5">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        <span id="tab-title-1" class="truncate max-w-[160px]">fuzzySearch.ts</span>
+        <button class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 rounded">×</button>
+      </div>
+      <div id="tab-2" onclick="switchActiveTab(2)" class="tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition text-stone-500 hover:bg-black/5">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+        <span id="tab-title-2" class="truncate max-w-[160px]">release-v0.5.0.json</span>
+        <button class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 rounded">×</button>
+      </div>
+    </div>
+
+    <!-- 顶部动作条：快速查找与偏好设置 -->
+    <div class="flex items-center space-x-1">
+      <button onclick="toggleQuickOpen()" class="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-stone-500 hover:bg-black/5 hover:text-stone-800 border border-stone-200/60 bg-white/50 transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <span>快速打开</span>
+        <kbd class="text-[10px] text-stone-400 font-mono">⌘P</kbd>
+      </button>
+      <button class="p-1 rounded text-stone-500 hover:bg-black/5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主体工作区容器 -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- 左侧可调宽侧边栏 (默认 240px，限制 180~520px) -->
+    <aside id="sidebar" style="width: 260px;" class="h-full bg-[#F4F1EA]/80 backdrop-blur-md border-r border-black/5 flex flex-col shrink-0 relative transition-none">
+      
+      <!-- 拖拽手柄 (Resize Handle) -->
+      <div id="resize-handle" class="resize-handle" title="拖拽调整侧边栏宽度 (180~520px)，双击复位 240px">
+        <!-- 悬停/拖拽时的微光指示点 -->
+        <div class="w-full h-full flex items-center justify-center pointer-events-none">
+          <div class="w-1 h-6 rounded-full bg-amber-500/40 opacity-0 group-hover:opacity-100"></div>
+        </div>
+      </div>
+
+      <!-- 侧边栏顶部 Tab 切换器：文件夹 | 大纲 | 搜索 -->
+      <div class="p-2 border-b border-black/5 shrink-0 flex items-center justify-between">
+        <div class="flex bg-stone-200/70 p-0.5 rounded-lg text-xs w-full">
+          <button id="nav-btn-files" onclick="setSidebarTab('files')" class="flex-1 py-1 rounded font-medium transition text-stone-500 hover:text-stone-800">
+            文件夹
+          </button>
+          <button id="nav-btn-outline" onclick="setSidebarTab('outline')" class="flex-1 py-1 rounded font-medium transition text-stone-500 hover:text-stone-800">
+            大纲
+          </button>
+          <button id="nav-btn-search" onclick="setSidebarTab('search')" class="flex-1 py-1 rounded font-medium transition bg-white text-stone-800 shadow-2xs">
+            搜索
+          </button>
+        </div>
+      </div>
+
+      <!-- 宽度指示 Badge（拖拽时显示） -->
+      <div id="width-badge" class="hidden absolute top-2 right-3 z-50 bg-stone-900/80 text-white font-mono text-[10px] px-1.5 py-0.5 rounded shadow pointer-events-none">
+        260px
+      </div>
+
+      <!-- TAB 1: 文件夹树视图 -->
+      <div id="view-files" class="flex-1 overflow-y-auto p-2 space-y-1 hidden">
+        <div class="text-[11px] font-semibold text-stone-400 px-2 py-1 tracking-wider uppercase flex items-center justify-between">
+          <span>工作区目录</span>
+          <span class="text-[10px] lowercase text-stone-400">3 个根目录</span>
+        </div>
+        <div class="space-y-0.5 text-xs text-stone-700">
+          <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-black/5 font-medium cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+            <span>mditor-notes</span>
+          </div>
+          <div onclick="openDocument('01-产品规划.md', 0)" class="flex items-center gap-1.5 pl-6 pr-2 py-1 rounded bg-amber-500/10 text-amber-900 font-medium cursor-pointer">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="truncate">01-产品规划.md</span>
+          </div>
+          <div onclick="openDocument('02-架构演进.md', 0)" class="flex items-center gap-1.5 pl-6 pr-2 py-1 rounded hover:bg-black/5 cursor-pointer">
+            <span class="w-2 h-2 rounded-full bg-stone-300"></span>
+            <span class="truncate">02-架构演进.md</span>
+          </div>
+          <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-black/5 font-medium cursor-pointer mt-1">
+            <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+            <span>src/renderer</span>
+          </div>
+          <div onclick="openDocument('fuzzySearch.ts', 1)" class="flex items-center gap-1.5 pl-6 pr-2 py-1 rounded hover:bg-black/5 cursor-pointer">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            <span class="truncate">fuzzySearch.ts</span>
+          </div>
+          <div onclick="openDocument('searchService.ts', 1)" class="flex items-center gap-1.5 pl-6 pr-2 py-1 rounded hover:bg-black/5 cursor-pointer">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            <span class="truncate">searchService.ts</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: 文章大纲视图 -->
+      <div id="view-outline" class="flex-1 overflow-y-auto p-2 space-y-1 hidden">
+        <div class="text-[11px] font-semibold text-stone-400 px-2 py-1 tracking-wider uppercase">当前文档大纲</div>
+        <div class="space-y-1 text-xs">
+          <div class="px-2 py-1 rounded hover:bg-black/5 text-stone-800 font-medium cursor-pointer"># mditor v0.5.0 需求规划</div>
+          <div class="pl-4 pr-2 py-1 rounded hover:bg-black/5 text-stone-600 cursor-pointer">## 1. 核心瓶颈突破</div>
+          <div class="pl-6 pr-2 py-1 rounded hover:bg-black/5 text-stone-500 cursor-pointer">### 1.1 大库检索能力</div>
+          <div class="pl-4 pr-2 py-1 rounded hover:bg-black/5 text-stone-600 cursor-pointer">## 2. 详细技术方案</div>
+          <div class="pl-4 pr-2 py-1 rounded hover:bg-black/5 text-stone-600 cursor-pointer">## 3. 验收门禁</div>
+        </div>
+      </div>
+
+      <!-- TAB 3: ⌘⇧F 全工作区全文检索视图 -->
+      <div id="view-search" class="flex-1 flex flex-col overflow-hidden">
+        <!-- 检索输入框与过滤条件 -->
+        <div class="p-2 border-b border-black/5 space-y-2 shrink-0">
+          <div class="relative">
+            <input 
+              id="search-input" 
+              type="text" 
+              value="快速检索" 
+              oninput="performWorkspaceSearch()"
+              placeholder="全工作区全文检索..."
+              class="w-full bg-white border border-stone-300 focus:border-amber-600 rounded-md pl-7 pr-16 py-1 text-xs text-stone-800 focus:outline-none shadow-2xs"
+            >
+            <svg class="w-3.5 h-3.5 text-stone-400 absolute left-2 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <div class="absolute right-1.5 top-1 flex items-center space-x-1">
+              <button id="toggle-case" onclick="toggleCaseSensitive()" title="区分大小写 (Aa)" class="p-0.5 rounded text-[10px] font-mono text-stone-400 hover:text-stone-700">Aa</button>
+              <button id="toggle-word" onclick="toggleWholeWord()" title="全词匹配 (\b)" class="p-0.5 rounded text-[10px] font-mono text-stone-400 hover:text-stone-700">\b</button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-stone-500 px-1">
+            <span id="search-stats">找到 5 处匹配，分布在 3 个文件</span>
+            <button onclick="clearSearch()" class="hover:text-amber-700">清空</button>
+          </div>
+        </div>
+
+        <!-- 检索结果列表（按文件分组折叠） -->
+        <div id="search-results-list" class="flex-1 overflow-y-auto p-2 space-y-3 text-xs">
+          
+          <!-- 文件组 1: 01-产品规划.md -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between font-semibold text-stone-800 px-1 hover:bg-black/5 rounded cursor-pointer py-0.5">
+              <div class="flex items-center gap-1.5 truncate">
+                <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span class="truncate">01-产品规划.md</span>
+              </div>
+              <span class="text-[10px] font-mono bg-stone-200/70 text-stone-600 px-1.5 rounded-full shrink-0">2</span>
+            </div>
+            
+            <div class="pl-4 space-y-1">
+              <!-- 命中行 1 -->
+              <div onclick="jumpToSearchResult('01-产品规划.md', 12, '快速检索')" class="p-1 rounded hover:bg-amber-500/10 cursor-pointer border border-transparent hover:border-amber-500/20 group transition">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-mono text-[10px] text-stone-400 group-hover:text-amber-700 shrink-0">行 12</span>
+                  <p class="text-stone-600 text-[11px] line-clamp-2">
+                    用户可通过 ⌘P <mark class="bg-amber-300 text-stone-900 px-0.5 rounded font-medium">快速检索</mark> 任意文件名并直接切入对应画布...
+                  </p>
+                </div>
+              </div>
+              <!-- 命中行 2 -->
+              <div onclick="jumpToSearchResult('01-产品规划.md', 38, '快速检索')" class="p-1 rounded hover:bg-amber-500/10 cursor-pointer border border-transparent hover:border-amber-500/20 group transition">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-mono text-[10px] text-stone-400 group-hover:text-amber-700 shrink-0">行 38</span>
+                  <p class="text-stone-600 text-[11px] line-clamp-2">
+                    集成全工作区 <mark class="bg-amber-300 text-stone-900 px-0.5 rounded font-medium">快速检索</mark> 引擎，支持多路径模糊过滤与分值排序...
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文件组 2: fuzzySearch.ts -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between font-semibold text-stone-800 px-1 hover:bg-black/5 rounded cursor-pointer py-0.5">
+              <div class="flex items-center gap-1.5 truncate">
+                <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                <span class="truncate">fuzzySearch.ts</span>
+              </div>
+              <span class="text-[10px] font-mono bg-stone-200/70 text-stone-600 px-1.5 rounded-full shrink-0">2</span>
+            </div>
+            
+            <div class="pl-4 space-y-1">
+              <div onclick="jumpToSearchResult('fuzzySearch.ts', 5, '快速检索')" class="p-1 rounded hover:bg-amber-500/10 cursor-pointer border border-transparent hover:border-amber-500/20 group transition">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-mono text-[10px] text-stone-400 group-hover:text-amber-700 shrink-0">行 5</span>
+                  <p class="text-stone-600 text-[11px] font-mono-code line-clamp-2">
+                    // 为工作区文件列表建立 <mark class="bg-amber-300 text-stone-900 px-0.5 rounded font-medium">快速检索</mark> 倒排索引
+                  </p>
+                </div>
+              </div>
+              <div onclick="jumpToSearchResult('fuzzySearch.ts', 41, '快速检索')" class="p-1 rounded hover:bg-amber-500/10 cursor-pointer border border-transparent hover:border-amber-500/20 group transition">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-mono text-[10px] text-stone-400 group-hover:text-amber-700 shrink-0">行 41</span>
+                  <p class="text-stone-600 text-[11px] font-mono-code line-clamp-2">
+                    export function buildSearchIndex(): <mark class="bg-amber-300 text-stone-900 px-0.5 rounded font-medium">快速检索</mark>Tree
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文件组 3: release-v0.5.0.json -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between font-semibold text-stone-800 px-1 hover:bg-black/5 rounded cursor-pointer py-0.5">
+              <div class="flex items-center gap-1.5 truncate">
+                <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="truncate">release-v0.5.0.json</span>
+              </div>
+              <span class="text-[10px] font-mono bg-stone-200/70 text-stone-600 px-1.5 rounded-full shrink-0">1</span>
+            </div>
+            
+            <div class="pl-4 space-y-1">
+              <div onclick="jumpToSearchResult('release-v0.5.0.json', 9, '快速检索')" class="p-1 rounded hover:bg-amber-500/10 cursor-pointer border border-transparent hover:border-amber-500/20 group transition">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-mono text-[10px] text-stone-400 group-hover:text-amber-700 shrink-0">行 9</span>
+                  <p class="text-stone-600 text-[11px] font-mono-code line-clamp-2">
+                    "description": "支持跨文件 <mark class="bg-amber-300 text-stone-900 px-0.5 rounded font-medium">快速检索</mark> 与段落定位"
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- 右侧：主编辑器画布区域 -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-white">
+      
+      <!-- 编辑器顶部状态栏与面包屑 -->
+      <div class="h-8 border-b border-black/5 px-4 flex items-center justify-between text-xs text-stone-500 bg-[#FAF8F5]/40 shrink-0">
+        <div class="flex items-center gap-1.5">
+          <span class="text-stone-400">mditor-notes</span>
+          <span class="text-stone-300">/</span>
+          <span id="breadcrumb-filename" class="font-medium text-stone-800">01-产品规划.md</span>
+        </div>
+        <div class="flex items-center gap-3 text-[11px]">
+          <span>Markdown (所见即所得)</span>
+          <span>1,428 字</span>
+          <span class="font-mono text-stone-400">UTF-8</span>
+        </div>
+      </div>
+
+      <!-- 编辑器可滚动正文区域 -->
+      <div id="editor-viewport" class="flex-1 overflow-y-auto px-12 py-8 max-w-4xl mx-auto w-full leading-relaxed">
+        
+        <h1 class="text-2xl font-bold text-stone-900 mb-6">mditor v0.5.0 需求规格规划</h1>
+        
+        <div id="line-1" class="py-1 text-stone-700">
+          本文档记录 mditor v0.5.0 的核心能力构建与技术验证标准。
+        </div>
+
+        <div id="line-2" class="py-1 text-stone-700">
+          在过去几个版本的沉淀中，我们打造了丝滑的打字交互与多语言高亮体系。
+        </div>
+
+        <div id="line-3" class="py-1 text-stone-700 font-semibold text-lg mt-4 mb-2">
+          ## 1. 核心瓶颈突破
+        </div>
+
+        <div id="line-12" class="py-1 px-2 text-stone-800 transition duration-300">
+          用户可通过 ⌘P <strong class="text-amber-800 bg-amber-100/60 px-1 rounded">快速检索</strong> 任意文件名并直接切入对应画布，全键盘上下方向键选中、回车激活无阻碍流转。
+        </div>
+
+        <div id="line-13" class="py-1 text-stone-700">
+          此外，针对长路径与复杂目录深层嵌套场景，固定宽度的侧边栏常导致路径截断，造成认知负荷。
+        </div>
+
+        <div id="line-25" class="py-1 text-stone-700 font-semibold text-lg mt-4 mb-2">
+          ## 2. 详细技术方案
+        </div>
+
+        <div id="line-26" class="py-1 text-stone-700">
+          侧边栏拖拽手柄宽度设计为 4px，拖拽调节范围严格夹紧在 180px ~ 520px，双击即可无缝复位至 240px。
+        </div>
+
+        <div id="line-38" class="py-1 px-2 text-stone-800 transition duration-300">
+          集成全工作区 <strong class="text-amber-800 bg-amber-100/60 px-1 rounded">快速检索</strong> 引擎，支持多路径模糊过滤与分值排序，搜索结果按文件分组呈现。
+        </div>
+
+        <div id="line-39" class="py-1 text-stone-700">
+          点击检索项自动在主视图打开对应文档，平滑滚动至对应行号，并触发 1.5 秒黄色微光高亮脉冲。
+        </div>
+
+        <div id="line-50" class="py-1 text-stone-700 mt-4">
+          通过第一性原理思考，系统承担了索引构建与文件系统遍历的全部复杂性，用户只体验极致的丝滑定位。
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- F31: ⌘P Quick Open 居中 Spotlight 风格浮层 -->
+  <div id="quick-open-overlay" class="hidden fixed inset-0 bg-black/30 backdrop-blur-xs z-50 flex items-start justify-center pt-24">
+    <div class="w-[560px] bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-black/10 flex flex-col overflow-hidden animate-in fade-in duration-150">
+      
+      <!-- 搜索输入框 -->
+      <div class="p-3 border-b border-black/5 flex items-center gap-2.5">
+        <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input 
+          id="quick-open-input" 
+          type="text" 
+          placeholder="快速打开文件 (输入文件名或拼音模糊匹配)..." 
+          oninput="handleQuickOpenInput()"
+          class="flex-1 bg-transparent text-sm text-stone-800 focus:outline-none placeholder-stone-400"
+          autofocus
+        >
+        <kbd class="text-[10px] bg-stone-100 text-stone-400 border border-stone-200 px-1.5 py-0.5 rounded font-mono">ESC 退出</kbd>
+      </div>
+
+      <!-- 文件结果列表 -->
+      <div id="quick-open-list" class="max-h-80 overflow-y-auto p-1.5 space-y-0.5 text-xs">
+        
+        <!-- 列表项 1 (当前选中) -->
+        <div id="qo-item-0" onclick="selectQuickOpenItem(0)" class="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-500/10 text-amber-900 cursor-pointer">
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span class="font-medium text-stone-800">01-产品规划.md</span>
+            <span class="text-stone-400 text-[11px] truncate">docs/prd/</span>
+          </div>
+          <span class="text-[10px] text-amber-700/80 font-mono">Markdown</span>
+        </div>
+
+        <!-- 列表项 2 -->
+        <div id="qo-item-1" onclick="selectQuickOpenItem(1)" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-black/5 text-stone-700 cursor-pointer">
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+            <span class="font-medium text-stone-800">fuzzySearch.ts</span>
+            <span class="text-stone-400 text-[11px] truncate">src/renderer/utils/</span>
+          </div>
+          <span class="text-[10px] text-stone-400 font-mono">TypeScript</span>
+        </div>
+
+        <!-- 列表项 3 -->
+        <div id="qo-item-2" onclick="selectQuickOpenItem(2)" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-black/5 text-stone-700 cursor-pointer">
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+            <span class="font-medium text-stone-800">searchService.ts</span>
+            <span class="text-stone-400 text-[11px] truncate">src/main/</span>
+          </div>
+          <span class="text-[10px] text-stone-400 font-mono">TypeScript</span>
+        </div>
+
+        <!-- 列表项 4 -->
+        <div id="qo-item-3" onclick="selectQuickOpenItem(3)" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-black/5 text-stone-700 cursor-pointer">
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span class="font-medium text-stone-800">spec-v0.5.0-m1.md</span>
+            <span class="text-stone-400 text-[11px] truncate">docs/spec/</span>
+          </div>
+          <span class="text-[10px] text-stone-400 font-mono">Markdown</span>
+        </div>
+
+        <!-- 列表项 5 -->
+        <div id="qo-item-4" onclick="selectQuickOpenItem(4)" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-black/5 text-stone-700 cursor-pointer">
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+            <span class="font-medium text-stone-800">release-v0.5.0.json</span>
+            <span class="text-stone-400 text-[11px] truncate">build/</span>
+          </div>
+          <span class="text-[10px] text-stone-400 font-mono">JSON</span>
+        </div>
+
+      </div>
+
+      <!-- 底部键盘快捷键提示 -->
+      <div class="p-2 bg-stone-50/80 border-t border-black/5 flex items-center justify-between text-[11px] text-stone-500 px-3">
+        <div class="flex items-center gap-3">
+          <span><kbd class="font-mono bg-white border border-stone-200 px-1 py-0.2 rounded">↑</kbd> <kbd class="font-mono bg-white border border-stone-200 px-1 py-0.2 rounded">↓</kbd> 切换选中</span>
+          <span><kbd class="font-mono bg-white border border-stone-200 px-1 py-0.2 rounded">↵</kbd> 打开文件</span>
+        </div>
+        <span class="text-stone-400">已索引 128 个文件</span>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. 侧边栏拖拽调宽 (F30) 实现机制
+    // ==========================================
+    const sidebar = document.getElementById('sidebar');
+    const resizeHandle = document.getElementById('resize-handle');
+    const widthBadge = document.getElementById('width-badge');
+    
+    let isDragging = false;
+    let sidebarWidth = 260; // 默认 260px (在 180 ~ 520 范围内)
+    const MIN_WIDTH = 180;
+    const MAX_WIDTH = 520;
+    const DEFAULT_WIDTH = 240;
+
+    // 从 localStorage 恢复
+    const savedWidth = localStorage.getItem('mditor_sidebar_width');
+    if (savedWidth) {
+      const parsed = parseInt(savedWidth, 10);
+      if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+        sidebarWidth = parsed;
+        sidebar.style.width = `${sidebarWidth}px`;
+      }
+    }
+
+    resizeHandle.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      resizeHandle.classList.add('active');
+      widthBadge.classList.remove('hidden');
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      // 计算新宽度，限制范围 180 ~ 520
+      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, e.clientX));
+      sidebarWidth = newWidth;
+      sidebar.style.width = `${sidebarWidth}px`;
+      widthBadge.textContent = `${sidebarWidth}px`;
+      widthBadge.style.right = '12px';
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      resizeHandle.classList.remove('active');
+      widthBadge.classList.add('hidden');
+      document.body.style.cursor = 'default';
+      // 持久化存储
+      localStorage.setItem('mditor_sidebar_width', String(sidebarWidth));
+    });
+
+    // 双击把手复位至 240px
+    resizeHandle.addEventListener('dblclick', () => {
+      sidebarWidth = DEFAULT_WIDTH;
+      sidebar.style.width = `${sidebarWidth}px`;
+      localStorage.setItem('mditor_sidebar_width', String(sidebarWidth));
+      // 触发短暂动画反馈
+      sidebar.style.transition = 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+      setTimeout(() => {
+        sidebar.style.transition = 'none';
+      }, 250);
+    });
+
+    // 侧边栏折叠/展开
+    let isSidebarOpen = true;
+    function toggleSidebar() {
+      isSidebarOpen = !isSidebarOpen;
+      sidebar.style.display = isSidebarOpen ? 'flex' : 'none';
+    }
+
+    // ==========================================
+    // 2. 侧边栏多 Tab 视图切换机制
+    // ==========================================
+    function setSidebarTab(tab) {
+      const viewFiles = document.getElementById('view-files');
+      const viewOutline = document.getElementById('view-outline');
+      const viewSearch = document.getElementById('view-search');
+
+      const btnFiles = document.getElementById('nav-btn-files');
+      const btnOutline = document.getElementById('nav-btn-outline');
+      const btnSearch = document.getElementById('nav-btn-search');
+
+      // 重置所有 Tab 样式
+      [btnFiles, btnOutline, btnSearch].forEach(b => {
+        b.className = 'flex-1 py-1 rounded font-medium transition text-stone-500 hover:text-stone-800';
+      });
+      [viewFiles, viewOutline, viewSearch].forEach(v => v.classList.add('hidden'));
+
+      if (tab === 'files') {
+        viewFiles.classList.remove('hidden');
+        btnFiles.className = 'flex-1 py-1 rounded font-medium transition bg-white text-stone-800 shadow-2xs';
+      } else if (tab === 'outline') {
+        viewOutline.classList.remove('hidden');
+        btnOutline.className = 'flex-1 py-1 rounded font-medium transition bg-white text-stone-800 shadow-2xs';
+      } else if (tab === 'search') {
+        viewSearch.classList.remove('hidden');
+        btnSearch.className = 'flex-1 py-1 rounded font-medium transition bg-white text-stone-800 shadow-2xs';
+        setTimeout(() => document.getElementById('search-input').focus(), 50);
+      }
+    }
+
+    function switchToSearchTab() {
+      if (!isSidebarOpen) toggleSidebar();
+      setSidebarTab('search');
+    }
+
+    // ==========================================
+    // 3. F31 全局快速文件打开 (⌘P / Quick Open)
+    // ==========================================
+    const quickOpenOverlay = document.getElementById('quick-open-overlay');
+    const quickOpenInput = document.getElementById('quick-open-input');
+    let quickOpenSelectedIndex = 0;
+    const totalQuickOpenItems = 5;
+
+    function toggleQuickOpen() {
+      const isHidden = quickOpenOverlay.classList.contains('hidden');
+      if (isHidden) {
+        quickOpenOverlay.classList.remove('hidden');
+        quickOpenInput.value = '';
+        quickOpenSelectedIndex = 0;
+        updateQuickOpenSelection();
+        setTimeout(() => quickOpenInput.focus(), 50);
+      } else {
+        quickOpenOverlay.classList.add('hidden');
+      }
+    }
+
+    function updateQuickOpenSelection() {
+      for (let i = 0; i < totalQuickOpenItems; i++) {
+        const item = document.getElementById(`qo-item-${i}`);
+        if (!item) continue;
+        if (i === quickOpenSelectedIndex) {
+          item.className = 'flex items-center justify-between px-3 py-2 rounded-lg bg-amber-500/10 text-amber-900 cursor-pointer';
+        } else {
+          item.className = 'flex items-center justify-between px-3 py-2 rounded-lg hover:bg-black/5 text-stone-700 cursor-pointer';
+        }
+      }
+    }
+
+    function selectQuickOpenItem(index) {
+      quickOpenSelectedIndex = index;
+      updateQuickOpenSelection();
+      activateQuickOpenSelection();
+    }
+
+    function activateQuickOpenSelection() {
+      const mockFiles = [
+        { name: '01-产品规划.md', tab: 0 },
+        { name: 'fuzzySearch.ts', tab: 1 },
+        { name: 'searchService.ts', tab: 1 },
+        { name: 'spec-v0.5.0-m1.md', tab: 0 },
+        { name: 'release-v0.5.0.json', tab: 2 },
+      ];
+      const target = mockFiles[quickOpenSelectedIndex];
+      if (target) {
+        openDocument(target.name, target.tab);
+      }
+      toggleQuickOpen();
+    }
+
+    function handleQuickOpenInput() {
+      // 模拟模糊过滤反馈
+      console.log('Quick Open Pattern:', quickOpenInput.value);
+    }
+
+    // 全局快捷键监听 (⌘P, ⌘⇧F, ESC)
+    window.addEventListener('keydown', (e) => {
+      // ⌘P 或 Ctrl+P
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        toggleQuickOpen();
+        return;
+      }
+      // ⌘⇧F 或 Ctrl+Shift+F
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        switchToSearchTab();
+        return;
+      }
+      // ESC
+      if (e.key === 'Escape') {
+        if (!quickOpenOverlay.classList.contains('hidden')) {
+          e.preventDefault();
+          toggleQuickOpen();
+        }
+        return;
+      }
+
+      // Quick Open 浮层内的方向键流转
+      if (!quickOpenOverlay.classList.contains('hidden')) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          quickOpenSelectedIndex = (quickOpenSelectedIndex + 1) % totalQuickOpenItems;
+          updateQuickOpenSelection();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          quickOpenSelectedIndex = (quickOpenSelectedIndex - 1 + totalQuickOpenItems) % totalQuickOpenItems;
+          updateQuickOpenSelection();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          activateQuickOpenSelection();
+        }
+      }
+    });
+
+    // ==========================================
+    // 4. F32 全文检索与目标行微光脉冲定位
+    // ==========================================
+    function jumpToSearchResult(filename, lineNo, keyword) {
+      // 1. 切换对应 Tab
+      let tabIndex = 0;
+      if (filename.endsWith('.ts')) tabIndex = 1;
+      if (filename.endsWith('.json')) tabIndex = 2;
+      switchActiveTab(tabIndex);
+
+      // 2. 更新面包屑文件名
+      document.getElementById('breadcrumb-filename').textContent = filename;
+
+      // 3. 模拟滚动到目标行并触发 1.5s 微光脉冲
+      const targetLine = document.getElementById(`line-${lineNo}`);
+      if (targetLine) {
+        targetLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // 移除原有高亮类重新挂载以重置动画
+        targetLine.classList.remove('search-target-highlight');
+        void targetLine.offsetWidth; // 触发 reflow
+        targetLine.classList.add('search-target-highlight');
+      }
+    }
+
+    function performWorkspaceSearch() {
+      const q = document.getElementById('search-input').value;
+      const stats = document.getElementById('search-stats');
+      if (!q.trim()) {
+        stats.textContent = '请输入关键词进行检索';
+      } else {
+        stats.textContent = `找到 5 处关于 "${q}" 的匹配`;
+      }
+    }
+
+    let isCaseSensitive = false;
+    let isWholeWord = false;
+    function toggleCaseSensitive() {
+      isCaseSensitive = !isCaseSensitive;
+      const btn = document.getElementById('toggle-case');
+      btn.className = isCaseSensitive ? 'p-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-800 font-bold' : 'p-0.5 rounded text-[10px] font-mono text-stone-400 hover:text-stone-700';
+    }
+    function toggleWholeWord() {
+      isWholeWord = !isWholeWord;
+      const btn = document.getElementById('toggle-word');
+      btn.className = isWholeWord ? 'p-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-800 font-bold' : 'p-0.5 rounded text-[10px] font-mono text-stone-400 hover:text-stone-700';
+    }
+
+    function clearSearch() {
+      document.getElementById('search-input').value = '';
+      performWorkspaceSearch();
+    }
+
+    // ==========================================
+    // 5. Tab 切换与文档打开交互
+    // ==========================================
+    function switchActiveTab(activeIdx) {
+      for (let i = 0; i < 3; i++) {
+        const tab = document.getElementById(`tab-${i}`);
+        if (!tab) continue;
+        if (i === activeIdx) {
+          tab.className = 'tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition bg-white/90 border border-black/5 shadow-2xs text-stone-800';
+        } else {
+          tab.className = 'tab-item group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition text-stone-500 hover:bg-black/5';
+        }
+      }
+    }
+
+    function openDocument(fileName, tabIdx) {
+      document.getElementById('breadcrumb-filename').textContent = fileName;
+      switchActiveTab(tabIdx);
+    }
+  </script>
+</body>
+</html>

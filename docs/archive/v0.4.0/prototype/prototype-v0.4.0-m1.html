@@ -1,0 +1,432 @@
+<!-- doc: prototype | product: v0.4.0 | milestone: m1 | status: approved -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.4.0-M1 原型：全能文本与多编程语言代码引擎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+    .font-mono-code {
+      font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;
+    }
+    /* 简易 VS Code 语法高亮样式 */
+    .token-kw { color: #005cc5; font-weight: 600; }
+    .token-str { color: #032f62; }
+    .token-fn { color: #6f42c1; font-weight: 500; }
+    .token-num { color: #005cc5; }
+    .token-comment { color: #6a737d; font-style: italic; }
+    .token-type { color: #22863a; font-weight: 500; }
+    .token-prop { color: #24292e; }
+
+    .dark .token-kw { color: #569cd6; font-weight: 600; }
+    .dark .token-str { color: #ce9178; }
+    .dark .token-fn { color: #dcdcaa; }
+    .dark .token-num { color: #b5cea8; }
+    .dark .token-comment { color: #6a9955; font-style: italic; }
+    .dark .token-type { color: #4ec9b0; }
+    .dark .token-prop { color: #9cdcfe; }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 h-screen flex flex-col overflow-hidden">
+
+  <!-- 第一层：窗口级 Header (高度 40px，交通灯 + 侧边栏开关 + TabBar + 工具栏开关) -->
+  <header class="h-10 border-b border-black/5 bg-[#FAF8F5]/90 backdrop-blur-md flex items-center px-3 gap-2 shrink-0 z-30">
+    <!-- 交通灯占位 -->
+    <div class="flex items-center space-x-2 mr-2">
+      <div class="w-3 h-3 rounded-full bg-red-400"></div>
+      <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+      <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+    </div>
+
+    <!-- 侧边栏开关 -->
+    <button id="btn-toggle-sidebar" class="p-1 rounded hover:bg-black/5 text-stone-500 hover:text-stone-800 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+    </button>
+
+    <!-- 顶栏 TabBar -->
+    <div id="tab-container" class="flex-1 flex items-center gap-1.5 overflow-x-auto py-1">
+      <!-- 动态注入 Tab -->
+    </div>
+
+    <!-- 右侧工具栏折叠按钮 -->
+    <button id="btn-toggle-toolbar" class="px-2 py-1 rounded-md text-xs font-medium text-stone-600 hover:bg-black/5 flex items-center gap-1 transition">
+      <svg class="w-3.5 h-3.5 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+      <span class="text-[11px]">工具栏</span>
+    </button>
+  </header>
+
+  <!-- 第二层：文档专属工具栏 (高度 36px，可折叠，代码文件自动禁用排版) -->
+  <div id="doc-toolbar" class="h-9 border-b border-black/5 px-4 bg-[#FAF8F5]/95 flex items-center justify-between text-xs text-stone-600 shrink-0 z-20 transition-all duration-200">
+    <div class="flex items-center space-x-1">
+      <!-- 排版组件 (仅 Markdown 可用) -->
+      <div id="toolbar-md-group" class="flex items-center space-x-1">
+        <button class="px-2 py-1 rounded hover:bg-black/5 text-[11px] flex items-center gap-1">📊 <span>表格</span></button>
+        <button class="px-2 py-1 rounded hover:bg-black/5 text-[11px] text-blue-600 flex items-center gap-1">∑ <span>公式块</span></button>
+        <button class="px-2 py-1 rounded hover:bg-black/5 text-[11px] text-amber-600 flex items-center gap-1">σ <span>行内</span></button>
+        <div class="h-3 w-px bg-stone-300 mx-1"></div>
+      </div>
+
+      <!-- 代码文件专属提示 (代码文件打开时显示) -->
+      <div id="toolbar-code-tip" class="hidden flex items-center gap-1 text-[11px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60 font-medium">
+        <span>⚡ 源码编辑模式已激活</span>
+        <span class="text-stone-400">·</span>
+        <span id="code-tip-lang" class="font-mono text-purple-900">Python</span>
+      </div>
+
+      <!-- 检索与文件通用操作 -->
+      <button class="px-2 py-1 rounded hover:bg-black/5 text-[11px] flex items-center gap-1">🔍 <span>查找</span></button>
+      <button class="p-1 rounded hover:bg-black/5 text-stone-600" title="打开">📁</button>
+      <button class="p-1 rounded hover:bg-black/5 text-stone-600" title="保存">💾</button>
+    </div>
+
+    <!-- 模式状态徽章 -->
+    <div id="toolbar-mode-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-black/5 text-stone-600">
+      WYSIWYG 模式
+    </div>
+  </div>
+
+  <!-- 中间主体工作区：侧边栏 + 编辑器画布 -->
+  <div class="flex-1 flex overflow-hidden relative">
+    
+    <!-- 左侧双视图侧边栏 -->
+    <aside id="sidebar" class="w-64 border-r border-black/5 bg-[#FAF8F5]/95 flex flex-col shrink-0 transition-all duration-200">
+      <!-- 顶部 Tab：文件夹 | 大纲 -->
+      <div class="h-9 border-b border-black/5 grid grid-cols-2 text-xs font-medium shrink-0">
+        <button id="tab-btn-folders" class="border-b-2 border-stone-800 text-stone-900 font-semibold flex items-center justify-center gap-1.5">
+          <span>📁</span><span>文件夹</span>
+        </button>
+        <button id="tab-btn-outline" class="border-b-2 border-transparent text-stone-400 hover:text-stone-700 flex items-center justify-center gap-1.5">
+          <span>📑</span><span>大纲</span>
+        </button>
+      </div>
+
+      <!-- 文件夹视图 -->
+      <div id="sidebar-folders-view" class="flex-1 overflow-y-auto p-2 space-y-2 text-xs">
+        <div class="flex items-center justify-between text-[11px] text-stone-400 px-1 pb-1 border-b border-black/5">
+          <span>工作区文件夹 (2)</span>
+          <button class="hover:text-amber-700 text-amber-600 font-bold" title="添加文件夹">+</button>
+        </div>
+
+        <!-- 文件夹 1：mditor-docs -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between px-1.5 py-1 rounded hover:bg-black/5 font-semibold text-stone-700 cursor-pointer">
+            <span class="flex items-center gap-1.5 truncate">
+              <span>▾</span><span>📂</span><span>mditor-docs</span>
+            </span>
+            <span class="text-stone-400 hover:text-red-500 text-xs opacity-0 hover:opacity-100">×</span>
+          </div>
+          <div class="pl-3 space-y-0.5">
+            <div onclick="switchFile('readme.md')" class="file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700" data-file="readme.md">
+              <span class="text-amber-600 text-xs">📝</span>
+              <span class="truncate">README.md</span>
+            </div>
+            <div onclick="switchFile('spec-v0.4.0.md')" class="file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700" data-file="spec-v0.4.0.md">
+              <span class="text-amber-600 text-xs">📝</span>
+              <span class="truncate">spec-v0.4.0.md</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 文件夹 2：backend-service -->
+        <div class="space-y-1 pt-2">
+          <div class="flex items-center justify-between px-1.5 py-1 rounded hover:bg-black/5 font-semibold text-stone-700 cursor-pointer">
+            <span class="flex items-center gap-1.5 truncate">
+              <span>▾</span><span>📂</span><span>backend-service</span>
+            </span>
+            <span class="text-stone-400 hover:text-red-500 text-xs opacity-0 hover:opacity-100">×</span>
+          </div>
+          <div class="pl-3 space-y-0.5">
+            <div onclick="switchFile('server.py')" class="file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700" data-file="server.py">
+              <span class="text-blue-500 font-mono text-[11px]">🐍</span>
+              <span class="truncate">server.py</span>
+            </div>
+            <div onclick="switchFile('database.sql')" class="file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700" data-file="database.sql">
+              <span class="text-emerald-600 font-mono text-[11px]">🗄️</span>
+              <span class="truncate">database.sql</span>
+            </div>
+            <div onclick="switchFile('config.json')" class="file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700" data-file="config.json">
+              <span class="text-amber-500 font-mono text-[11px]">{}</span>
+              <span class="truncate">config.json</span>
+            </div>
+            <div onclick="switchFile('app.log')" class="file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700" data-file="app.log">
+              <span class="text-stone-400 font-mono text-[11px]">📄</span>
+              <span class="truncate">app.log</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 右侧编辑器主区域 -->
+    <main class="flex-1 flex flex-col bg-white overflow-hidden relative">
+
+      <!-- 渲染容器：WYSIWYG 模式 (用于 Markdown) -->
+      <div id="view-wysiwyg" class="flex-1 overflow-y-auto p-12 max-w-3xl mx-auto w-full space-y-4">
+        <h1 class="text-3xl font-bold tracking-tight text-stone-900 border-b pb-2">mditor 全能生产力编辑器</h1>
+        <p class="text-stone-600 leading-relaxed">
+          这里是 Markdown 默认的真所见即所得排版。点击左侧任意代码文件（例如 <code class="bg-stone-100 px-1 py-0.5 rounded text-xs font-mono">server.py</code>、<code class="bg-stone-100 px-1 py-0.5 rounded text-xs font-mono">config.json</code>），mditor 将自动完成<strong>智能模式路由</strong>，切入等宽源码模式与专业代码高亮。
+        </p>
+        <div class="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl text-xs text-amber-900 space-y-1">
+          <div class="font-semibold">💡 智能路由心智原则：</div>
+          <div>• Markdown 文件：自由在「实时渲染」与「源码模式」切换；</div>
+          <div>• 编程语言代码与日志文件：自动锁定至「源码模式」，保证代码缩进与语法高亮极致丝滑。</div>
+        </div>
+      </div>
+
+      <!-- 渲染容器：CodeMirror 6 源码模式 (用于 Python, SQL, JSON, Log, 源码 MD) -->
+      <div id="view-codemirror" class="hidden flex-1 overflow-auto bg-[#1E1E1E] text-[#D4D4D4] font-mono-code text-xs flex">
+        <!-- 行号槽 -->
+        <div id="code-line-numbers" class="py-4 pl-3 pr-2 select-none text-stone-500 text-right bg-[#1E1E1E] border-r border-stone-800 w-12 shrink-0">
+          <!-- 动态注入行号 -->
+        </div>
+
+        <!-- 代码内容区 -->
+        <div id="code-content-area" class="flex-1 py-4 px-4 overflow-x-auto leading-relaxed outline-none" contenteditable="true">
+          <!-- 动态注入高亮代码 -->
+        </div>
+      </div>
+
+      <!-- 底部状态栏 -->
+      <footer class="h-6 border-t border-black/5 bg-[#FAF8F5] px-3 flex items-center justify-between text-[11px] text-stone-500 shrink-0">
+        <div class="flex items-center gap-3">
+          <span id="status-doc-type" class="font-medium text-stone-700">Markdown</span>
+          <span id="status-encoding">UTF-8</span>
+          <span id="status-stats">1,248 字符 · 3 小节</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- 模式切换按钮 (根据当前文件类型自适应) -->
+          <button id="status-mode-btn" class="px-2 py-0.5 rounded hover:bg-black/5 font-mono text-stone-600 flex items-center gap-1 transition">
+            <span id="status-mode-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span id="status-mode-text">实时渲染 (⌘/)</span>
+          </button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // 虚拟文档库
+    const DOCUMENTS = {
+      'readme.md': {
+        name: 'README.md',
+        type: 'markdown',
+        langName: 'Markdown',
+        isCode: false,
+        content: ``,
+      },
+      'spec-v0.4.0.md': {
+        name: 'spec-v0.4.0.md',
+        type: 'markdown',
+        langName: 'Markdown',
+        isCode: false,
+        content: ``,
+      },
+      'server.py': {
+        name: 'server.py',
+        type: 'code',
+        langName: 'Python',
+        isCode: true,
+        codeLines: [
+          `<span class="token-kw">import</span> asyncio`,
+          `<span class="token-kw">from</span> fastapi <span class="token-kw">import</span> FastAPI, HTTPException`,
+          `<span class="token-kw">from</span> pydantic <span class="token-kw">import</span> <span class="token-type">BaseModel</span>`,
+          ``,
+          `<span class="token-comment"># 初始化 API 服务引擎</span>`,
+          `app = <span class="token-fn">FastAPI</span>(title=<span class="token-str">"mditor Engine API"</span>, version=<span class="token-str">"0.4.0"</span>)`,
+          ``,
+          `<span class="token-kw">class</span> <span class="token-type">DocumentPayload</span>(<span class="token-type">BaseModel</span>):`,
+          `    file_path: <span class="token-type">str</span>`,
+          `    content: <span class="token-type">str</span>`,
+          `    encoding: <span class="token-type">str</span> = <span class="token-str">"utf-8"</span>`,
+          ``,
+          `@app.get(<span class="token-str">"/health"</span>)`,
+          `<span class="token-kw">async def</span> <span class="token-fn">health_check</span>():`,
+          `    <span class="token-kw">return</span> {<span class="token-str">"status"</span>: <span class="token-str">"healthy"</span>, <span class="token-str">"code"</span>: <span class="token-num">200</span>}`,
+        ]
+      },
+      'database.sql': {
+        name: 'database.sql',
+        type: 'code',
+        langName: 'SQL',
+        isCode: true,
+        codeLines: [
+          `<span class="token-comment">-- mditor 工作区数据库模式</span>`,
+          `<span class="token-kw">CREATE TABLE</span> <span class="token-type">workspace_folders</span> (`,
+          `    id <span class="token-type">VARCHAR(64)</span> <span class="token-kw">PRIMARY KEY</span>,`,
+          `    folder_name <span class="token-type">VARCHAR(255)</span> <span class="token-kw">NOT NULL</span>,`,
+          `    abs_path <span class="token-type">TEXT</span> <span class="token-kw">NOT NULL</span>,`,
+          `    created_at <span class="token-type">TIMESTAMP</span> <span class="token-kw">DEFAULT CURRENT_TIMESTAMP</span>`,
+          `);`,
+          ``,
+          `<span class="token-kw">SELECT</span> id, folder_name, abs_path`,
+          `<span class="token-kw">FROM</span> workspace_folders`,
+          `<span class="token-kw">WHERE</span> created_at >= <span class="token-str">'2026-10-01'</span>`,
+          `<span class="token-kw">ORDER BY</span> created_at <span class="token-kw">DESC</span>;`
+        ]
+      },
+      'config.json': {
+        name: 'config.json',
+        type: 'code',
+        langName: 'JSON',
+        isCode: true,
+        codeLines: [
+          `{`,
+          `  <span class="token-prop">"appName"</span>: <span class="token-str">"mditor"</span>,`,
+          `  <span class="token-prop">"version"</span>: <span class="token-str">"0.4.0"</span>,`,
+          `  <span class="token-prop">"preferences"</span>: {`,
+          `    <span class="token-prop">"fontSize"</span>: <span class="token-num">16</span>,`,
+          `    <span class="token-prop">"fontFamily"</span>: <span class="token-str">"SF Pro Text"</span>,`,
+          `    <span class="token-prop">"autoSave"</span>: <span class="token-kw">true</span>,`,
+          `    <span class="token-prop">"autoSaveInterval"</span>: <span class="token-num">3000</span>`,
+          `  },`,
+          `  <span class="token-prop">"workspaceFolders"</span>: [`,
+          `    <span class="token-str">"/Users/chenzhian/workspace/docs"</span>,`,
+          `    <span class="token-str">"/Users/chenzhian/workspace/backend"</span>`,
+          `  ]`,
+          `}`
+        ]
+      },
+      'app.log': {
+        name: 'app.log',
+        type: 'code',
+        langName: 'Log / Plain Text',
+        isCode: true,
+        codeLines: [
+          `[2026-10-27 17:40:12.104] [INFO] [App] Initializing mditor v0.4.0 desktop client...`,
+          `[2026-10-27 17:40:12.150] [INFO] [IPC] Registering file system and workspace channels...`,
+          `[2026-10-27 17:40:12.289] [INFO] [Workspace] Scanned 2 workspace folders, 18 documents detected.`,
+          `[2026-10-27 17:40:12.330] [INFO] [Router] Active tab is 'server.py' -> Auto routed to CodeMirror 6 engine.`,
+          `[2026-10-27 17:40:12.410] [INFO] [Highlighter] Loaded '@codemirror/lang-python' language package successfully.`
+        ]
+      }
+    };
+
+    let activeKey = 'readme.md';
+
+    function renderTabs() {
+      const container = document.getElementById('tab-container');
+      container.innerHTML = '';
+
+      Object.keys(DOCUMENTS).forEach(key => {
+        const doc = DOCUMENTS[key];
+        const isActive = key === activeKey;
+
+        const tab = document.createElement('div');
+        tab.className = `flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none ${
+          isActive 
+            ? 'bg-white shadow-xs text-stone-900 border border-black/5' 
+            : 'text-stone-500 hover:bg-black/5 hover:text-stone-800'
+        }`;
+        tab.onclick = () => switchFile(key);
+
+        let icon = '📝';
+        if (key.endsWith('.py')) icon = '🐍';
+        else if (key.endsWith('.sql')) icon = '🗄️';
+        else if (key.endsWith('.json')) icon = '{}';
+        else if (key.endsWith('.log')) icon = '📄';
+
+        tab.innerHTML = `
+          <span>${icon}</span>
+          <span class="font-mono text-[11px]">${doc.name}</span>
+        `;
+        container.appendChild(tab);
+      });
+    }
+
+    function switchFile(key) {
+      activeKey = key;
+      const doc = DOCUMENTS[key];
+
+      renderTabs();
+
+      // 更新侧边栏高亮
+      document.querySelectorAll('.file-item').forEach(el => {
+        if (el.getAttribute('data-file') === key) {
+          el.className = 'file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer bg-amber-500/15 text-amber-900 font-semibold';
+        } else {
+          el.className = 'file-item flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover:bg-black/5 text-stone-700';
+        }
+      });
+
+      const viewWysiwyg = document.getElementById('view-wysiwyg');
+      const viewCodemirror = document.getElementById('view-codemirror');
+      const mdGroup = document.getElementById('toolbar-md-group');
+      const codeTip = document.getElementById('toolbar-code-tip');
+      const codeTipLang = document.getElementById('code-tip-lang');
+      const modeBadge = document.getElementById('toolbar-mode-badge');
+      const statusType = document.getElementById('status-doc-type');
+      const statusModeBtn = document.getElementById('status-mode-btn');
+      const statusModeText = document.getElementById('status-mode-text');
+      const statusModeDot = document.getElementById('status-mode-dot');
+
+      if (doc.isCode) {
+        // 智能模式路由：切换至源码模式
+        viewWysiwyg.classList.add('hidden');
+        viewCodemirror.classList.remove('hidden');
+
+        mdGroup.classList.add('hidden');
+        codeTip.classList.remove('hidden');
+        codeTipLang.textContent = doc.langName;
+        modeBadge.textContent = '源码模式 (代码文件)';
+
+        statusType.textContent = doc.langName;
+        statusModeBtn.disabled = true;
+        statusModeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        statusModeText.textContent = '仅源码模式';
+        statusModeDot.className = 'w-1.5 h-1.5 rounded-full bg-purple-500';
+
+        // 渲染代码行与行号
+        const lineNumbers = document.getElementById('code-line-numbers');
+        const codeContent = document.getElementById('code-content-area');
+        lineNumbers.innerHTML = '';
+        codeContent.innerHTML = '';
+
+        doc.codeLines.forEach((line, idx) => {
+          lineNumbers.innerHTML += `<div>${idx + 1}</div>`;
+          codeContent.innerHTML += `<div>${line || '&nbsp;'}</div>`;
+        });
+      } else {
+        // Markdown 恢复双模式
+        viewWysiwyg.classList.remove('hidden');
+        viewCodemirror.classList.add('hidden');
+
+        mdGroup.classList.remove('hidden');
+        codeTip.classList.add('hidden');
+        modeBadge.textContent = 'WYSIWYG 模式';
+
+        statusType.textContent = 'Markdown';
+        statusModeBtn.disabled = false;
+        statusModeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        statusModeText.textContent = '实时渲染 (⌘/)';
+        statusModeDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+      }
+    }
+
+    // 初始化
+    renderTabs();
+    switchFile('readme.md');
+
+    // 侧边栏折叠
+    document.getElementById('btn-toggle-sidebar').onclick = () => {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('w-64');
+      sidebar.classList.toggle('w-0');
+      sidebar.classList.toggle('opacity-0');
+    };
+
+    // 工具栏折叠
+    document.getElementById('btn-toggle-toolbar').onclick = () => {
+      const tb = document.getElementById('doc-toolbar');
+      tb.classList.toggle('h-9');
+      tb.classList.toggle('h-0');
+      tb.classList.toggle('opacity-0');
+      tb.classList.toggle('overflow-hidden');
+    };
+  </script>
+</body>
+</html>

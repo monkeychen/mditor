@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mditor v0.5.0 M3 原型 - 出版级 PDF/Word 导出与图片灯箱</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      pre, table, .math-block, .avoid-break {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      h1, h2, h3 {
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+      }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-stone-800 font-sans antialiased h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- 顶部 macOS 风格精致标题栏与标签栏 -->
+  <header class="h-11 bg-[#FAF8F5]/90 border-b border-black/5 flex items-center justify-between px-3 shrink-0">
+    <div class="flex items-center space-x-3">
+      <!-- 窗口红绿灯 -->
+      <div class="flex items-center space-x-2">
+        <span class="w-3 h-3 rounded-full bg-red-400"></span>
+        <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+        <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+      </div>
+      <div class="h-4 w-[1px] bg-black/10"></div>
+      <!-- Tab 项 -->
+      <div class="flex items-center space-x-1">
+        <div class="px-3 py-1 bg-white rounded-lg shadow-2xs text-xs font-medium text-stone-800 border border-black/5 flex items-center space-x-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>Enterprise-Architecture.md</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧操作区：导出菜单与原型指示 -->
+    <div class="flex items-center space-x-2">
+      <div class="relative">
+        <button id="exportMenuBtn" class="px-2.5 py-1 text-xs font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-500/30 rounded-md transition flex items-center space-x-1.5 cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          <span>多格式出版级导出</span>
+        </button>
+
+        <!-- 导出下拉弹出面板 -->
+        <div id="exportDropdown" class="hidden absolute right-0 mt-1.5 w-64 bg-white/95 backdrop-blur-md border border-stone-200 rounded-xl shadow-xl p-1.5 z-50 text-xs">
+          <div class="px-2 py-1 text-[11px] font-semibold text-stone-400 border-b border-stone-100">出版级文档分发 (M3)</div>
+          <button id="openPdfModalBtn" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-amber-50 text-stone-700 hover:text-amber-900 transition flex items-center space-x-2">
+            <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5c0 .83-.67 1.5-1.5 1.5H7v2H5.5V9H8c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V9H13c.83 0 1.5.67 1.5 1.5v3zm4-3.5H17v1h1.5V12H17v2.5h-1.5V9h3v1.5z"/></svg>
+            <div>
+              <div class="font-medium">导出为出版级 PDF...</div>
+              <div class="text-[10px] text-stone-400">防截断排版 · A4/Letter · 页码页眉</div>
+            </div>
+          </button>
+          <button id="openDocxExportBtn" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-amber-50 text-stone-700 hover:text-amber-900 transition flex items-center space-x-2 mt-0.5">
+            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 9h-2v4H9l3 3 3-3h-2v-4zm-1-7 5 5h-5V4z"/></svg>
+            <div>
+              <div class="font-medium">导出为原生 Word (.docx)</div>
+              <div class="text-[10px] text-stone-400">原生段落/表格样式 · 等宽代码框</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主编辑工作区 -->
+  <main class="flex-1 overflow-y-auto px-6 py-8 flex justify-center custom-scrollbar">
+    <div class="w-full max-w-3xl space-y-6">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-stone-900 mb-2">现代分布式系统架构演进实战</h1>
+        <p class="text-sm text-stone-500">作者：架构专家团队 · 包含多维架构图、防断页代码块与灯箱图片演示</p>
+      </div>
+
+      <!-- 交互式图片：支持悬停点击唤出沉浸式灯箱 (F37) -->
+      <div class="relative group rounded-xl overflow-hidden border border-stone-200/80 shadow-xs bg-stone-100/50">
+        <img id="demoImage" src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80" alt="分布式系统集群拓扑图" class="w-full h-64 object-cover cursor-zoom-in group-hover:opacity-95 transition" />
+        <!-- 悬停放大角标 -->
+        <div class="absolute bottom-3 right-3 bg-stone-900/80 backdrop-blur-md text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center space-x-1.5 opacity-90 group-hover:opacity-100 transition shadow-lg pointer-events-none">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+          <span>双击或点击放大 (F37 灯箱)</span>
+        </div>
+      </div>
+
+      <!-- 代码块演示 (展示防腰斩保护 F35) -->
+      <div class="rounded-xl border border-stone-200 overflow-hidden bg-[#24292e] text-stone-100 text-xs">
+        <div class="h-8 bg-[#1f2428] px-3 flex items-center justify-between border-b border-stone-700 text-stone-400">
+          <span>Rust / Distributed Consensus (Raft Heartbeat)</span>
+          <span class="text-[10px] text-amber-400 font-mono">break-inside: avoid</span>
+        </div>
+        <pre class="p-4 font-mono leading-relaxed overflow-x-auto"><code>pub async fn handle_heartbeat(&mut self, req: AppendEntriesRequest) -> AppendEntriesResponse {
+    if req.term < self.current_term {
+        return AppendEntriesResponse { term: self.current_term, success: false };
+    }
+    self.last_heartbeat = Instant::now();
+    self.current_term = req.term;
+    self.state = NodeState::Follower;
+    AppendEntriesResponse { term: self.current_term, success: true }
+}</code></pre>
+      </div>
+
+      <!-- GFM 表格演示 -->
+      <div class="border border-stone-200 rounded-xl overflow-hidden bg-white text-xs">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-stone-50 border-b border-stone-200 text-stone-700">
+              <th class="p-2.5 font-semibold">服务模块</th>
+              <th class="p-2.5 font-semibold">高可用方案</th>
+              <th class="p-2.5 font-semibold">P99 延迟目标</th>
+              <th class="p-2.5 font-semibold">容灾级别</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-100 text-stone-600">
+            <tr><td class="p-2.5 font-medium">Gateway Ingress</td><td class="p-2.5">BGP Anycast 多活</td><td class="p-2.5">&lt; 15ms</td><td class="p-2.5"><span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">同城双活</span></td></tr>
+            <tr><td class="p-2.5 font-medium">Core Consensus</td><td class="p-2.5">Multi-Raft 3 副本</td><td class="p-2.5">&lt; 35ms</td><td class="p-2.5"><span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">跨可用区容灾</span></td></tr>
+            <tr><td class="p-2.5 font-medium">Cold Storage</td><td class="p-2.5">Erasure Coding 8+4</td><td class="p-2.5">&lt; 120ms</td><td class="p-2.5"><span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-medium">多地域冷备</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== 1. 图片沉浸式灯箱组件 (F37 Lightbox) ==================== -->
+  <div id="imageLightbox" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 transition-all">
+    <!-- 顶部状态与关闭按钮 -->
+    <div class="absolute top-4 right-6 flex items-center space-x-3 text-stone-300 text-xs">
+      <span class="bg-white/10 px-3 py-1 rounded-full text-stone-300 font-mono" id="zoomPercentage">100%</span>
+      <button id="closeLightboxBtn" class="p-1.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition cursor-pointer" title="关闭 (Esc)">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <!-- 灯箱图片展示容器 -->
+    <div class="flex-1 w-full flex items-center justify-center overflow-hidden">
+      <img id="lightboxImg" src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80" alt="分布式系统集群拓扑图" class="max-h-[85vh] max-w-[90vw] object-contain transition-transform duration-100 shadow-2xl cursor-grab" />
+    </div>
+
+    <!-- 底部微调控制器 -->
+    <div class="absolute bottom-6 bg-stone-900/90 border border-white/15 px-4 py-2 rounded-2xl flex items-center space-x-4 text-white text-xs shadow-2xl">
+      <div class="flex items-center space-x-2">
+        <button id="zoomOutBtn" class="p-1 rounded hover:bg-white/10 text-stone-300 hover:text-white" title="缩小 (-)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
+        </button>
+        <button id="zoomResetBtn" class="px-2 py-0.5 rounded hover:bg-white/10 font-mono text-[11px]" title="复位 100%">复位</button>
+        <button id="zoomInBtn" class="p-1 rounded hover:bg-white/10 text-stone-300 hover:text-white" title="放大 (+)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </button>
+      </div>
+      <div class="h-3.5 w-[1px] bg-white/20"></div>
+      <div class="text-[11px] text-stone-400 font-mono">1200 × 800 · 支持滚轮缩放与按住拖拽平移</div>
+    </div>
+  </div>
+
+  <!-- ==================== 2. PDF 出版级分页设置模态框 (F35) ==================== -->
+  <div id="pdfModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5c0 .83-.67 1.5-1.5 1.5H7v2H5.5V9H8c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V9H13c.83 0 1.5.67 1.5 1.5v3zm4-3.5H17v1h1.5V12H17v2.5h-1.5V9h3v1.5z"/></svg>
+          <span class="font-bold text-sm text-stone-800">出版级 PDF 导出配置</span>
+        </div>
+        <button id="closePdfModalBtn" class="text-stone-400 hover:text-stone-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- 选项表单 -->
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="font-medium text-stone-700 block mb-1">纸张规格</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="px-3 py-2 border-2 border-amber-500 bg-amber-50/50 rounded-lg text-amber-900 font-semibold flex items-center justify-between">
+              <span>A4 (210 × 297mm)</span>
+              <span class="text-amber-600 font-mono text-[10px]">默认</span>
+            </button>
+            <button class="px-3 py-2 border border-stone-200 rounded-lg text-stone-600 hover:bg-stone-50 transition">
+              <span>US Letter (8.5 × 11")</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="font-medium text-stone-700 block mb-1">页边距设置</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button class="px-3 py-1.5 border-2 border-amber-500 bg-amber-50/50 rounded-lg text-amber-900 font-semibold text-center">标准 20mm</button>
+            <button class="px-3 py-1.5 border border-stone-200 rounded-lg text-stone-600 hover:bg-stone-50 text-center transition">紧凑 10mm</button>
+            <button class="px-3 py-1.5 border border-stone-200 rounded-lg text-stone-600 hover:bg-stone-50 text-center transition">无边距</button>
+          </div>
+        </div>
+
+        <div class="p-3 bg-stone-50 border border-stone-200/80 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-medium text-stone-700">专业防腰斩截断控制 (Break Avoid)</span>
+            <input type="checkbox" checked disabled class="accent-amber-600 rounded" />
+          </div>
+          <p class="text-[11px] text-stone-500 leading-relaxed">
+            自动为代码块、GFM 数据表格、数学公式与 Mermaid 图表应用 <code class="bg-stone-200 px-1 py-0.5 rounded font-mono">break-inside: avoid</code>，杜绝跨页腰斩。
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between py-1">
+          <span class="font-medium text-stone-700">在页脚印制页码与文档标题</span>
+          <input type="checkbox" id="footerToggle" checked class="accent-amber-600 rounded cursor-pointer" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-2 border-t border-stone-100">
+        <button id="cancelPdfModalBtn" class="px-3.5 py-1.5 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 text-xs font-medium cursor-pointer">取消</button>
+        <button id="confirmExportPdfBtn" class="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium shadow-xs cursor-pointer flex items-center space-x-1.5">
+          <span>开始导出出版级 PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示胶囊 -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-stone-900/90 text-white text-xs px-4 py-2 rounded-full shadow-2xl hidden transition-all z-50">
+    <span id="toastText">操作成功</span>
+  </div>
+
+  <script>
+    // 导出下拉菜单切换
+    const exportMenuBtn = document.getElementById('exportMenuBtn');
+    const exportDropdown = document.getElementById('exportDropdown');
+    exportMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      exportDropdown.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => exportDropdown.classList.add('hidden'));
+
+    // 图片灯箱逻辑 (F37)
+    const demoImage = document.getElementById('demoImage');
+    const imageLightbox = document.getElementById('imageLightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    const closeLightboxBtn = document.getElementById('closeLightboxBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomResetBtn = document.getElementById('zoomResetBtn');
+    const zoomPercentage = document.getElementById('zoomPercentage');
+
+    let currentScale = 1.0;
+
+    function updateZoom(scale) {
+      currentScale = Math.max(0.25, Math.min(5.0, scale));
+      lightboxImg.style.transform = `scale(${currentScale})`;
+      zoomPercentage.innerText = `${Math.round(currentScale * 100)}%`;
+    }
+
+    demoImage.addEventListener('click', () => {
+      imageLightbox.classList.remove('hidden');
+      updateZoom(1.0);
+    });
+
+    closeLightboxBtn.addEventListener('click', () => {
+      imageLightbox.classList.add('hidden');
+    });
+
+    imageLightbox.addEventListener('click', (e) => {
+      if (e.target === imageLightbox || e.target.parentElement === imageLightbox) {
+        imageLightbox.classList.add('hidden');
+      }
+    });
+
+    zoomInBtn.addEventListener('click', () => updateZoom(currentScale + 0.25));
+    zoomOutBtn.addEventListener('click', () => updateZoom(currentScale - 0.25));
+    zoomResetBtn.addEventListener('click', () => updateZoom(1.0));
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        imageLightbox.classList.add('hidden');
+        pdfModal.classList.add('hidden');
+      }
+    });
+
+    imageLightbox.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      updateZoom(currentScale + delta);
+    }, { passive: false });
+
+    // PDF 导出配置模态框 (F35)
+    const pdfModal = document.getElementById('pdfModal');
+    const openPdfModalBtn = document.getElementById('openPdfModalBtn');
+    const closePdfModalBtn = document.getElementById('closePdfModalBtn');
+    const cancelPdfModalBtn = document.getElementById('cancelPdfModalBtn');
+    const confirmExportPdfBtn = document.getElementById('confirmExportPdfBtn');
+    const openDocxExportBtn = document.getElementById('openDocxExportBtn');
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toastText');
+
+    function showToast(msg) {
+      toastText.innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2800);
+    }
+
+    openPdfModalBtn.addEventListener('click', () => {
+      exportDropdown.classList.add('hidden');
+      pdfModal.classList.remove('hidden');
+    });
+
+    [closePdfModalBtn, cancelPdfModalBtn].forEach(btn => {
+      btn.addEventListener('click', () => pdfModal.classList.add('hidden'));
+    });
+
+    confirmExportPdfBtn.addEventListener('click', () => {
+      pdfModal.classList.add('hidden');
+      showToast('已成功调用 Electron 打印引擎生成出版级 PDF (防腰斩保护已生效)');
+    });
+
+    openDocxExportBtn.addEventListener('click', () => {
+      exportDropdown.classList.add('hidden');
+      showToast('已基于 AST 生成原生 Word (.docx) 文件并保存至本地');
+    });
+  </script>
+</body>
+</html>
