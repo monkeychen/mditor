@@ -117,8 +117,35 @@ export class ImageView implements NodeView {
     img.src = resolvedSrc;
     img.alt = alt;
     img.className =
-      'max-w-full h-auto rounded-lg shadow-xs border border-stone-200/40 object-contain transition-all';
+      'max-w-full h-auto rounded-lg shadow-xs border border-stone-200/40 object-contain transition-all cursor-zoom-in';
     this.imgElement = img;
+
+    // 悬浮放大指示角标 (F37)
+    const zoomBtn = document.createElement('button');
+    zoomBtn.contentEditable = 'false';
+    zoomBtn.type = 'button';
+    zoomBtn.title = '放大查看大图';
+    zoomBtn.className =
+      'image-zoom-badge absolute bottom-2 right-2 bg-stone-900/80 hover:bg-stone-900 text-white text-[11px] font-medium px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 shadow-md cursor-pointer select-none';
+    zoomBtn.innerHTML = `🔍 <span>放大</span>`;
+
+    const openLightbox = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(
+        new CustomEvent('mditor:open-lightbox', {
+          detail: {
+            src: this.imgElement.src || resolvedSrc,
+            alt: this.node.attrs.alt || '',
+            naturalWidth: this.imgElement.naturalWidth,
+            naturalHeight: this.imgElement.naturalHeight,
+          },
+        })
+      );
+    };
+
+    zoomBtn.addEventListener('click', openLightbox);
+    img.addEventListener('click', openLightbox);
 
     // 加载失败错误占位卡片 (初始隐藏)
     const errorCard = document.createElement('div');
@@ -146,6 +173,7 @@ export class ImageView implements NodeView {
     });
 
     wrapper.appendChild(img);
+    wrapper.appendChild(zoomBtn);
     wrapper.appendChild(errorCard);
 
     this.dom = wrapper;
@@ -175,7 +203,7 @@ export class ImageView implements NodeView {
 
   stopEvent(event: Event): boolean {
     const target = event.target as HTMLElement | null;
-    if (target && target.closest('.image-source-pill')) {
+    if (target && (target.closest('.image-source-pill') || target.closest('.image-zoom-badge'))) {
       return true;
     }
     return false;

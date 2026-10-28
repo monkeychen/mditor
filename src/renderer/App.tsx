@@ -12,6 +12,7 @@ import { ThemeSelectorPopover } from './components/ThemeSelectorPopover';
 import PreferencesModal from './components/PreferencesModal';
 import QuickOpenModal from './components/QuickOpenModal';
 import ExportModal from './components/ExportModal';
+import ImageLightbox from './components/ImageLightbox';
 import { extractWorkspaceFiles } from './utils/fuzzySearch';
 import {
   EditorPreferences,
@@ -344,6 +345,31 @@ export const App: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const exportMenuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // 图片沉浸式灯箱预览状态 (F37)
+  const [lightboxData, setLightboxData] = useState<{
+    src: string;
+    alt?: string;
+    naturalWidth?: number;
+    naturalHeight?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleOpenLightbox = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.src) {
+        setLightboxData({
+          src: detail.src,
+          alt: detail.alt,
+          naturalWidth: detail.naturalWidth,
+          naturalHeight: detail.naturalHeight,
+        });
+      }
+    };
+
+    window.addEventListener('mditor:open-lightbox', handleOpenLightbox);
+    return () => window.removeEventListener('mditor:open-lightbox', handleOpenLightbox);
+  }, []);
 
   // 监听点击外部或 ESC 自动收起导出下拉菜单
   useEffect(() => {
@@ -1417,6 +1443,16 @@ export const App: React.FC = () => {
         fileName={activeTab.fileName}
         onClose={() => setIsPdfModalOpen(false)}
         onConfirm={handleConfirmExportPdf}
+      />
+
+      {/* 画布图片沉浸式大图灯箱 (F37) */}
+      <ImageLightbox
+        isOpen={!!lightboxData}
+        src={lightboxData?.src || ''}
+        alt={lightboxData?.alt}
+        naturalWidth={lightboxData?.naturalWidth}
+        naturalHeight={lightboxData?.naturalHeight}
+        onClose={() => setLightboxData(null)}
       />
 
       {/* Toast 提示浮层 */}
