@@ -740,6 +740,52 @@ export const App: React.FC = () => {
     [tabs, forceCloseTab, platform, showToast]
   );
 
+  // 侧边栏拖拽跨目录物理移动文件或目录 (F33)
+  const handleMoveItem = useCallback(
+    async (sourcePath: string, targetDirPath: string) => {
+      const res = await window.electronAPI?.moveItem?.(sourcePath, targetDirPath);
+      if (!res || !res.success) {
+        showToast(`移动失败: ${res?.error || '无法移动项目'}`);
+        return;
+      }
+
+      const newPath = res.newPath || sourcePath;
+      if (newPath === sourcePath) {
+        return;
+      }
+
+      const itemName = newPath.split(/[/\\]/).pop() || '';
+
+      // 级联同步打开的 Tab 路径与名称 (保留 isDirty 和编辑状态)
+      tabs.forEach((tab) => {
+        if (tab.filePath === sourcePath) {
+          updateTabFile(tab.id, newPath, itemName);
+        } else if (
+          tab.filePath &&
+          (tab.filePath.startsWith(sourcePath + '/') || tab.filePath.startsWith(sourcePath + '\\'))
+        ) {
+          const relativeSub = tab.filePath.slice(sourcePath.length);
+          const updatedSubPath = newPath + relativeSub;
+          updateTabFile(tab.id, updatedSubPath, tab.fileName);
+        }
+      });
+
+      // 刷新所有工作区目录树
+      setWorkspaceFolders((prev) => {
+        Promise.all(
+          prev.map(async (f) => ({
+            ...f,
+            tree: await scanDirectoryTree(f.path),
+          }))
+        ).then((updated) => setWorkspaceFolders(updated));
+        return prev;
+      });
+
+      showToast(`已移动到目标文件夹`);
+    },
+    [tabs, updateTabFile, showToast]
+  );
+
   // 新建文件并自动打开新 Tab
   const handleCreateFile = useCallback(
     async (parentDir: string, fileName: string) => {
@@ -1137,6 +1183,7 @@ export const App: React.FC = () => {
           onRemoveFolder={handleRemoveFolder}
           onRenameItem={handleRenameItem}
           onDeleteItem={handleDeleteItem}
+          onMoveItem={handleMoveItem}
           onCreateFile={handleCreateFile}
           onCreateFolder={handleCreateFolder}
           onRevealInExplorer={handleRevealInExplorer}

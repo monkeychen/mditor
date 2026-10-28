@@ -50,6 +50,7 @@ export interface OutlineDrawerProps {
   onCreateFolder?: (parentDir: string, folderName: string) => Promise<void> | void;
   onRevealInExplorer?: (filePath: string) => void;
   onCopyPath?: (filePath: string) => void;
+  onMoveItem?: (sourcePath: string, targetDirPath: string) => Promise<boolean | void> | void;
   onValidationError?: (errorMessage: string) => void;
   defaultView?: SidebarViewMode;
   viewMode?: SidebarViewMode;
@@ -116,6 +117,9 @@ interface FileTreeItemProps {
   onCreateNameChange: (val: string) => void;
   onCommitCreate: () => void;
   onCancelCreate: () => void;
+  dragOverPath: string | null;
+  onDragOverPathChange: (path: string | null) => void;
+  onDropOnTargetDir: (e: React.DragEvent, targetDirPath: string) => void;
 }
 
 const FileTreeItem: React.FC<FileTreeItemProps> = ({
@@ -135,6 +139,9 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
   onCreateNameChange,
   onCommitCreate,
   onCancelCreate,
+  dragOverPath,
+  onDragOverPathChange,
+  onDropOnTargetDir,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const paddingLeft = 8 + depth * 14;
@@ -142,10 +149,43 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
   if (node.isDirectory) {
     const isEditing = editingPath === node.path;
     const isCreatingHere = creatingParentPath === node.path;
+    const isDropTarget = dragOverPath === node.path;
 
     return (
       <div>
         <div
+          draggable={!isEditing}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData(
+              'application/json',
+              JSON.stringify({
+                path: node.path,
+                isDirectory: true,
+                name: node.name,
+              })
+            );
+            e.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragOverPathChange(node.path);
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              if (dragOverPath === node.path) {
+                onDragOverPathChange(null);
+              }
+            }
+          }}
+          onDrop={(e) => onDropOnTargetDir(e, node.path)}
           onClick={() => setExpanded((prev) => !prev)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -158,7 +198,11 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
             });
           }}
           style={{ paddingLeft: `${paddingLeft}px` }}
-          className="file-tree-dir group py-1.5 pr-2 rounded-md cursor-pointer hover:bg-black/5 text-stone-700 font-medium flex items-center gap-1.5 transition"
+          className={`file-tree-dir group py-1.5 pr-2 rounded-md cursor-pointer text-stone-700 font-medium flex items-center gap-1.5 transition ${
+            isDropTarget
+              ? 'bg-amber-500/15 border border-dashed border-amber-500/60 ring-1 ring-amber-500/30'
+              : 'hover:bg-black/5'
+          }`}
         >
           {expanded ? (
             <ChevronDown className="w-3.5 h-3.5 text-stone-400 shrink-0" />
@@ -240,6 +284,9 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
                 onCreateNameChange={onCreateNameChange}
                 onCommitCreate={onCommitCreate}
                 onCancelCreate={onCancelCreate}
+                dragOverPath={dragOverPath}
+                onDragOverPathChange={onDragOverPathChange}
+                onDropOnTargetDir={onDropOnTargetDir}
               />
             ))}
           </div>
@@ -253,6 +300,19 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
 
   return (
     <div
+      draggable={!isEditing}
+      onDragStart={(e) => {
+        e.stopPropagation();
+        e.dataTransfer.setData(
+          'application/json',
+          JSON.stringify({
+            path: node.path,
+            isDirectory: false,
+            name: node.name,
+          })
+        );
+        e.dataTransfer.effectAllowed = 'move';
+      }}
       onClick={() => {
         if (!isEditing) onSelectFile?.(node.path);
       }}
@@ -322,6 +382,7 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
   onCreateFolder,
   onRevealInExplorer,
   onCopyPath,
+  onMoveItem,
   onValidationError,
   defaultView = 'outline',
   viewMode: controlledViewMode,
@@ -428,6 +489,49 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
   const [creatingParentPath, setCreatingParentPath] = useState<string | null>(null);
   const [creatingType, setCreatingType] = useState<'file' | 'folder' | null>(null);
   const [createName, setCreateName] = useState<string>('');
+
+  // 侧边栏拖拽放置高亮状态 (F33)
+  const [dragOverPath, setDragOverPath] = useState<string | null>(null);
+
+  const handleDropOnTargetDir = (e: React.DragEvent, targetDirPath: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverPath(null);
+
+    try {
+      const raw = e.dataTransfer.getData('application/json');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data || !data.path) return;
+
+      const sourcePath: string = data.path;
+      const isDir: boolean = !!data.isDirectory;
+
+      // 1. 循环嵌套防范：若源为文件夹，目标不能是自身或其子目录
+      if (isDir) {
+        if (
+          targetDirPath === sourcePath ||
+          targetDirPath.startsWith(sourcePath + '/') ||
+          targetDirPath.startsWith(sourcePath + '\\')
+        ) {
+          onValidationError?.('不能将文件夹移动到其自身或子文件夹中');
+          return;
+        }
+      }
+
+      // 2. 原地放置阻断：若目标目录等于源文件父目录，忽略
+      const normalizedSource = sourcePath.replace(/\\/g, '/');
+      const normalizedTarget = targetDirPath.replace(/\\/g, '/');
+      const parentOfSource = normalizedSource.substring(0, normalizedSource.lastIndexOf('/'));
+      if (parentOfSource === normalizedTarget) {
+        return;
+      }
+
+      onMoveItem?.(sourcePath, targetDirPath);
+    } catch (err) {
+      console.error('Failed to parse drag drop data:', err);
+    }
+  };
 
   const handleAddFolderAction = onAddFolder ?? onOpenFolder;
 
@@ -909,7 +1013,30 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
                           isWorkspaceRoot: true,
                         })
                       }
-                      className="folder-header group flex items-center justify-between py-1 px-1.5 rounded-md hover:bg-black/5 text-stone-700 cursor-pointer select-none transition"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragOverPath(folder.path);
+                      }}
+                      onDragLeave={(e) => {
+                        e.stopPropagation();
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          if (dragOverPath === folder.path) {
+                            setDragOverPath(null);
+                          }
+                        }
+                      }}
+                      onDrop={(e) => handleDropOnTargetDir(e, folder.path)}
+                      className={`folder-header group flex items-center justify-between py-1 px-1.5 rounded-md text-stone-700 cursor-pointer select-none transition ${
+                        dragOverPath === folder.path
+                          ? 'bg-amber-500/15 border border-dashed border-amber-500/60 ring-1 ring-amber-500/30'
+                          : 'hover:bg-black/5'
+                      }`}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         {isCollapsed ? (
@@ -998,6 +1125,9 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
                               onCreateNameChange={setCreateName}
                               onCommitCreate={handleCommitCreate}
                               onCancelCreate={handleCancelCreate}
+                              dragOverPath={dragOverPath}
+                              onDragOverPathChange={setDragOverPath}
+                              onDropOnTargetDir={handleDropOnTargetDir}
                             />
                           ))
                         )}
