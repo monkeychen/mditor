@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   AlignLeft,
   ChevronRight,
@@ -12,14 +12,17 @@ import {
   FolderPlus,
   Plus,
   X,
+  Search,
+  Loader2,
 } from 'lucide-react';
 import type { OutlineItem } from '../utils/outline';
-import type { FileTreeNode, WorkspaceFolder } from '../../types';
+import type { FileTreeNode, WorkspaceFolder, WorkspaceSearchResult } from '../../types';
 import { getLanguageInfo } from '../utils/languageClassifier';
 import { validateFileName } from '../utils/fileNameValidator';
 import { SidebarContextMenu, ContextMenuTarget } from './SidebarContextMenu';
+import { searchWorkspace } from '../services/workspaceSearchService';
 
-export type SidebarViewMode = 'files' | 'outline';
+export type SidebarViewMode = 'files' | 'outline' | 'search';
 
 export const SIDEBAR_WIDTH_STORAGE_KEY = 'mditor_sidebar_width';
 export const DEFAULT_SIDEBAR_WIDTH = 240;
@@ -37,6 +40,7 @@ export interface OutlineDrawerProps {
   activeFilePath?: string | null;
   platform?: 'darwin' | 'win32' | 'linux';
   onSelectFile?: (filePath: string) => void;
+  onSelectSearchMatch?: (filePath: string, line: number) => void;
   onOpenFolder?: () => void;
   onAddFolder?: () => void;
   onRemoveFolder?: (folderPath: string) => void;
@@ -48,6 +52,8 @@ export interface OutlineDrawerProps {
   onCopyPath?: (filePath: string) => void;
   onValidationError?: (errorMessage: string) => void;
   defaultView?: SidebarViewMode;
+  viewMode?: SidebarViewMode;
+  onViewModeChange?: (mode: SidebarViewMode) => void;
   onClose?: () => void;
 }
 
@@ -72,6 +78,25 @@ const renderFileIcon = (filePathOrName: string, isActive: boolean) => {
     default:
       return <FileText className={`${iconClass} text-stone-400`} />;
   }
+};
+
+const renderSearchLineHighlight = (line: string, start: number, end: number) => {
+  if (start < 0 || end <= start || start >= line.length) {
+    return <span>{line}</span>;
+  }
+  const before = line.slice(0, start);
+  const matched = line.slice(start, end);
+  const after = line.slice(end);
+
+  return (
+    <span>
+      {before}
+      <mark className="bg-amber-300 dark:bg-amber-600 text-stone-900 dark:text-stone-100 px-0.5 rounded font-medium">
+        {matched}
+      </mark>
+      {after}
+    </span>
+  );
 };
 
 interface FileTreeItemProps {
@@ -299,9 +324,26 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
   onCopyPath,
   onValidationError,
   defaultView = 'outline',
+  viewMode: controlledViewMode,
+  onViewModeChange,
+  onSelectSearchMatch,
 }) => {
-  const [viewMode, setViewMode] = useState<SidebarViewMode>(defaultView);
+  const [internalViewMode, setInternalViewMode] = useState<SidebarViewMode>(defaultView);
+  const viewMode = controlledViewMode ?? internalViewMode;
+  const setViewMode = (mode: SidebarViewMode) => {
+    setInternalViewMode(mode);
+    onViewModeChange?.(mode);
+  };
+
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+
+  // 全工作区搜索状态 (F32)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<WorkspaceSearchResult[]>([]);
+  const [collapsedFiles, setCollapsedFiles] = useState<Record<string, boolean>>({});
 
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState<{
@@ -328,23 +370,44 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
     return DEFAULT_SIDEBAR_WIDTH;
   });
   const [isResizing, setIsResizing] = useState(false);
+  const lastClickTimeRef = useRef<number>(0);
+
+  const handleDoubleClickResize = () => {
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(DEFAULT_SIDEBAR_WIDTH));
+  };
 
   const handlePointerDownResize = (e: React.PointerEvent | React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 350) {
+      handleDoubleClickResize();
+      lastClickTimeRef.current = 0;
+      return;
+    }
+    lastClickTimeRef.current = now;
+
+    const startX = e.clientX ?? 0;
+    let hasMoved = false;
 
     const onPointerMove = (moveEvent: MouseEvent | PointerEvent) => {
       const clientX = moveEvent.clientX ?? 0;
+      if (!hasMoved && Math.abs(clientX - startX) < 2) {
+        return;
+      }
+      hasMoved = true;
+      setIsResizing(true);
       const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, clientX));
       setSidebarWidth(newWidth);
     };
 
     const onPointerUp = (upEvent: MouseEvent | PointerEvent) => {
-      const clientX = upEvent.clientX ?? 0;
-      const finalWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, clientX));
-      setSidebarWidth(finalWidth);
+      if (hasMoved) {
+        const clientX = upEvent.clientX ?? 0;
+        const finalWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, clientX));
+        setSidebarWidth(finalWidth);
+        localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(finalWidth));
+      }
       setIsResizing(false);
-      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(finalWidth));
       window.removeEventListener('pointermove', onPointerMove as any);
       window.removeEventListener('mousemove', onPointerMove as any);
       window.removeEventListener('pointerup', onPointerUp as any);
@@ -355,11 +418,6 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
     window.addEventListener('mousemove', onPointerMove as any);
     window.addEventListener('pointerup', onPointerUp as any);
     window.addEventListener('mouseup', onPointerUp as any);
-  };
-
-  const handleDoubleClickResize = () => {
-    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
-    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(DEFAULT_SIDEBAR_WIDTH));
   };
 
   // 内联重命名状态
@@ -374,27 +432,62 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
   const handleAddFolderAction = onAddFolder ?? onOpenFolder;
 
   // 构造规范化的工作区多文件夹列表（支持向后兼容单个 fileTree 传入）
-  const effectiveFolders: WorkspaceFolder[] =
-    folders ??
-    (currentFolderPath
-      ? [
-          {
-            id: currentFolderPath,
-            name: currentFolderPath.split('/').pop() || currentFolderPath,
-            path: currentFolderPath,
-            tree: fileTree,
-          },
-        ]
-      : fileTree.length > 0
-      ? [
-          {
-            id: 'workspace',
-            name: '当前工作区',
-            path: 'workspace',
-            tree: fileTree,
-          },
-        ]
-      : []);
+  const effectiveFolders: WorkspaceFolder[] = useMemo(() => {
+    if (folders) return folders;
+    if (currentFolderPath) {
+      return [
+        {
+          id: currentFolderPath,
+          name: currentFolderPath.split('/').pop() || currentFolderPath,
+          path: currentFolderPath,
+          tree: fileTree || [],
+        },
+      ];
+    }
+    if (fileTree && fileTree.length > 0) {
+      return [
+        {
+          id: 'workspace',
+          name: '当前工作区',
+          path: 'workspace',
+          tree: fileTree,
+        },
+      ];
+    }
+    return [];
+  }, [folders, currentFolderPath, fileTree]);
+
+  const folderPaths = useMemo(() => effectiveFolders.map((f) => f.path), [effectiveFolders]);
+  const folderPathsKey = folderPaths.join(';');
+
+  // 触发全工作区搜索 (F32)
+  useEffect(() => {
+    if (viewMode !== 'search' || !searchQuery.trim()) {
+      setSearchResults((prev) => (prev.length > 0 ? [] : prev));
+      setIsSearching(false);
+      return;
+    }
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      const results = await searchWorkspace({
+        rootDirs: folderPaths,
+        query: searchQuery,
+        caseSensitive,
+        wholeWord,
+      });
+      if (isMounted) {
+        setSearchResults(results);
+        setIsSearching(false);
+      }
+    }, 200);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [viewMode, searchQuery, caseSensitive, wholeWord, folderPathsKey]);
 
   const toggleFolder = (folderPath: string) => {
     setCollapsedFolders((prev) => ({
@@ -504,7 +597,7 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
       data-testid="typora-sidebar"
       style={{ width: isOpen ? `${sidebarWidth}px` : 0 }}
       className={`drawer-transition shrink-0 border-r border-black/5 bg-[#FAF8F5]/95 flex flex-col overflow-hidden relative select-none ${
-        isOpen ? 'opacity-100' : 'w-0 opacity-0 pointer-events-none'
+        isOpen ? 'w-60 opacity-100' : 'w-0 opacity-0 pointer-events-none'
       } ${isResizing ? 'select-none transition-none' : 'transition-all duration-200'}`}
     >
       {/* 侧边栏拖拽调宽把手 (F30) */}
@@ -518,8 +611,8 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
         }`}
         title="拖动调整宽度 (180~520px)，双击复位 240px"
       />
-      {/* 顶部 Typora 风格双视图切换栏 (文件夹 | 大纲) */}
-      <div className="h-9 border-b border-black/5 grid grid-cols-2 text-xs font-medium shrink-0 bg-[#FAF8F5]">
+      {/* 顶部三视图切换栏 (文件夹 | 大纲 | 搜索) */}
+      <div className="h-9 border-b border-black/5 grid grid-cols-3 text-xs font-medium shrink-0 bg-[#FAF8F5]">
         <button
           data-testid="sidebar-tab-files"
           onClick={() => setViewMode('files')}
@@ -544,9 +637,175 @@ export const OutlineDrawer: React.FC<OutlineDrawerProps> = ({
           <AlignLeft className="w-3.5 h-3.5" />
           <span>大纲</span>
         </button>
+        <button
+          data-testid="sidebar-tab-search"
+          onClick={() => setViewMode('search')}
+          className={`flex items-center justify-center gap-1.5 transition border-b-2 ${
+            viewMode === 'search'
+              ? 'border-stone-800 text-stone-900 font-semibold'
+              : 'border-transparent text-stone-400 hover:text-stone-700'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>搜索</span>
+        </button>
       </div>
 
-      {viewMode === 'outline' ? (
+      {viewMode === 'search' ? (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* 搜索输入与条件设置 */}
+          <div className="p-2 border-b border-black/5 space-y-2 shrink-0">
+            <div className="relative">
+              <input
+                data-testid="workspace-search-input"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="全工作区全文检索..."
+                className="w-full bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 focus:border-amber-600 rounded-md pl-7 pr-16 py-1 text-xs text-stone-800 dark:text-stone-100 focus:outline-none"
+              />
+              <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2 top-2" />
+              <div className="absolute right-1.5 top-1 flex items-center space-x-0.5">
+                <button
+                  type="button"
+                  data-testid="search-case-sensitive-toggle"
+                  onClick={() => setCaseSensitive((prev) => !prev)}
+                  title="区分大小写 (Aa)"
+                  className={`p-0.5 rounded text-[10px] font-mono transition ${
+                    caseSensitive
+                      ? 'bg-amber-500/20 text-amber-800 font-bold'
+                      : 'text-stone-400 hover:text-stone-700'
+                  }`}
+                >
+                  Aa
+                </button>
+                <button
+                  type="button"
+                  data-testid="search-whole-word-toggle"
+                  onClick={() => setWholeWord((prev) => !prev)}
+                  title="全词匹配 (\b)"
+                  className={`p-0.5 rounded text-[10px] font-mono transition ${
+                    wholeWord
+                      ? 'bg-amber-500/20 text-amber-800 font-bold'
+                      : 'text-stone-400 hover:text-stone-700'
+                  }`}
+                >
+                  \b
+                </button>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    data-testid="search-clear-btn"
+                    onClick={() => setSearchQuery('')}
+                    title="清空"
+                    className="p-0.5 text-stone-400 hover:text-stone-700"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-stone-500 px-1">
+              <span data-testid="workspace-search-stats">
+                {isSearching
+                  ? '正在检索工作区文件...'
+                  : !searchQuery.trim()
+                  ? '输入关键词检索全工作区'
+                  : searchResults.length === 0
+                  ? '未找到匹配结果'
+                  : `找到 ${searchResults.reduce((acc, r) => acc + r.matches.length, 0)} 处匹配，分布在 ${searchResults.length} 个文件`}
+              </span>
+            </div>
+          </div>
+
+          {/* 搜索结果列表 */}
+          <div
+            data-testid="workspace-search-results"
+            className="flex-1 overflow-y-auto p-2 space-y-2 text-xs"
+          >
+            {isSearching && (
+              <div className="flex items-center justify-center py-8 text-stone-400 gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                <span>检索中...</span>
+              </div>
+            )}
+
+            {!isSearching &&
+              searchResults.map((result, fileIdx) => {
+                const isCollapsed = !!collapsedFiles[result.filePath];
+
+                return (
+                  <div
+                    key={result.filePath}
+                    data-testid={`search-file-group-${fileIdx}`}
+                    className="space-y-1"
+                  >
+                    <div
+                      onClick={() =>
+                        setCollapsedFiles((prev) => ({
+                          ...prev,
+                          [result.filePath]: !prev[result.filePath],
+                        }))
+                      }
+                      className="flex items-center justify-between font-semibold text-stone-800 dark:text-stone-200 px-1 hover:bg-black/5 dark:hover:bg-white/5 rounded cursor-pointer py-0.5 select-none transition"
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        {isCollapsed ? (
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        )}
+                        {renderFileIcon(result.fileName, false)}
+                        <span className="truncate text-xs">{result.fileName}</span>
+                        {result.relativePath !== result.fileName && (
+                          <span className="text-[10px] text-stone-400 font-normal truncate">
+                            {result.relativePath}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono bg-stone-200/70 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-1.5 rounded-full shrink-0">
+                        {result.matches.length}
+                      </span>
+                    </div>
+
+                    {!isCollapsed && (
+                      <div className="pl-4 space-y-1">
+                        {result.matches.map((match, matchIdx) => (
+                          <div
+                            key={`${match.line}-${matchIdx}`}
+                            data-testid={`search-match-item-${fileIdx}-${matchIdx}`}
+                            onClick={() => {
+                              if (onSelectSearchMatch) {
+                                onSelectSearchMatch(result.filePath, match.line);
+                              } else {
+                                onSelectFile?.(result.filePath);
+                              }
+                            }}
+                            className="p-1 rounded hover:bg-amber-500/10 dark:hover:bg-amber-500/20 cursor-pointer border border-transparent hover:border-amber-500/20 group transition"
+                          >
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-mono text-[10px] text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 shrink-0">
+                                行 {match.line}
+                              </span>
+                              <p className="text-stone-600 dark:text-stone-300 text-[11px] line-clamp-2 break-all">
+                                {renderSearchLineHighlight(
+                                  match.lineContent,
+                                  match.matchStart,
+                                  match.matchEnd
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      ) : viewMode === 'outline' ? (
         <>
           <div className="h-7 px-3 border-b border-black/5 flex items-center justify-between text-[11px] text-stone-400 shrink-0">
             <span>文档大纲</span>

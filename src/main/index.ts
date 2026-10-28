@@ -5,6 +5,8 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 import { exportHtmlFile, exportPdfFile } from './exportService';
 import { scanMarkdownDirectory, readMarkdownFileByPath } from './folderService';
+import { searchWorkspaceFiles } from './searchService';
+import type { WorkspaceSearchOptions } from '../types';
 
 // 注册安全特权协议（必须在 app.whenReady 之前执行）
 protocol.registerSchemesAsPrivileged([
@@ -298,6 +300,16 @@ ipcMain.handle('folder:create', async (_event, { parentDir, folderName }: { pare
     return { success: true, folderPath: targetPath };
   } catch (error) {
     return { success: false, error: (error as Error).message };
+  }
+});
+
+// 全工作区全文检索 (F32)
+ipcMain.handle('workspace:search', async (_event, options: WorkspaceSearchOptions) => {
+  try {
+    return await searchWorkspaceFiles(options);
+  } catch (error) {
+    console.error('workspace:search error:', error);
+    return [];
   }
 });
 

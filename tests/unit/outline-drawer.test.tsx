@@ -158,4 +158,24 @@ describe('Sidebar Dual-View (Folders + Outline) Component (T303 / AC-15.1 ~ AC-1
     const aside = container.querySelector('aside');
     expect(aside?.className).toContain('w-0');
   });
+
+  it('switches to Search view with "搜索" tab and renders workspace search inputs', () => {
+    render(
+      <OutlineDrawer
+        isOpen={true}
+        outline={mockOutline}
+        folders={mockFolders}
+        onSelectHeading={vi.fn()}
+      />
+    );
+
+    const searchTab = screen.getByTestId('sidebar-tab-search');
+    expect(searchTab).toHaveTextContent('搜索');
+    fireEvent.click(searchTab);
+
+    expect(screen.getByTestId('workspace-search-input')).toBeInTheDocument();
+    expect(screen.getByTestId('search-case-sensitive-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('search-whole-word-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-search-stats')).toHaveTextContent('输入关键词检索全工作区');
+  });
 });

@@ -317,3 +317,24 @@ body {
   opacity: 1;
   overflow: visible !important;
 }
+
+/* 全工作区检索定位目标行 1.5s 微光黄色脉冲动画 (F32) */
+@keyframes target-line-pulse {
+  0% {
+    background-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5);
+  }
+  60% {
+    background-color: rgba(245, 158, 11, 0.25);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.search-target-highlight {
+  animation: target-line-pulse 1.5s ease-out forwards;
+  border-radius: 4px;
+}

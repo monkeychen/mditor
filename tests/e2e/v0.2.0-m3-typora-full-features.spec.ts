@@ -165,7 +165,7 @@ test.describe('Typora Full Experience Alignment E2E (v0.2.0 M3)', () => {
       const filesTabBtn = window.locator('[data-testid="sidebar-tab-files"]');
       await filesTabBtn.click();
 
-      const betaFileItem = window.locator('.file-tree-item', { hasText: 'beta-notes.md' });
+      const betaFileItem = window.locator('.file-tree-item', { hasText: 'beta-notes.md' }).first();
       await expect(betaFileItem).toBeVisible();
       await betaFileItem.click();
 
@@ -173,7 +173,7 @@ test.describe('Typora Full Experience Alignment E2E (v0.2.0 M3)', () => {
       await expect(window.locator('.ProseMirror h1')).toContainText('Beta 笔记标题');
 
       // 8. 验证 5 万字长文档加载性能基线 (≤ 1500ms, AC-18.1)
-      const largeFileItem = window.locator('.file-tree-item', { hasText: 'large-50k.md' });
+      const largeFileItem = window.locator('.file-tree-item', { hasText: 'large-50k.md' }).first();
       await expect(largeFileItem).toBeVisible();
 
       const startTime = Date.now();

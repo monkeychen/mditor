@@ -56,6 +56,7 @@ export interface MilkdownEditorRef {
   insertInlineMath: (latex?: string) => void;
   insertMathBlock: (latex?: string) => void;
   scrollToHeading: (headingIndex: number) => void;
+  scrollToLine: (lineNumber: number) => void;
 }
 
 export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>(
@@ -236,6 +237,23 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         const target = headings[headingIndex] as HTMLElement | undefined;
         if (target && typeof target.scrollIntoView === 'function') {
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
+      scrollToLine: (lineNumber: number) => {
+        const container = containerRef.current;
+        if (!container) return;
+        const blocks = container.querySelectorAll('.ProseMirror > *');
+        if (blocks.length === 0) return;
+        const targetIndex = Math.min(blocks.length - 1, Math.max(0, lineNumber - 1));
+        const target = blocks[targetIndex] as HTMLElement | undefined;
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.remove('search-target-highlight');
+          void target.offsetWidth;
+          target.classList.add('search-target-highlight');
+          setTimeout(() => {
+            target.classList.remove('search-target-highlight');
+          }, 1600);
         }
       },
     }));

@@ -84,6 +84,30 @@ export interface ElectronAPI {
   createFile?: (parentDir: string, fileName: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
   createFolder?: (parentDir: string, folderName: string) => Promise<{ success: boolean; folderPath?: string; error?: string }>;
   renameItem?: (oldPath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
+  searchWorkspace?: (options: WorkspaceSearchOptions) => Promise<WorkspaceSearchResult[]>;
+}
+
+export interface WorkspaceSearchMatch {
+  line: number;
+  lineContent: string;
+  matchStart: number;
+  matchEnd: number;
+}
+
+export interface WorkspaceSearchResult {
+  filePath: string;
+  fileName: string;
+  relativePath: string;
+  folderPath: string;
+  folderName: string;
+  matches: WorkspaceSearchMatch[];
+}
+
+export interface WorkspaceSearchOptions {
+  rootDirs: string[];
+  query: string;
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
 }
 
 declare global {

@@ -3,7 +3,6 @@ import { Search, FileText, FileCode, Database, FileJson, Terminal } from 'lucide
 import {
   filterAndRankFuzzy,
   type WorkspaceFileItem,
-  type FuzzyMatchResult,
 } from '../utils/fuzzySearch';
 import { getLanguageInfo } from '../utils/languageClassifier';
 
@@ -214,7 +213,7 @@ export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
                   </div>
 
                   <span className="text-[10px] font-mono text-stone-400 shrink-0 ml-2">
-                    {langInfo.name}
+                    {langInfo.displayName}
                   </span>
                 </div>
               );

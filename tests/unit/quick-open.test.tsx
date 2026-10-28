@@ -36,7 +36,7 @@ describe('Quick Open Modal Component (T503 / F31 / AC-31.1 ~ AC-31.4)', () => {
   ];
 
   it('renders nothing when isOpen is false', () => {
-    const { container } = render(
+    render(
       <QuickOpenModal
         isOpen={false}
         files={mockFiles}

@@ -3,7 +3,7 @@ import { useTabs } from './hooks/useTabs';
 import { MilkdownEditor, MilkdownEditorRef } from './editor/wysiwyg/MilkdownEditor';
 import { SourceEditor } from './editor/source/SourceEditor';
 import TabBar from './components/TabBar';
-import OutlineDrawer from './components/OutlineDrawer';
+import OutlineDrawer, { SidebarViewMode } from './components/OutlineDrawer';
 import UnsavedConfirmModal from './components/UnsavedConfirmModal';
 import SearchPanel from './components/SearchPanel';
 import { WordCountPopover } from './components/WordCountPopover';
@@ -157,6 +157,7 @@ export const App: React.FC = () => {
 
   const [isOutlineOpen, setIsOutlineOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [sidebarViewMode, setSidebarViewMode] = useState<SidebarViewMode>('outline');
 
   // 工作区多文件夹状态 (Typora 双视图侧边栏：文件夹 / 大纲)
   const [workspaceFolders, setWorkspaceFolders] = useState<WorkspaceFolder[]>([]);
@@ -532,10 +533,14 @@ export const App: React.FC = () => {
       } else if (e.key === 'F9') {
         e.preventDefault();
         setTypewriterMode((prev) => !prev);
+      } else if (isMeta && e.shiftKey && !e.altKey && keyLower === 'f') {
+        e.preventDefault();
+        setIsOutlineOpen(true);
+        setSidebarViewMode('search');
       } else if (isMeta && !e.shiftKey && !e.altKey && keyLower === 'p') {
         e.preventDefault();
         setIsQuickOpenOpen((prev) => !prev);
-      } else if (isMeta && !e.altKey && keyLower === 'f') {
+      } else if (isMeta && !e.shiftKey && !e.altKey && keyLower === 'f') {
         e.preventDefault();
         setIsSearchOpen(true);
       } else if (isMeta && e.key === ',') {
@@ -815,6 +820,21 @@ export const App: React.FC = () => {
       }
     },
     [outline, currentMode, activeTab.id, updateTabCursor]
+  );
+
+  // 点击全工作区检索结果项跳转并微光定位 (F32)
+  const handleSelectSearchMatch = useCallback(
+    async (filePath: string, line: number) => {
+      await handleSelectSidebarFile(filePath);
+      setTimeout(() => {
+        if (currentMode === 'wysiwyg') {
+          milkdownRef.current?.scrollToLine(line);
+        } else {
+          updateTabCursor(activeTab.id, line, 1);
+        }
+      }, 60);
+    },
+    [handleSelectSidebarFile, currentMode, activeTab.id, updateTabCursor]
   );
 
   // 插入指定行列数的 GFM 表格
@@ -1107,7 +1127,10 @@ export const App: React.FC = () => {
           folders={workspaceFolders}
           activeFilePath={activeTab.filePath}
           platform={platform}
+          viewMode={sidebarViewMode}
+          onViewModeChange={setSidebarViewMode}
           onSelectFile={handleSelectSidebarFile}
+          onSelectSearchMatch={handleSelectSearchMatch}
           onAddFolder={handleAddFolder}
           onRemoveFolder={handleRemoveFolder}
           onRenameItem={handleRenameItem}

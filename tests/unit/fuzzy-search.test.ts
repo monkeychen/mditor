@@ -3,7 +3,6 @@ import {
   fuzzyMatch,
   filterAndRankFuzzy,
   extractWorkspaceFiles,
-  WorkspaceFileItem,
 } from '../../src/renderer/utils/fuzzySearch';
 import type { WorkspaceFolder } from '../../src/types';
 
