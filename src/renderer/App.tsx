@@ -11,6 +11,7 @@ import { InsertTableModal } from './components/InsertTableModal';
 import { ThemeSelectorPopover } from './components/ThemeSelectorPopover';
 import PreferencesModal from './components/PreferencesModal';
 import QuickOpenModal from './components/QuickOpenModal';
+import ExportModal from './components/ExportModal';
 import { extractWorkspaceFiles } from './utils/fuzzySearch';
 import {
   EditorPreferences,
@@ -44,7 +45,7 @@ import {
   createFolderOnDisk,
   renameItemOnDisk,
 } from './services/fileService';
-import type { WorkspaceFolder } from '../types';
+import type { WorkspaceFolder, PdfExportOptions } from '../types';
 import type { ContextMenuTarget } from './components/SidebarContextMenu';
 import { isMarkdownFile, getLanguageInfo } from './utils/languageClassifier';
 
@@ -341,6 +342,7 @@ export const App: React.FC = () => {
 
   // 导出菜单状态
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const exportMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
   // 监听点击外部或 ESC 自动收起导出下拉菜单
@@ -915,14 +917,22 @@ export const App: React.FC = () => {
     }
   }, [activeTab, showToast]);
 
-  // 导出为 PDF
-  const handleExportPdf = useCallback(async () => {
+  // 导出为 PDF (唤起出版级导出配置)
+  const handleExportPdf = useCallback(() => {
     setIsExportMenuOpen(false);
-    const success = await exportToPdf(activeTab.fileName, activeTab.content);
-    if (success) {
-      showToast('已成功导出为 PDF 文档');
-    }
-  }, [activeTab, showToast]);
+    setIsPdfModalOpen(true);
+  }, []);
+
+  const handleConfirmExportPdf = useCallback(
+    async (options: PdfExportOptions) => {
+      setIsPdfModalOpen(false);
+      const success = await exportToPdf(activeTab.fileName, activeTab.content, options);
+      if (success) {
+        showToast('已成功导出出版级 PDF 文档');
+      }
+    },
+    [activeTab, showToast]
+  );
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#FAF8F5] select-none text-[#1D1D1F] overflow-hidden relative">
@@ -1380,6 +1390,14 @@ export const App: React.FC = () => {
         onUpdatePreferences={handleUpdatePreferences}
         onResetPreferences={handleResetPreferences}
         onClose={() => setIsPreferencesOpen(false)}
+      />
+
+      {/* 出版级 PDF 导出配置模态窗口 */}
+      <ExportModal
+        isOpen={isPdfModalOpen}
+        fileName={activeTab.fileName}
+        onClose={() => setIsPdfModalOpen(false)}
+        onConfirm={handleConfirmExportPdf}
       />
 
       {/* Toast 提示浮层 */}

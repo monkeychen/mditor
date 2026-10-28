@@ -62,6 +62,13 @@ export interface WindowState {
   platform: 'darwin' | 'win32' | 'linux';
 }
 
+export interface PdfExportOptions {
+  pageSize?: 'A4' | 'Letter';
+  marginPreset?: 'standard' | 'narrow' | 'none';
+  displayHeaderFooter?: boolean;
+  headerTitle?: string;
+}
+
 export interface ElectronAPI {
   platform?: 'darwin' | 'win32' | 'linux';
   getWindowState?: () => Promise<WindowState>;
@@ -77,7 +84,11 @@ export interface ElectronAPI {
   saveImageBuffer?: (docFilePath: string | null, buffer: Uint8Array, ext?: string) => Promise<SaveImageResult>;
   copyLocalImage?: (docFilePath: string | null, sourceFilePath: string) => Promise<SaveImageResult>;
   exportHtml?: (defaultName: string, htmlContent: string) => Promise<{ success: boolean; filePath?: string }>;
-  exportPdf?: (defaultName: string, htmlContent: string) => Promise<{ success: boolean; filePath?: string }>;
+  exportPdf?: (
+    defaultName: string,
+    htmlContent: string,
+    options?: PdfExportOptions
+  ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
   onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs') => void) => () => void;
   revealInExplorer?: (filePath: string) => Promise<boolean>;
   moveToTrash?: (filePath: string) => Promise<{ success: boolean; error?: string }>;

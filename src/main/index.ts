@@ -6,7 +6,7 @@ import { saveImageBufferToDisk, copyLocalImageToAssets } from './imageService';
 import { exportHtmlFile, exportPdfFile } from './exportService';
 import { scanMarkdownDirectory, readMarkdownFileByPath, moveItem } from './folderService';
 import { searchWorkspaceFiles } from './searchService';
-import type { WorkspaceSearchOptions } from '../types';
+import type { WorkspaceSearchOptions, PdfExportOptions } from '../types';
 
 // 注册安全特权协议（必须在 app.whenReady 之前执行）
 protocol.registerSchemesAsPrivileged([
@@ -221,9 +221,15 @@ ipcMain.handle('export:html', async (_event, { defaultName, htmlContent }: { def
   return await exportHtmlFile(mainWindow, defaultName, htmlContent);
 });
 
-ipcMain.handle('export:pdf', async (_event, { defaultName, htmlContent }: { defaultName: string; htmlContent: string }) => {
-  return await exportPdfFile(mainWindow, defaultName, htmlContent);
-});
+ipcMain.handle(
+  'export:pdf',
+  async (
+    _event,
+    { defaultName, htmlContent, options }: { defaultName: string; htmlContent: string; options?: PdfExportOptions }
+  ) => {
+    return await exportPdfFile(mainWindow, defaultName, htmlContent, options);
+  }
+);
 
 // 窗口状态查询 IPC
 ipcMain.handle('window:getState', () => {
