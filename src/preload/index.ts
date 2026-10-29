@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ElectronAPI, FileOpenResult, FileSaveResult, FileTreeNode } from '../types';
+import type { ElectronAPI, FileOpenResult, FileSaveResult, FileTreeNode, MenuAction } from '../types';
 
 const api: ElectronAPI = {
   platform: process.platform as 'darwin' | 'win32' | 'linux',
@@ -76,8 +76,8 @@ const api: ElectronAPI = {
   openExternal: (url: string) => {
     return ipcRenderer.invoke('shell:openExternal', url);
   },
-  onMenuTrigger: (callback: (action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => callback(action);
+  onMenuTrigger: (callback: (action: MenuAction) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, action: MenuAction) => callback(action);
     ipcRenderer.on('menu:trigger', handler);
     return () => {
       ipcRenderer.removeListener('menu:trigger', handler);

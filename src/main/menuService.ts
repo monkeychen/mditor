@@ -1,9 +1,19 @@
 import { app, Menu, dialog, shell, BrowserWindow } from 'electron';
 
+export type MenuAction =
+  | 'new'
+  | 'open'
+  | 'save'
+  | 'saveAs'
+  | 'preferences'
+  | 'guide:markdown'
+  | 'guide:mermaid'
+  | 'guide:math';
+
 export interface MenuServiceOptions {
   appVersion: string;
   platform?: 'darwin' | 'win32' | 'linux';
-  onTrigger?: (action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => void;
+  onTrigger?: (action: MenuAction) => void;
   onShowAbout?: () => void;
   openExternal?: (url: string) => Promise<void> | void;
 }
@@ -65,12 +75,6 @@ export function buildMenuTemplate(options: MenuServiceOptions): Electron.MenuIte
       onShowAbout();
     } else {
       showAboutDialog(appVersion, openExternal);
-    }
-  };
-
-  const handleOpenExternal = (url: string) => {
-    if (openExternal) {
-      openExternal(url);
     }
   };
 
@@ -181,16 +185,16 @@ export function buildMenuTemplate(options: MenuServiceOptions): Electron.MenuIte
     label: 'Help',
     submenu: [
       {
-        label: `版本: v${appVersion}`,
-        click: triggerAbout,
+        label: 'Markdown 语法指南',
+        click: () => onTrigger?.('guide:markdown'),
       },
       {
-        label: `项目地址: ${GITHUB_REPO_URL}`,
-        click: () => handleOpenExternal(GITHUB_REPO_URL),
+        label: 'Mermaid 图表指南',
+        click: () => onTrigger?.('guide:mermaid'),
       },
       {
-        label: `作者: ${AUTHOR_NAME} (Mail: ${AUTHOR_EMAIL})`,
-        click: () => handleOpenExternal(`mailto:${AUTHOR_EMAIL}`),
+        label: '数学公式语法指南',
+        click: () => onTrigger?.('guide:math'),
       },
       { type: 'separator' },
       {

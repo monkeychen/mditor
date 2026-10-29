@@ -27,21 +27,33 @@ status: approved
 1. **菜单层次模型**：
    - macOS 场景注入专属 App Menu（包含应用名、关于、偏好设置快捷键 `⌘,`、服务、隐藏、退出）；
    - 跨平台标准挂载「文件 (File)」、「编辑 (Edit)」、「视图 (View)」、「窗口 (Window)」以及核心 **「Help (帮助)」**；
-2. **Help 菜单项设计**：
-   - 条目一：`版本: v${appVersion}`，点击触发关于弹窗；
-   - 条目二：`项目地址: https://github.com/monkeychen/mditor`，点击在系统默认浏览器打开；
-   - 条目三：`作者: 陈志安 (Mail: cza55007@gmail.com)`，点击调用系统邮件客户端撰写邮件；
-   - 条目四：`关于 mditor`，展示详尽原生关于信息卡片。
+2. **Help 菜单项设计（高信噪比收敛）**：
+   - 条目一：`Markdown 语法指南`，点击通知渲染进程打开语法速查模态框并切至 Markdown 视图；
+   - 条目二：`Mermaid 图表指南`，点击通知渲染进程打开 Mermaid 图表语法速查；
+   - 条目三：`数学公式语法指南`，点击通知渲染进程打开 KaTeX / LaTeX 公式语法速查；
+   - 分割线；
+   - 条目四：`关于 mditor`，展示详尽原生关于信息卡片（集中呈现版本号、项目地址与作者信息）。
 
-### 2.2 安全外链与主进程桥接 (`src/main/index.ts` / `src/preload/index.ts`)
+### 2.2 语法速查与使用指南组件 (`src/renderer/components/GuideModal.tsx`)
+
+1. **多维排版速查**：
+   - Markdown 语法：涵盖标题层级、粗斜删高亮、上下标、列表与任务项、引用、代码高亮、GFM 表格、脚注与链接；
+   - Mermaid 图表：涵盖流程图、时序图、类图、状态图、饼图、Git 分支图等主流模板；
+   - 数学公式：涵盖行内/独立公式、上下标根号、微积分求和、矩阵、分段函数与希腊字母运算符；
+2. **沉浸式交互能力**：
+   - 支持一键复制代码片段至剪贴板；
+   - 支持直接将语法示例插入当前正文文档光标处；
+   - 支持「在新标签页中打开完整文档」供全屏实验与对照。
+
+### 2.3 安全外链与主进程桥接 (`src/main/index.ts` / `src/preload/index.ts`)
 
 1. **协议白名单机制**：
    - 仅放行以 `https://`、`http://`、`mailto:` 开头的外部 URL，任何其他协议或非法字符均被安全防御拦截；
 2. **IPC 双向通信**：
    - `shell:openExternal`：供渲染进程与偏好设置关于页调用；
-   - `menu:trigger`：支持原生菜单直接触发渲染进程的 `'new'`、`'open'`、`'save'`、`'saveAs'` 与 `'preferences'` 动作。
+   - `menu:trigger`：支持原生菜单直接触发渲染进程的 `'new'`、`'open'`、`'save'`、`'saveAs'`、`'preferences'` 以及 `'guide:markdown'`、`'guide:mermaid'`、`'guide:math'` 动作。
 
-### 2.3 偏好设置「关于」选项卡 (`src/renderer/components/PreferencesModal.tsx`)
+### 2.4 偏好设置「关于」选项卡 (`src/renderer/components/PreferencesModal.tsx`)
 
 1. **统一版本管理**：
    - 共享全局常量 `APP_VERSION = '0.5.1'`，关于页动态展示，杜绝硬编码失步；
@@ -66,19 +78,21 @@ status: approved
 
 | 任务编号 | 任务内容 | 覆盖 AC | 依赖 | 状态 |
 |---|---|---|---|---|
-| **T513** | 系统原生 Application Menu 模板构建与 Help 菜单条目注入 | AC-38.1, AC-38.4 | 无 | **[x] 已完成** |
-| **T514** | 安全外链 IPC 通道与主窗口生命周期挂载 | AC-38.2 | T513 | **[x] 已完成** |
+| **T513** | 系统原生 Application Menu 模板构建与 Help 指南条目注入 | AC-38.1, AC-38.4 | 无 | **[x] 已完成** |
+| **T514** | 安全外链 IPC 通道与主窗口生命周期挂载 | AC-38.3 | T513 | **[x] 已完成** |
 | **T515** | 内置偏好设置「关于 (About)」选项卡高保真卡片与外链联动 | AC-38.3 | T514 | **[x] 已完成** |
-| **T516** | 全量自动化回归与发版交付门禁 | AC-38.1 ~ 38.4 | T515 | **[x] 已完成** |
+| **T516** | 语法速查与使用指南模态组件及多格式示例联动 | AC-38.2 | T513 | **[x] 已完成** |
+| **T517** | 全量自动化回归与发版交付门禁 | AC-38.1 ~ 38.4 | T516 | **[x] 已完成** |
 
 ---
 
 ## 5. 验收记录（Acceptance Record）
 
 1. **自动化单元测试**：
-   - `tests/unit/menu-service.test.ts`：验证 Help 菜单项结构、版本号动态注入、GitHub 外链回调与作者邮箱唤起（2 个测试全部通过）；
+   - `tests/unit/menu-service.test.ts`：验证 Help 菜单指南项结构、关于卡片条目保留、非独立罗列条目防御（2 个测试全部通过）；
+   - `tests/unit/guide-modal.test.tsx`：验证 Markdown/Mermaid/Math 三大选项卡切换、示例代码渲染、复制/插入与新文档打开（6 个测试全部通过）；
    - `tests/unit/preferences-modal.test.tsx`：验证偏好设置切换至关于面板、正确渲染版本号、仓库外链与作者信息（6 个测试全部通过）；
-   - 命令：`npm test`（68 个测试套件，249 项测试通过率 100%）。
+   - 命令：`npm test`（**69 个测试套件，255 项测试通过率 100%**）。
 2. **生产打包与类型检查**：
    - 命令：`npm run build`（TypeScript 静态检查与 Vite 生产构建 0 错误）。
 3. **端到端真机验收**：

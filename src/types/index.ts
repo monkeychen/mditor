@@ -71,6 +71,16 @@ export interface PdfExportOptions {
   headerTitle?: string;
 }
 
+export type MenuAction =
+  | 'new'
+  | 'open'
+  | 'save'
+  | 'saveAs'
+  | 'preferences'
+  | 'guide:markdown'
+  | 'guide:mermaid'
+  | 'guide:math';
+
 export interface ElectronAPI {
   platform?: 'darwin' | 'win32' | 'linux';
   getWindowState?: () => Promise<WindowState>;
@@ -95,7 +105,7 @@ export interface ElectronAPI {
     defaultName: string,
     markdown: string
   ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
-  onMenuTrigger?: (callback: (action: 'new' | 'open' | 'save' | 'saveAs' | 'preferences') => void) => () => void;
+  onMenuTrigger?: (callback: (action: MenuAction) => void) => () => void;
   openExternal?: (url: string) => Promise<boolean>;
   revealInExplorer?: (filePath: string) => Promise<boolean>;
   moveToTrash?: (filePath: string) => Promise<{ success: boolean; error?: string }>;

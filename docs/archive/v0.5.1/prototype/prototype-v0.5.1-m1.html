@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>mditor v0.5.1-M1 原型：Help 菜单增强与偏好设置关于面板</title>
+  <title>mditor v0.5.1-M1 原型：Help 菜单增强与使用指南/关于卡片</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -31,25 +31,25 @@
           <span class="text-[10px] text-amber-700 font-mono">▾</span>
         </button>
 
-        <!-- Help 菜单下拉浮层 -->
-        <div id="help-dropdown" class="hidden absolute left-0 top-6 w-80 bg-white/95 backdrop-blur-xl border border-black/10 rounded-xl shadow-2xl py-1.5 text-xs text-stone-800 z-50 animate-in fade-in duration-100">
-          <div class="px-3 py-1 text-[10px] uppercase font-semibold text-stone-400 tracking-wider">mditor 帮助与开源信息</div>
-          <button onclick="triggerAboutDialog()" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 hover:text-amber-900 flex items-center justify-between transition cursor-pointer">
-            <span class="font-semibold text-stone-800">版本: v0.5.1</span>
-            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">已是最新</span>
+        <!-- Help 菜单下拉浮层 (聚焦排版语法指南与关于卡片) -->
+        <div id="help-dropdown" class="hidden absolute left-0 top-6 w-56 bg-white/95 backdrop-blur-xl border border-black/10 rounded-xl shadow-2xl py-1.5 text-xs text-stone-800 z-50 animate-in fade-in duration-100">
+          <div class="px-3 py-1 text-[10px] uppercase font-semibold text-stone-400 tracking-wider">排版语法与参考</div>
+          <button onclick="openGuideModal('markdown')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 hover:text-amber-900 flex items-center justify-between transition cursor-pointer">
+            <span class="font-medium text-stone-800">Markdown 语法指南</span>
+            <span class="text-[10px] text-stone-400">📝</span>
           </button>
-          <button onclick="simulateOpenExternal('https://github.com/monkeychen/mditor')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 hover:text-amber-900 flex items-center justify-between transition cursor-pointer">
-            <span class="truncate pr-2">项目地址: https://github.com/monkeychen/mditor</span>
-            <span class="text-[10px] text-stone-400">↗</span>
+          <button onclick="openGuideModal('mermaid')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 hover:text-amber-900 flex items-center justify-between transition cursor-pointer">
+            <span class="font-medium text-stone-800">Mermaid 图表指南</span>
+            <span class="text-[10px] text-stone-400">📊</span>
           </button>
-          <button onclick="simulateOpenExternal('mailto:cza55007@gmail.com')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 hover:text-amber-900 flex items-center justify-between transition cursor-pointer">
-            <span class="truncate pr-2">作者: 陈志安 (Mail: cza55007@gmail.com)</span>
-            <span class="text-[10px] text-stone-400">✉</span>
+          <button onclick="openGuideModal('math')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 hover:text-amber-900 flex items-center justify-between transition cursor-pointer">
+            <span class="font-medium text-stone-800">数学公式语法指南</span>
+            <span class="text-[10px] text-stone-400">📐</span>
           </button>
           <div class="border-t border-black/5 my-1"></div>
           <button onclick="triggerAboutDialog()" class="w-full text-left px-3 py-1.5 hover:bg-black/5 flex items-center justify-between transition cursor-pointer">
             <span>关于 mditor...</span>
-            <span class="text-[10px] text-stone-400">About</span>
+            <span class="text-[10px] text-stone-400">关于卡片</span>
           </button>
         </div>
       </div>
@@ -77,8 +77,11 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <button onclick="openPreferencesModal('about')" class="px-2.5 py-1 text-xs bg-black/5 hover:bg-black/10 rounded-md text-stone-700 font-medium transition cursor-pointer flex items-center gap-1.5">
-            <span>偏好设置 (⌘,)</span>
+          <button onclick="openGuideModal('markdown')" class="px-2.5 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5">
+            <span>使用指南</span>
+          </button>
+          <button onclick="openAboutDialogDirectly()" class="px-2.5 py-1 text-xs bg-black/5 hover:bg-black/10 rounded-md text-stone-700 font-medium transition cursor-pointer flex items-center gap-1.5">
+            <span>关于 mditor</span>
           </button>
         </div>
       </div>
@@ -93,100 +96,62 @@
         <div class="flex-1 p-8 overflow-y-auto">
           <h1 class="text-2xl font-bold text-stone-900 mb-4">mditor v0.5.1 体验原型</h1>
           <p class="text-stone-600 text-sm leading-relaxed mb-4">
-            本原型演示 <strong>F38：系统原生 Help 菜单增强与偏好设置「关于」信息面板</strong> 的完整交互链路。
+            本原型演示 <strong>Help 菜单内容优化与排版使用指南体系</strong> 的最新交互设计。
           </p>
           <div class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
             <div class="font-semibold text-amber-950 flex items-center gap-1.5">
               <span>👉 交互指引：</span>
             </div>
-            <div>1. 点击顶部菜单栏的 <strong>「Help (帮助)」</strong>，查看版本号、项目 GitHub 地址与作者邮箱菜单项；</div>
-            <div>2. 点击右上角 <strong>「偏好设置 (⌘,)」</strong>，直接进入 <strong>「关于 (About)」</strong> 选项卡预览品牌卡片；</div>
-            <div>3. 在菜单或关于面板中点击链接，将弹出真实模拟的安全外链调起提示。</div>
+            <div>1. 点击顶部系统菜单栏的 <strong>「Help (帮助)」</strong>，菜单收敛为 <strong>Markdown 语法指南</strong>、<strong>Mermaid 图表指南</strong>、<strong>数学公式语法指南</strong> 与 <strong>关于 mditor</strong>；</div>
+            <div>2. 点击任一指南条目，即刻呼出沉浸式 <strong>语法速查与使用指南模态框</strong>，支持一键复制代码或插入正文；</div>
+            <div>3. 点击 <strong>关于 mditor</strong>，呼出 <strong>关于卡片</strong>（集中查看版本号、项目地址与作者信息）。</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 偏好设置模态框 (Preferences Modal - About Tab) -->
-  <div id="preferences-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs select-none">
-    <div class="w-[620px] bg-[#FAF8F5] border border-black/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-      <div class="h-12 border-b border-black/5 flex items-center justify-between px-5 bg-white/60">
+  <!-- 使用指南与语法速查模态框 (Guide Modal) -->
+  <div id="guide-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs select-none">
+    <div class="w-[720px] max-h-[85vh] bg-[#FAF8F5] border border-black/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="h-12 border-b border-black/5 flex items-center justify-between px-5 bg-white/60 shrink-0">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-semibold text-stone-800">偏好设置 (Preferences)</span>
-          <span class="text-[10px] text-stone-400 font-mono">⌘,</span>
+          <span class="text-sm font-semibold text-stone-800">使用指南与语法速查</span>
+          <span class="text-[10px] bg-amber-500/10 text-amber-800 px-2 py-0.5 rounded-full font-medium">Help Cheatsheet</span>
         </div>
-        <button onclick="closePreferencesModal()" class="text-stone-400 hover:text-stone-700 text-xs px-2 py-1 rounded hover:bg-black/5 cursor-pointer">
+        <button onclick="closeGuideModal()" class="text-stone-400 hover:text-stone-700 text-xs px-2 py-1 rounded hover:bg-black/5 cursor-pointer">
           关闭 (Esc)
         </button>
       </div>
 
       <!-- 选项卡导航 -->
-      <div class="flex border-b border-black/5 bg-stone-100/70 px-5 gap-6 text-xs font-medium text-stone-500">
-        <button onclick="switchTab('appearance')" id="tab-appearance" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">外观</button>
-        <button onclick="switchTab('editor')" id="tab-editor" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">编辑器</button>
-        <button onclick="switchTab('files')" id="tab-files" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">文件与保存</button>
-        <button onclick="switchTab('about')" id="tab-about" class="py-2.5 border-b-2 border-stone-800 text-stone-900 font-semibold cursor-pointer flex items-center gap-1.5">
-          <span>关于 (About)</span>
+      <div class="flex border-b border-black/5 bg-stone-100/70 px-5 gap-6 text-xs font-medium text-stone-500 shrink-0">
+        <button onclick="switchGuideTab('markdown')" id="guide-tab-btn-markdown" class="py-2.5 border-b-2 border-stone-800 text-stone-900 font-semibold cursor-pointer">
+          📝 Markdown 语法
+        </button>
+        <button onclick="switchGuideTab('mermaid')" id="guide-tab-btn-mermaid" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">
+          📊 Mermaid 图表
+        </button>
+        <button onclick="switchGuideTab('math')" id="guide-tab-btn-math" class="py-2.5 border-b-2 border-transparent hover:text-stone-800 cursor-pointer">
+          📐 数学公式 (LaTeX)
         </button>
       </div>
 
-      <!-- 选项卡内容：关于面板 -->
-      <div class="p-6">
-        <div id="panel-about" class="space-y-6 py-2">
-          <div class="flex items-center gap-4">
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 shadow-md flex items-center justify-center text-white font-serif font-bold text-2xl select-none">
-              M
-            </div>
-            <div>
-              <div class="text-lg font-bold text-stone-900 flex items-center gap-2">
-                <span>mditor</span>
-                <span class="px-2 py-0.5 text-xs font-mono bg-black/5 rounded-full font-normal text-stone-600">
-                  v0.5.1
-                </span>
-              </div>
-              <div class="text-xs text-stone-500 mt-1">
-                一款兼具 macOS 极致优雅视觉与丝滑交互体验的跨平台 Markdown 编辑器
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-3 pt-2 border-t border-black/5 text-xs">
-            <div class="flex items-center justify-between py-2 border-b border-black/5">
-              <span class="text-stone-500">当前版本</span>
-              <span class="font-mono text-stone-700 font-medium">v0.5.1</span>
-            </div>
-
-            <div class="flex items-center justify-between py-2 border-b border-black/5">
-              <span class="text-stone-500">项目地址</span>
-              <button onclick="simulateOpenExternal('https://github.com/monkeychen/mditor')" class="flex items-center gap-1 text-amber-700 hover:underline cursor-pointer">
-                <span>https://github.com/monkeychen/mditor</span>
-                <span class="text-[10px]">↗</span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between py-2">
-              <span class="text-stone-500">作者信息</span>
-              <div class="flex items-center gap-2">
-                <span class="text-stone-800 font-medium">陈志安</span>
-                <span class="text-stone-300">|</span>
-                <button onclick="simulateOpenExternal('mailto:cza55007@gmail.com')" class="flex items-center gap-1 text-amber-700 hover:underline cursor-pointer">
-                  <span>✉ cza55007@gmail.com</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- 指南内容展示区 -->
+      <div id="guide-content-area" class="flex-1 overflow-y-auto p-5 space-y-4">
+        <!-- 动态注入当前选项卡卡片 -->
       </div>
 
-      <div class="h-10 border-t border-black/5 bg-stone-50 px-5 flex items-center justify-between text-[11px] text-stone-400">
-        <span>遵循 Local-first 原则与 MIT 开源许可证</span>
-        <span>Copyright © 2026 陈志安</span>
+      <div class="h-11 border-t border-black/5 bg-stone-50 px-5 flex items-center justify-between text-[11px] text-stone-400 shrink-0">
+        <span>支持一键复制语法片段到剪贴板</span>
+        <button onclick="simulateOpenDoc()" class="text-amber-700 hover:underline cursor-pointer font-medium flex items-center gap-1">
+          <span>在新标签页中打开完整文档 ↗</span>
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- 原生关于对话框模拟 -->
+  <!-- 原生关于卡片弹窗模拟 (About Dialog) -->
   <div id="about-dialog" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs select-none">
     <div class="w-96 bg-[#FAF8F5] border border-black/10 rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
       <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 shadow-lg flex items-center justify-center text-white font-serif font-bold text-3xl mb-3">
@@ -197,6 +162,7 @@
         一款兼具 macOS 极致优雅视觉与丝滑交互体验的跨平台 Markdown 编辑器
       </div>
       <div class="w-full bg-black/5 rounded-xl p-3 text-xs text-stone-700 space-y-1.5 text-left mb-5">
+        <div><strong>当前版本：</strong>v0.5.1</div>
         <div><strong>项目地址：</strong>https://github.com/monkeychen/mditor</div>
         <div><strong>作者信息：</strong>陈志安 (Mail: cza55007@gmail.com)</div>
       </div>
@@ -219,10 +185,32 @@
   <script>
     const helpBtn = document.getElementById('help-menu-btn');
     const helpDropdown = document.getElementById('help-dropdown');
-    const prefsModal = document.getElementById('preferences-modal');
+    const guideModal = document.getElementById('guide-modal');
     const aboutDialog = document.getElementById('about-dialog');
     const toast = document.getElementById('system-toast');
     const toastMsg = document.getElementById('toast-msg');
+    const guideContentArea = document.getElementById('guide-content-area');
+
+    const GUIDE_DATA = {
+      markdown: [
+        { title: '标题与层级', desc: '1~6 个 # 号表示标题级别', code: '# 一级标题\n## 二级标题\n### 三级标题' },
+        { title: '文本强调', desc: '粗体、斜体、删除线与高亮', code: '**粗体文本**\n*斜体文本*\n~~删除线~~\n==高亮标记==' },
+        { title: '任务清单与列表', desc: '交互式复选框与项目符号', code: '- [x] 已完成任务\n- [ ] 待处理任务\n- 无序列表项' },
+        { title: 'GFM 数据表格', desc: '优雅对齐的数据表格', code: '| 表头 A | 表头 B |\n|---|---|\n| 数据 1 | 数据 2 |' }
+      ],
+      mermaid: [
+        { title: '流程图 (Flowchart)', desc: '业务流转与系统架构', code: '```mermaid\nflowchart TD\n  Start([开始]) --> Check{已验证?}\n  Check -- 是 --> Done([结束])\n  Check -- 否 --> Retry[重试]\n  Retry --> Check\n```' },
+        { title: '时序图 (Sequence)', desc: '对象间消息传递时序', code: '```mermaid\nsequenceDiagram\n  autonumber\n  Alice->>Bob: 发起请求\n  Bob-->>Alice: 返回响应结果\n```' },
+        { title: '饼图 (Pie Chart)', desc: '统计占比可视化', code: '```mermaid\npie title 文档占比\n  "Markdown" : 75\n  "Code" : 25\n```' }
+      ],
+      math: [
+        { title: '行内公式', desc: '以单个 $ 包裹', code: '爱因斯坦质能公式：$E = mc^2$' },
+        { title: '独立公式块', desc: '以双 $$ 包裹的高斯积分', code: '$$\n\\int_{-\\infty}^{+\\infty} e^{-x^2} dx = \\sqrt{\\pi}\n$$' },
+        { title: '分式与求和', desc: '代数与微积分计算', code: '$$\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}, \\quad \\sum_{k=1}^n k = \\frac{n(n+1)}{2}\n$$' }
+      ]
+    };
+
+    let currentGuideTab = 'markdown';
 
     helpBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -233,20 +221,20 @@
       helpDropdown.classList.add('hidden');
     });
 
-    function openPreferencesModal(tab = 'about') {
+    function openGuideModal(tab = 'markdown') {
       helpDropdown.classList.add('hidden');
-      prefsModal.classList.remove('hidden');
-      switchTab(tab);
+      guideModal.classList.remove('hidden');
+      switchGuideTab(tab);
     }
 
-    function closePreferencesModal() {
-      prefsModal.classList.add('hidden');
+    function closeGuideModal() {
+      guideModal.classList.add('hidden');
     }
 
-    function switchTab(tab) {
-      const tabs = ['appearance', 'editor', 'files', 'about'];
-      tabs.forEach(t => {
-        const btn = document.getElementById('tab-' + t);
+    function switchGuideTab(tab) {
+      currentGuideTab = tab;
+      ['markdown', 'mermaid', 'math'].forEach(t => {
+        const btn = document.getElementById('guide-tab-btn-' + t);
         if (btn) {
           if (t === tab) {
             btn.className = 'py-2.5 border-b-2 border-stone-800 text-stone-900 font-semibold cursor-pointer';
@@ -255,10 +243,45 @@
           }
         }
       });
+
+      renderGuideItems();
+    }
+
+    function renderGuideItems() {
+      const items = GUIDE_DATA[currentGuideTab] || [];
+      guideContentArea.innerHTML = items.map((item, idx) => `
+        <div class="bg-white border border-black/5 rounded-xl p-4 shadow-2xs space-y-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs font-semibold text-stone-800">${item.title}</div>
+              <div class="text-[11px] text-stone-400">${item.desc}</div>
+            </div>
+            <button onclick="copySnippet('${encodeURIComponent(item.code)}')" class="px-2 py-1 text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 rounded font-medium cursor-pointer transition">
+              复制示例
+            </button>
+          </div>
+          <pre class="bg-[#F6F4F0] border border-black/5 rounded-lg p-2.5 font-mono text-xs text-stone-800 overflow-x-auto select-text">${item.code}</pre>
+        </div>
+      `).join('');
+    }
+
+    function copySnippet(encoded) {
+      const text = decodeURIComponent(encoded);
+      navigator.clipboard.writeText(text);
+      showToast('已复制语法片段到剪贴板');
+    }
+
+    function simulateOpenDoc() {
+      closeGuideModal();
+      showToast(`已在新标签页打开《${currentGuideTab.toUpperCase()} 使用指南》`);
     }
 
     function triggerAboutDialog() {
       helpDropdown.classList.add('hidden');
+      aboutDialog.classList.remove('hidden');
+    }
+
+    function openAboutDialogDirectly() {
       aboutDialog.classList.remove('hidden');
     }
 
@@ -267,11 +290,15 @@
     }
 
     function simulateOpenExternal(url) {
-      toastMsg.innerText = '已通过安全协议调起外部链接: ' + url;
+      showToast('已通过系统安全协议调起: ' + url);
+    }
+
+    function showToast(msg) {
+      toastMsg.innerText = msg;
       toast.classList.remove('hidden');
       setTimeout(() => {
         toast.classList.add('hidden');
-      }, 3000);
+      }, 2500);
     }
   </script>
 </body>

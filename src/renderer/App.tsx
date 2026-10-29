@@ -13,6 +13,7 @@ import PreferencesModal from './components/PreferencesModal';
 import QuickOpenModal from './components/QuickOpenModal';
 import ExportModal from './components/ExportModal';
 import ImageLightbox from './components/ImageLightbox';
+import GuideModal, { GuideTab } from './components/GuideModal';
 import { extractWorkspaceFiles } from './utils/fuzzySearch';
 import {
   EditorPreferences,
@@ -354,6 +355,10 @@ export const App: React.FC = () => {
     naturalHeight?: number;
   } | null>(null);
 
+  // 使用指南与语法速查状态 (Help 菜单)
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [guideModalTab, setGuideModalTab] = useState<GuideTab>('markdown');
+
   useEffect(() => {
     const handleOpenLightbox = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -520,6 +525,29 @@ export const App: React.FC = () => {
     handleInsertMathBlock();
   }, [handleInsertMathBlock]);
 
+  // 插入使用指南示例片段
+  const handleInsertGuideSnippet = useCallback(
+    (snippet: string) => {
+      const separator = activeTab.content ? '\n\n' : '';
+      const updated = activeTab.content + separator + snippet + '\n';
+      updateTabContent(activeTab.id, updated);
+      if (currentMode === 'wysiwyg' && milkdownRef.current) {
+        milkdownRef.current.setMarkdown(updated);
+      }
+      showToast('已插入语法示例');
+    },
+    [activeTab.id, activeTab.content, currentMode, updateTabContent, showToast]
+  );
+
+  // 在新标签页中打开完整指南文档
+  const handleOpenGuideDoc = useCallback(
+    (title: string, markdownContent: string) => {
+      handleCreateNewTab(`${title}.md`, markdownContent);
+      showToast(`已在新标签页打开《${title}》`);
+    },
+    [handleCreateNewTab, showToast]
+  );
+
   // 快捷键监听 (全面对齐 Typora / macOS 常用快捷键)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -596,7 +624,7 @@ export const App: React.FC = () => {
     handleInsertMath,
   ]);
 
-  // 监听原生系统菜单触发事件 (File / Preferences 等)
+  // 监听原生系统菜单触发事件 (File / Preferences / Guide 等)
   useEffect(() => {
     if (!window.electronAPI?.onMenuTrigger) return;
     const cleanup = window.electronAPI.onMenuTrigger((action) => {
@@ -605,6 +633,16 @@ export const App: React.FC = () => {
       else if (action === 'save') handleSaveActiveTab();
       else if (action === 'saveAs') handleSaveAsActiveTab();
       else if (action === 'preferences') setIsPreferencesOpen(true);
+      else if (action === 'guide:markdown') {
+        setGuideModalTab('markdown');
+        setIsGuideModalOpen(true);
+      } else if (action === 'guide:mermaid') {
+        setGuideModalTab('mermaid');
+        setIsGuideModalOpen(true);
+      } else if (action === 'guide:math') {
+        setGuideModalTab('math');
+        setIsGuideModalOpen(true);
+      }
     });
     return cleanup;
   }, [handleCreateNewTab, handleOpenLocalFile, handleSaveActiveTab, handleSaveAsActiveTab]);
@@ -1466,6 +1504,15 @@ export const App: React.FC = () => {
         naturalWidth={lightboxData?.naturalWidth}
         naturalHeight={lightboxData?.naturalHeight}
         onClose={() => setLightboxData(null)}
+      />
+
+      {/* 使用指南与语法速查模态窗口 (Help 菜单) */}
+      <GuideModal
+        isOpen={isGuideModalOpen}
+        initialTab={guideModalTab}
+        onClose={() => setIsGuideModalOpen(false)}
+        onInsertSnippet={handleInsertGuideSnippet}
+        onOpenAsDocument={handleOpenGuideDoc}
       />
 
       {/* Toast 提示浮层 */}
