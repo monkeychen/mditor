@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sliders, Palette, FileText, Check, Info, ExternalLink, Mail } from 'lucide-react';
+import { APP_VERSION } from '../../types';
 import type {
   EditorPreferences,
   ColorScheme,
@@ -374,7 +375,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
                   <div className="text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
                     <span>mditor</span>
                     <span className="px-2 py-0.5 text-xs font-mono bg-black/5 dark:bg-white/10 rounded-full font-normal text-stone-600 dark:text-stone-300">
-                      v0.5.0
+                      v{APP_VERSION}
                     </span>
                   </div>
                   <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
@@ -386,7 +387,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
               <div className="space-y-3 pt-2 border-t border-black/5 dark:border-stone-700/60 text-xs">
                 <div className="flex items-center justify-between py-2 border-b border-black/5 dark:border-stone-700/40">
                   <span className="text-stone-500 dark:text-stone-400">当前版本</span>
-                  <span className="font-mono text-stone-700 dark:text-stone-200 font-medium">v0.5.0</span>
+                  <span className="font-mono text-stone-700 dark:text-stone-200 font-medium">v{APP_VERSION}</span>
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-b border-black/5 dark:border-stone-700/40">

@@ -145,7 +145,7 @@ describe('PreferencesModal Component (T410 / AC-27.1 ~ AC-27.2)', () => {
 
     fireEvent.click(screen.getByTestId('tab-btn-about'));
     expect(screen.getByTestId('prefs-about-panel')).toBeInTheDocument();
-    expect(screen.getAllByText(/v0\.5\.0/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/v0\.5\.1/).length).toBeGreaterThan(0);
     expect(screen.getByText('https://github.com/monkeychen/mditor')).toBeInTheDocument();
     expect(screen.getByText('陈志安')).toBeInTheDocument();
     expect(screen.getByText('cza55007@gmail.com')).toBeInTheDocument();

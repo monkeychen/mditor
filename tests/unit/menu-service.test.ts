@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { buildMenuTemplate } from '../../src/main/menuService';
 
 describe('Application Menu Service & Help Menu', () => {
-  const version = '0.5.0';
+  const version = '0.5.1';
 
   it('builds a menu template containing a Help menu with version, GitHub link, and author information', () => {
     const onTrigger = vi.fn();
