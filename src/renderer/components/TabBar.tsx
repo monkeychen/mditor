@@ -1,6 +1,34 @@
 import React, { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { TabItem } from '../../types';
+import { cleanHeadingText } from '../utils/outline';
+
+/**
+ * 计算 Tab 标签页悬停 Tooltip 文本 (F39 / AC-39.1 ~ AC-39.3)
+ * 1. 已保存文档 (具有 filePath): 显示完整物理路径
+ * 2. 未保存新建草稿 (filePath 为空): 提取第一行有效标题，剥离 Markdown # 标记并跳过空行
+ * 3. 空白草稿: 优雅回退为 tab.fileName
+ */
+export function getTabTooltip(tab: TabItem): string {
+  if (tab.filePath) {
+    return tab.filePath;
+  }
+
+  if (tab.content) {
+    const lines = tab.content.split(/\r?\n/);
+    const firstLine = lines.find((line) => line.trim().length > 0)?.trim();
+    if (firstLine) {
+      const headingMatch = firstLine.match(/^#{1,6}\s+(.+)$/);
+      const titleRaw = headingMatch ? headingMatch[1] : firstLine;
+      const cleanTitle = cleanHeadingText(titleRaw);
+      if (cleanTitle) {
+        return cleanTitle;
+      }
+    }
+  }
+
+  return tab.fileName || 'Untitled.md';
+}
 
 export interface TabBarProps {
   tabs: TabItem[];
@@ -78,6 +106,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             ? 'border-l-2 border-l-amber-500'
             : 'border-r-2 border-r-amber-500'
           : '';
+        const tooltip = getTabTooltip(tab);
 
         return (
           <div
@@ -92,6 +121,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             onDrop={(e) => handleDrop(e, index, tab.id)}
             onClick={() => onSelectTab(tab.id)}
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            title={tooltip}
             className={`tab-item shrink-0 group flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition select-none ${
               isDragging ? 'opacity-40 scale-95' : ''
             } ${indicatorClass} ${
@@ -113,7 +143,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               />
             )}
 
-            <span className="truncate max-w-[200px]" title={tab.filePath || tab.fileName}>
+            <span className="truncate max-w-[200px]" title={tooltip}>
               {tab.fileName}
             </span>
 
